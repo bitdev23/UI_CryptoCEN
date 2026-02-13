@@ -6,10 +6,15 @@ Then open: http://localhost:5000
 from flask import Flask, render_template, request, jsonify
 import os
 import json
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
@@ -191,6 +196,84 @@ def scheduler_status():
         'schedule': f"{config['POST_TIME_HOUR']:02d}:{config['POST_TIME_MINUTE']:02d}",
         'timezone': config['TIMEZONE']
     })
+
+@app.route('/api/post-now', methods=['POST'])
+def post_now():
+    """Generate and post immediately"""
+    try:
+        from ai_provider import AIProvider
+        from linkedin_poster import LinkedInPoster
+        from content_generator import ContentGenerator
+        from rag_system import RAGStore
+        import random
+        import config as cfg
+        
+        config_obj = load_config()
+        
+        # Build RAG system
+        rag = RAGStore(persist_dir="data/chroma_db")
+        if not rag.is_built():
+            # If not built, try to build it
+            try:
+                from pdf_processor import load_pdfs
+                docs = load_pdfs("data/pdfs")
+                rag.build_from_documents(docs)
+                rag.persist()
+            except Exception as e:
+                logger.warning("Could not build RAG from PDFs: %s", e)
+        
+        # Generate content
+        ai = AIProvider()
+        cg = ContentGenerator(rag, ai)
+        profile_key = config_obj['CONTENT_PROFILE']
+        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
+        theme = random.choice(profile.get('content_themes', []))
+        fmt = random.choice(cfg.POST_FORMATS)
+        services = profile.get('company_info', {}).get('services', '')
+        query = f"{theme} {services}"
+        
+        post = cg.generate_post(theme, fmt, query)
+        
+        # Post to LinkedIn
+        poster = LinkedInPoster(test_mode=config_obj['TEST_MODE'])
+        result = poster.post(post['content'])
+        
+        # Save to posts history
+        post_data = {
+            'content': post['content'],
+            'hashtags': post.get('hashtags', []),
+            'theme': theme,
+            'created_at': datetime.now().isoformat(),
+            'posted': result['status'] == 'posted',
+            'test_mode': config_obj['TEST_MODE']
+        }
+        
+        # Load existing posts
+        posts = []
+        if os.path.exists('data/posts.json'):
+            try:
+                with open('data/posts.json', 'r') as f:
+                    posts = json.load(f)
+            except:
+                posts = []
+        
+        posts.append(post_data)
+        
+        # Save back
+        with open('data/posts.json', 'w') as f:
+            json.dump(posts, f, indent=2)
+        
+        status_message = "Post published successfully!" if result['status'] == 'posted' else "Post preview generated (test mode)"
+        
+        return jsonify({
+            'success': True,
+            'message': status_message,
+            'post': post_data,
+            'result': result
+        })
+    except Exception as e:
+        logger.exception("Failed to post now")
+        return jsonify({'success': False, 'message': f"Posting failed: {str(e)}"})
 
 if __name__ == '__main__':
     # Disable debug mode in production

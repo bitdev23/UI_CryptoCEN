@@ -66,8 +66,8 @@
             font-weight: 600;
             color: #6c757d;
             border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
             transition: all 0.3s ease;
+            position: relative;
         }
         .nav-tabs button:hover {
             background: #e9ecef;
@@ -593,6 +593,256 @@
                     </div>
                 </div>
             </div>
+        button.secondary:hover {
+            background: #d0d0d0;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .preview-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .hashtags {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .hashtags span {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        .checklist {
+            margin-top: 15px;
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .checklist-item.done {
+            color: #28a745;
+        }
+        .checklist-item.missing {
+            color: #dc3545;
+        }
+        .checklist-item::before {
+            content: '✓';
+            margin-right: 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .checklist-item.missing::before {
+            content: '✗';
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fab fa-linkedin"></i>
+                    LinkedIn Content Automation
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 0.8rem; color: #6c757d;">
+                        <i class="fas fa-clock"></i>
+                        <span id="current-time"></span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #6c757d;">
+                        <i class="fas fa-server"></i>
+                        System Online
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="tab-button active" onclick="switchTab('dashboard')">
+                <i class="fas fa-tachometer-alt"></i>
+                Dashboard
+            </button>
+            <button class="tab-button" onclick="switchTab('generate')">
+                <i class="fas fa-magic"></i>
+                Content Generation
+            </button>
+            <button class="tab-button" onclick="switchTab('schedule')">
+                <i class="fas fa-calendar-alt"></i>
+                Automation
+            </button>
+            <button class="tab-button" onclick="switchTab('analytics')">
+                <i class="fas fa-chart-bar"></i>
+                Analytics
+            </button>
+            <button class="tab-button" onclick="switchTab('settings')">
+                <i class="fas fa-cog"></i>
+                Settings
+            </button>
+        </div>
+
+        <div class="main-content">
+            <!-- DASHBOARD TAB -->
+            <div id="dashboard" class="tab-content active">
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-value" id="total-posts">0</div>
+                        <div class="analytics-label">Total Posts</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-value" id="live-posts">0</div>
+                        <div class="analytics-label">Live Posts</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-value" id="test-posts">0</div>
+                        <div class="analytics-label">Test Posts</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-value" id="engagement-rate">0%</div>
+                        <div class="analytics-label">Avg Engagement</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">System Status</div>
+                            <div class="metric-icon" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value">Online</div>
+                        <div class="metric-change positive">All systems operational</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">Next Scheduled Post</div>
+                            <div class="metric-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="next-post-time">--:--</div>
+                        <div class="metric-change" id="next-post-timezone">Timezone</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">AI Provider</div>
+                            <div class="metric-icon" style="background: linear-gradient(135deg, #fd7e14, #ffb142); color: white;">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="ai-provider-status">Google</div>
+                        <div class="metric-change positive" id="ai-status">Connected</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">LinkedIn API</div>
+                            <div class="metric-icon" style="background: linear-gradient(135deg, #0077b5, #005885); color: white;">
+                                <i class="fab fa-linkedin"></i>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="linkedin-status-text">Ready</div>
+                        <div class="metric-change positive" id="linkedin-status-detail">Authenticated</div>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h2 class="card-title">Recent Activity</h2>
+                    </div>
+                    <div id="recent-activity" class="posts-list">
+                        <p style="color: #6c757d; text-align: center; padding: 2rem;">Loading recent posts...</p>
+                    </div>
+                </div>
+            </div>
 
             <!-- CONTENT GENERATION TAB -->
             <div id="generate" class="tab-content">
@@ -604,7 +854,7 @@
                             </div>
                             <h2 class="card-title">AI Content Generation</h2>
                         </div>
-
+                        
                         <div class="btn-group">
                             <button onclick="generatePreview()" class="btn">
                                 <span id="gen-spinner"></span>
@@ -617,9 +867,9 @@
                                 Generate & Post Now
                             </button>
                         </div>
-
+                        
                         <div id="gen-status"></div>
-
+                        
                         <div id="preview" class="preview-box" style="display: none;">
                             <div class="preview-header">
                                 <i class="fas fa-eye"></i>
@@ -642,17 +892,17 @@
                             </div>
                             <h2 class="card-title">Posting Schedule</h2>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Post Time (Hour)</label>
                             <input type="number" id="post_hour" min="0" max="23" value="11" onchange="updateConfig()">
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Post Time (Minute)</label>
                             <input type="number" id="post_minute" min="0" max="59" value="0" onchange="updateConfig()">
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Timezone</label>
                             <select id="timezone" onchange="updateConfig()">
@@ -671,7 +921,7 @@
                             </div>
                             <h2 class="card-title">Deployment Mode</h2>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="test_mode" onchange="updateConfig()">
@@ -681,7 +931,7 @@
                                 When disabled, posts will be automatically published to LinkedIn at the scheduled time.
                             </p>
                         </div>
-
+                        
                         <div class="btn-group">
                             <button onclick="postNow()" class="btn">
                                 <span id="post-spinner"></span>
@@ -699,7 +949,7 @@
                             </div>
                             <h2 class="card-title">Automation Status</h2>
                         </div>
-
+                        
                         <div class="checklist">
                             <div class="checklist-item" id="check-scheduler">✓ Scheduler configured</div>
                             <div class="checklist-item" id="check-timezone">✓ Timezone set</div>
@@ -810,7 +1060,7 @@
                             </div>
                             <h2 class="card-title">AI Configuration</h2>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">AI Provider</label>
                             <select id="ai_provider" onchange="updateConfig()">
@@ -819,17 +1069,17 @@
                                 <option value="claude">Anthropic Claude</option>
                             </select>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Google Gemini API Key</label>
                             <input type="password" id="google_key" placeholder="AIza..." onchange="updateConfig()">
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Anthropic API Key</label>
                             <input type="password" id="anthropic_key" placeholder="sk-ant-..." onchange="updateConfig()">
                         </div>
-
+                        
                         <button onclick="testApi()" class="btn">
                             <span id="api-spinner"></span>
                             <i class="fas fa-vial"></i>
@@ -845,7 +1095,7 @@
                             </div>
                             <h2 class="card-title">LinkedIn Integration</h2>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Access Token</label>
                             <input type="password" id="linkedin_token" placeholder="AQUK..." onchange="updateConfig()">
@@ -853,12 +1103,12 @@
                                 <a href="https://www.linkedin.com/developers/" target="_blank" style="color: #667eea;">Get credentials here</a>
                             </small>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Your LinkedIn ID</label>
                             <input type="text" id="linkedin_id" placeholder="vvQE2g2rkz" onchange="updateConfig()">
                         </div>
-
+                        
                         <button onclick="testLinkedIn()" class="btn">
                             <span id="linkedin-spinner"></span>
                             <i class="fas fa-vial"></i>
@@ -874,7 +1124,7 @@
                             </div>
                             <h2 class="card-title">Content Settings</h2>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Content Profile</label>
                             <select id="content_profile" onchange="updateConfig()">
@@ -882,17 +1132,17 @@
                                 <option value="valtrilabs">ValtriLabs</option>
                             </select>
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Minimum Post Length</label>
                             <input type="number" id="min_length" value="150" onchange="updateConfig()">
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="form-label">Maximum Post Length</label>
                             <input type="number" id="max_length" value="1000" onchange="updateConfig()">
                         </div>
-
+                        
                         <div class="form-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="market_grounding" onchange="updateConfig()">
@@ -908,7 +1158,7 @@
                             </div>
                             <h2 class="card-title">Setup Checklist</h2>
                         </div>
-
+                        
                         <div class="checklist">
                             <div class="checklist-item" id="check-api">✓ AI API Key configured</div>
                             <div class="checklist-item" id="check-linkedin">✓ LinkedIn credentials configured</div>
@@ -929,11 +1179,11 @@
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
             });
-
+            
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
-
+            
             // Load data for specific tabs
             if (tabName === 'dashboard') {
                 loadDashboardData();
@@ -946,7 +1196,7 @@
             try {
                 const response = await fetch('/api/config');
                 const config = await response.json();
-
+                
                 document.getElementById('ai_provider').value = config.AI_PROVIDER;
                 document.getElementById('google_key').value = config.GOOGLE_API_KEY;
                 document.getElementById('anthropic_key').value = config.ANTHROPIC_API_KEY;
@@ -960,7 +1210,7 @@
                 document.getElementById('post_minute').value = config.POST_TIME_MINUTE;
                 document.getElementById('timezone').value = config.TIMEZONE;
                 document.getElementById('test_mode').checked = config.TEST_MODE;
-
+                
                 updateChecklist();
                 updateDashboardMetrics();
             } catch (e) {
@@ -972,7 +1222,7 @@
             const apiKey = document.getElementById('google_key').value || document.getElementById('anthropic_key').value;
             const linkedinToken = document.getElementById('linkedin_token').value;
             const linkedinId = document.getElementById('linkedin_id').value;
-
+            
             document.getElementById('check-api').className = 'checklist-item ' + (apiKey ? 'done' : 'missing');
             document.getElementById('check-linkedin').className = 'checklist-item ' + (linkedinToken && linkedinId ? 'done' : 'missing');
             document.getElementById('check-profile').className = 'checklist-item done';
@@ -1003,7 +1253,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             });
-
+            
             updateChecklist();
             updateDashboardMetrics();
         }
@@ -1031,13 +1281,13 @@
         async function generatePreview() {
             document.getElementById('gen-spinner').innerHTML = '<span class="spinner"></span>';
             document.getElementById('gen-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Generating content...';
-
+            
             try {
                 const response = await fetch('/api/generate-preview');
                 const result = await response.json();
-
+                
                 document.getElementById('gen-spinner').innerHTML = '';
-
+                
                 if (result.success) {
                     document.getElementById('gen-status').className = 'status success';
                     document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> Content generated successfully!';
@@ -1058,13 +1308,13 @@
         async function generateAndPost() {
             document.getElementById('post-gen-spinner').innerHTML = '<span class="spinner"></span>';
             document.getElementById('gen-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Generating and posting...';
-
+            
             try {
                 const response = await fetch('/api/post-now', { method: 'POST' });
                 const result = await response.json();
-
+                
                 document.getElementById('post-gen-spinner').innerHTML = '';
-
+                
                 if (result.success) {
                     document.getElementById('gen-status').className = 'status success';
                     document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
@@ -1086,13 +1336,13 @@
         async function postNow() {
             document.getElementById('post-spinner').innerHTML = '<span class="spinner"></span>';
             document.getElementById('post-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Generating and posting...';
-
+            
             try {
                 const response = await fetch('/api/post-now', { method: 'POST' });
                 const result = await response.json();
-
+                
                 document.getElementById('post-spinner').innerHTML = '';
-
+                
                 if (result.success) {
                     document.getElementById('post-status').className = 'status success';
                     document.getElementById('post-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
@@ -1111,7 +1361,7 @@
         async function loadPosts() {
             const response = await fetch('/api/posts');
             const result = await response.json();
-
+            
             if (result.posts.length === 0) {
                 document.getElementById('recent-activity').innerHTML = '<p style="color: #6c757d; text-align: center; padding: 2rem;">No posts generated yet.</p>';
                 return;
@@ -1120,16 +1370,16 @@
             // Add simulated analytics to posts
             const postsWithAnalytics = result.posts.map(post => {
                 const daysSincePost = Math.floor((new Date() - new Date(post.created_at)) / (1000 * 60 * 60 * 24));
-
+                
                 // Simulate realistic engagement metrics
                 const baseReach = 500 + Math.random() * 1500;
                 const contentMultiplier = post.content.length > 200 ? 1.3 : 0.8;
                 const recencyMultiplier = Math.max(0.3, 1 - (daysSincePost * 0.1));
                 const reach = Math.floor(baseReach * contentMultiplier * recencyMultiplier);
-
+                
                 const engagementRate = 2 + Math.random() * 8; // 2-10%
                 const engagements = Math.floor(reach * engagementRate / 100);
-
+                
                 return {
                     ...post,
                     simulatedReach: reach,
@@ -1152,7 +1402,7 @@
                     </div>
                 </div>
             `).join('');
-
+            
             document.getElementById('recent-activity').innerHTML = html;
         }
 
@@ -1169,7 +1419,7 @@
 
                 // Calculate analytics
                 const analytics = calculateAnalytics(posts);
-
+                
                 // Update analytics cards
                 document.getElementById('total-reach').textContent = analytics.totalReach.toLocaleString();
                 document.getElementById('avg-engagement').textContent = analytics.avgEngagement + '%';
@@ -1203,21 +1453,21 @@
             posts.forEach((post, index) => {
                 const postDate = new Date(post.created_at);
                 const daysSincePost = Math.floor((new Date() - postDate) / (1000 * 60 * 60 * 24));
-
+                
                 // Simulate reach based on content quality, timing, and recency
                 const baseReach = 500 + Math.random() * 1500;
                 const contentMultiplier = post.content.length > 200 ? 1.3 : 0.8;
                 const recencyMultiplier = Math.max(0.3, 1 - (daysSincePost * 0.1));
                 const reach = Math.floor(baseReach * contentMultiplier * recencyMultiplier);
-
+                
                 // Simulate engagement rate
                 const engagementRate = 2 + Math.random() * 8; // 2-10%
                 const engagements = Math.floor(reach * engagementRate / 100);
-
+                
                 post.simulatedReach = reach;
                 post.simulatedEngagements = engagements;
                 post.engagementRate = engagementRate;
-
+                
                 analytics.totalReach += reach;
             });
 
@@ -1232,8 +1482,8 @@
                 const day = new Date(post.created_at).toLocaleDateString('en-US', { weekday: 'short' });
                 dayPerformance[day] = (dayPerformance[day] || 0) + post.simulatedReach;
             });
-
-            const bestDay = Object.entries(dayPerformance).reduce((a, b) =>
+            
+            const bestDay = Object.entries(dayPerformance).reduce((a, b) => 
                 dayPerformance[a[0]] > dayPerformance[b[0]] ? a : b
             );
             analytics.bestDay = bestDay ? bestDay[0] : '-';
@@ -1243,12 +1493,12 @@
             let streak = 0;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-
+            
             for (let i = 0; i < sortedPosts.length; i++) {
                 const postDate = new Date(sortedPosts[i].created_at);
                 postDate.setHours(0, 0, 0, 0);
                 const daysDiff = Math.floor((today - postDate) / (1000 * 60 * 60 * 24));
-
+                
                 if (daysDiff === streak) {
                     streak++;
                 } else {
@@ -1291,7 +1541,7 @@
 
         function generateInsights(posts, analytics) {
             const insights = [];
-
+            
             if (analytics.streak >= 3) {
                 insights.push('🔥 Great job maintaining a ' + analytics.streak + '-day posting streak!');
             } else if (analytics.streak === 0) {
@@ -1321,17 +1571,18 @@
             if (trend.length === 0) return;
 
             let chartHTML = '<div style="display: flex; align-items: end; height: 150px; gap: 8px; padding: 1rem 0;">';
-
+            
             trend.forEach(item => {
                 const height = Math.max(20, (item.engagement / 10) * 130); // Scale to 0-130px
                 chartHTML += `
                     <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                        <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 100%; height: ${height}px; border-radius: 4px 4px 0 0; margin-bottom: 4px;" title="${item.date}: ${item.reach.toLocaleString()} reach, ${item.engagement}% engagement"></div>
+                        <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 100%; height: ${height}px; border-radius: 4px 4px 0 0; margin-bottom: 4px;" 
+                             title="${item.date}: ${item.reach.toLocaleString()} reach, ${item.engagement}% engagement"></div>
                         <div style="font-size: 0.7rem; color: #6c757d; transform: rotate(-45deg); white-space: nowrap;">${item.date.split('/')[1]}</div>
                     </div>
                 `;
             });
-
+            
             chartHTML += '</div>';
             chartContainer.innerHTML = chartHTML;
         }
@@ -1345,13 +1596,13 @@
 
             const hours = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 0.5rem;">';
-
+            
             hours.forEach(hour => {
                 const data = hourlyData[hour];
                 const avgReach = Math.round(data.totalReach / data.posts);
                 const hour12 = hour == 0 ? 12 : hour > 12 ? hour - 12 : hour;
                 const ampm = hour < 12 ? 'AM' : 'PM';
-
+                
                 html += `
                     <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;">
                         <div style="font-weight: 600; color: #667eea;">${hour12}${ampm}</div>
@@ -1360,7 +1611,7 @@
                     </div>
                 `;
             });
-
+            
             html += '</div>';
             container.innerHTML = html;
         }
@@ -1370,7 +1621,7 @@
             const hashtags = Object.entries(hashtagData)
                 .sort(([,a], [,b]) => b - a)
                 .slice(0, 5);
-
+            
             if (hashtags.length === 0) {
                 container.innerHTML = '<p style="color: #6c757d; text-align: center;">No hashtag data available</p>';
                 return;
@@ -1395,7 +1646,7 @@
             recentPosts.forEach(post => {
                 const reach = post.simulatedReach || Math.floor(500 + Math.random() * 1500);
                 const engagement = post.engagementRate || (2 + Math.random() * 8);
-
+                
                 html += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e9ecef;">
                         <div style="flex: 1;">
@@ -1413,16 +1664,16 @@
                     </div>
                 `;
             });
-
+            
             container.innerHTML = html;
         }
 
         function updateContentInsights(insights) {
             const container = document.getElementById('content-insights');
             const checklist = container.querySelector('.checklist');
-
+            
             if (insights.length > 0) {
-                checklist.innerHTML = insights.map(insight =>
+                checklist.innerHTML = insights.map(insight => 
                     `<div class="checklist-item done" style="border-bottom: none;">${insight}</div>`
                 ).join('');
             }
@@ -1435,18 +1686,18 @@
             const timezone = document.getElementById('timezone').value;
             document.getElementById('next-post-time').textContent = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
             document.getElementById('next-post-timezone').textContent = timezone.split('/').pop();
-
+            
             // Update AI provider status
             const aiProvider = document.getElementById('ai_provider').value;
             document.getElementById('ai-provider-status').textContent = aiProvider.charAt(0).toUpperCase() + aiProvider.slice(1);
-
+            
             // Load post statistics
             fetch('/api/posts').then(response => response.json()).then(result => {
                 const posts = result.posts || [];
                 const totalPosts = posts.length;
                 const livePosts = posts.filter(p => !p.test_mode).length;
                 const testPosts = posts.filter(p => p.test_mode).length;
-
+                
                 document.getElementById('total-posts').textContent = totalPosts;
                 document.getElementById('live-posts').textContent = livePosts;
                 document.getElementById('test-posts').textContent = testPosts;
