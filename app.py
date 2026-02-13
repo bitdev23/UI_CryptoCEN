@@ -244,7 +244,7 @@ def post_now():
             'hashtags': post.get('hashtags', []),
             'theme': theme,
             'created_at': datetime.now().isoformat(),
-            'posted': result['status'] == 'posted',
+            'posted': result.get('status') == 'posted',
             'test_mode': config_obj['TEST_MODE']
         }
         
@@ -263,17 +263,209 @@ def post_now():
         with open('data/posts.json', 'w') as f:
             json.dump(posts, f, indent=2)
         
-        status_message = "Post published successfully!" if result['status'] == 'posted' else "Post preview generated (test mode)"
+        status_message = "Post published successfully!" if result.get('status') == 'posted' else "Post preview generated (test mode)"
         
         return jsonify({
             'success': True,
             'message': status_message,
-            'post': post_data,
-            'result': result
+            'post': {
+                'content': post['content'],
+                'hashtags': post.get('hashtags', []),
+                'theme': theme
+            }
         })
     except Exception as e:
         logger.exception("Failed to post now")
         return jsonify({'success': False, 'message': f"Posting failed: {str(e)}"})
+
+# ============= KNOWLEDGE BASE & MODEL TRAINING ENDPOINTS =============
+
+@app.route('/api/upload-knowledge-base', methods=['POST'])
+def upload_knowledge_base():
+    """Upload PDF files to the knowledge base"""
+    try:
+        from rag_system import RAGStore
+        from pdf_processor import load_pdfs
+        
+        if 'files' not in request.files:
+            return jsonify({'success': False, 'message': 'No files provided'}), 400
+        
+        files = request.files.getlist('files')
+        if not files:
+            return jsonify({'success': False, 'message': 'No files selected'}), 400
+        
+        # Create if data/pdfs doesn't exist
+        os.makedirs('data/pdfs', exist_ok=True)
+        
+        # Save uploaded files
+        uploaded_count = 0
+        for file in files:
+            if file and file.filename.endswith('.pdf'):
+                filepath = os.path.join('data/pdfs', file.filename)
+                file.save(filepath)
+                uploaded_count += 1
+        
+        if uploaded_count == 0:
+            return jsonify({'success': False, 'message': 'No PDF files found in upload'}), 400
+        
+        # Rebuild RAG system with new documents
+        try:
+            rag = RAGStore(persist_dir="data/chroma_db")
+            docs = load_pdfs("data/pdfs")
+            rag.build_from_documents(docs)
+            rag.persist()
+        except Exception as e:
+            logger.warning("Could not build RAG from PDFs: %s", e)
+            return jsonify({'success': False, 'message': f'RAG build failed: {str(e)}'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully uploaded and processed {uploaded_count} PDF file(s)'
+        })
+    except Exception as e:
+        logger.exception("Knowledge base upload failed")
+        return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'}), 500
+
+@app.route('/api/personas', methods=['GET', 'POST'])
+def manage_personas():
+    """Get or update AI personas and writing styles"""
+    try:
+        personas_file = 'data/personas.json'
+        
+        # Default personas if none exist
+        default_personas = {
+            'professional': {
+                'name': 'Professional Advisor',
+                'description': 'Formal, authoritative, industry expert tone',
+                'tone': 'professional',
+                'language': 'English',
+                'style': 'formal',
+                'keywords': ['industry', 'expertise', 'strategic', 'insight'],
+                'emoji_usage': 'minimal',
+                'hashtag_count': 3
+            },
+            'casual_friendly': {
+                'name': 'Friendly Innovator',
+                'description': 'Casual, approachable, conversational tone',
+                'tone': 'casual',
+                'language': 'English',
+                'style': 'conversational',
+                'keywords': ['innovation', 'growth', 'community', 'value'],
+                'emoji_usage': 'moderate',
+                'hashtag_count': 5
+            },
+            'thought_leader': {
+                'name': 'Thought Leader',
+                'description': 'Insightful, visionary, trend-focused',
+                'tone': 'inspirational',
+                'language': 'English',
+                'style': 'narrative',
+                'keywords': ['future', 'vision', 'transformation', 'impact'],
+                'emoji_usage': 'strategic',
+                'hashtag_count': 4
+            },
+            'storyteller': {
+                'name': 'Storyteller',
+                'description': 'Narrative-driven, emotional connection',
+                'tone': 'narrative',
+                'language': 'English',
+                'style': 'story-based',
+                'keywords': ['experience', 'journey', 'learning', 'growth'],
+                'emoji_usage': 'adaptive',
+                'hashtag_count': 3
+            }
+        }
+        
+        if request.method == 'GET':
+            # Return personas
+            personas = default_personas
+            if os.path.exists(personas_file):
+                try:
+                    with open(personas_file, 'r') as f:
+                        personas = json.load(f)
+                except:
+                    pass
+            return jsonify({'success': True, 'personas': personas})
+        
+        else:  # POST
+            # Update personas
+            data = request.get_json()
+            if not data or 'personas' not in data:
+                return jsonify({'success': False, 'message': 'Invalid persona data'}), 400
+            
+            os.makedirs('data', exist_ok=True)
+            with open(personas_file, 'w') as f:
+                json.dump(data['personas'], f, indent=2)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Personas updated successfully'
+            })
+    except Exception as e:
+        logger.exception("Persona management failed")
+        return jsonify({'success': False, 'message': f'Failed: {str(e)}'}), 500
+
+@app.route('/api/train-model', methods=['POST'])
+def train_model():
+    """Train/rebuild the RAG model with current knowledge base"""
+    try:
+        from rag_system import RAGStore
+        from pdf_processor import load_pdfs
+        
+        rag = RAGStore(persist_dir="data/chroma_db")
+        
+        # Load and build
+        if os.path.exists('data/pdfs'):
+            docs = load_pdfs("data/pdfs")
+            if not docs:
+                return jsonify({
+                    'success': False,
+                    'message': 'No documents found in knowledge base'
+                }), 400
+            
+            rag.build_from_documents(docs)
+            rag.persist()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Model trained successfully with {len(docs)} documents'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Knowledge base (data/pdfs) not found'
+            }), 400
+    except Exception as e:
+        logger.exception("Model training failed")
+        return jsonify({'success': False, 'message': f'Training failed: {str(e)}'}), 500
+
+@app.route('/api/knowledge-base-status', methods=['GET'])
+def knowledge_base_status():
+    """Get knowledge base statistics"""
+    try:
+        from rag_system import RAGStore
+        
+        rag = RAGStore(persist_dir="data/chroma_db")
+        
+        pdf_count = 0
+        if os.path.exists('data/pdfs'):
+            pdf_count = len([f for f in os.listdir('data/pdfs') if f.endswith('.pdf')])
+        
+        is_trained = rag.is_built()
+        
+        return jsonify({
+            'success': True,
+            'trained': is_trained,
+            'pdf_count': pdf_count,
+            'status': 'Ready for use' if is_trained else 'Needs training',
+            'rag_ready': is_trained
+        })
+    except Exception as e:
+        logger.exception("Knowledge base status check failed")
+        return jsonify({
+            'success': False,
+            'message': f'Status check failed: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # Disable debug mode in production

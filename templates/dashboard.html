@@ -503,6 +503,14 @@
                 <i class="fas fa-calendar-alt"></i>
                 Automation
             </button>
+            <button class="tab-button" onclick="switchTab('knowledge')">
+                <i class="fas fa-brain"></i>
+                Knowledge Base
+            </button>
+            <button class="tab-button" onclick="switchTab('personas')">
+                <i class="fas fa-users"></i>
+                Personas & Style
+            </button>
             <button class="tab-button" onclick="switchTab('analytics')">
                 <i class="fas fa-chart-bar"></i>
                 Analytics
@@ -913,6 +921,241 @@
                             <div class="checklist-item" id="check-api">✓ AI API Key configured</div>
                             <div class="checklist-item" id="check-linkedin">✓ LinkedIn credentials configured</div>
                             <div class="checklist-item" id="check-profile">✓ Content profile selected</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KNOWLEDGE BASE TAB -->
+            <div id="knowledge" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <h2 class="card-title">Upload Knowledge Base</h2>
+                        </div>
+
+                        <p style="color: #6c757d; margin-bottom: 1rem;">Upload PDF files to train the AI model on your company knowledge, products, and services.</p>
+
+                        <div class="form-group">
+                            <label class="form-label">Select PDF Files</label>
+                            <input type="file" id="kb-files" multiple accept=".pdf" style="padding: 1rem; border: 2px dashed #667eea; border-radius: 8px; background: #f8f9fa;">
+                        </div>
+
+                        <div class="btn-group">
+                            <button onclick="uploadKnowledgeBase()" class="btn">
+                                <span id="kb-upload-spinner"></span>
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                Upload PDFs
+                            </button>
+                        </div>
+                        <div id="kb-upload-status"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <h2 class="card-title">Train Model</h2>
+                        </div>
+
+                        <p style="color: #6c757d; margin-bottom: 1rem;">Rebuild the RAG (Retrieval-Augmented Generation) model with your current knowledge base PDFs.</p>
+
+                        <div class="btn-group">
+                            <button onclick="trainModel()" class="btn">
+                                <span id="train-spinner"></span>
+                                <i class="fas fa-brain"></i>
+                                Train RAG Model
+                            </button>
+                        </div>
+                        <div id="train-status"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #fd7e14, #ffb142); color: white;">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <h2 class="card-title">Knowledge Base Status</h2>
+                        </div>
+
+                        <div style="margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="font-weight: 600;">PDFs Uploaded:</span>
+                                <span id="kb-pdf-count">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="font-weight: 600;">Model Status:</span>
+                                <span id="kb-status" style="color: #dc3545;">Not Trained</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-weight: 600;">Ready to Use:</span>
+                                <span id="kb-ready" style="color: #dc3545;">❌ No</span>
+                            </div>
+                        </div>
+
+                        <div class="btn-group" style="margin-top: 1.5rem;">
+                            <button onclick="checkKBStatus()" class="btn secondary">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh Status
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #dc3545, #fd7e14); color: white;">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                            <h2 class="card-title">Why Train the Model?</h2>
+                        </div>
+
+                        <div class="checklist">
+                            <div class="checklist-item done">📚 PDFs help the AI understand your company's products and services</div>
+                            <div class="checklist-item done">🎯 Posts will include relevant company information automatically</div>
+                            <div class="checklist-item done">✍️ Content generated will be more accurate and on-brand</div>
+                            <div class="checklist-item done">🚀 RAG model searches PDFs to provide context for content</div>
+                            <div class="checklist-item done">💡 Train once, generate better posts forever</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERSONAS & STYLE TAB -->
+            <div id="personas" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h2 class="card-title">AI Personas</h2>
+                        </div>
+
+                        <p style="color: #6c757d; margin-bottom: 1rem;">Select how you want the AI to write. Each persona has a different writing style, language, and tone.</p>
+
+                        <div class="form-group">
+                            <label class="form-label">Active Persona</label>
+                            <select id="active_persona" onchange="updatePersona()">
+                                <option value="professional">Professional Advisor - Formal, authoritative, industry expert tone</option>
+                                <option value="casual_friendly">Friendly Innovator - Casual, approachable, conversational</option>
+                                <option value="thought_leader">Thought Leader - Insightful, visionary, trend-focused</option>
+                                <option value="storyteller">Storyteller - Narrative-driven, emotional connection</option>
+                            </select>
+                        </div>
+
+                        <div id="persona-details" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <p style="color: #6c757d; text-align: center;">Select a persona to see details</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                                <i class="fas fa-palette"></i>
+                            </div>
+                            <h2 class="card-title">Writing Style</h2>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tone</label>
+                            <select id="tone" onchange="updateConfig()">
+                                <option value="professional">Professional</option>
+                                <option value="casual">Casual</option>
+                                <option value="inspirational">Inspirational</option>
+                                <option value="narrative">Narrative</option>
+                            </select>
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">How the AI should sound</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Style</label>
+                            <select id="style" onchange="updateConfig()">
+                                <option value="formal">Formal / Structured</option>
+                                <option value="conversational">Conversational</option>
+                                <option value="story-based">Story-Based / Narrative</option>
+                                <option value="listicle">Listicle / Bullet Points</option>
+                            </select>
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">How content should be structured</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Emoji Usage</label>
+                            <select id="emoji_usage" onchange="updateConfig()">
+                                <option value="none">None</option>
+                                <option value="minimal">Minimal</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="strategic">Strategic</option>
+                                <option value="adaptive">Adaptive (varies by context)</option>
+                            </select>
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">How many emojis to include</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Hashtag Count</label>
+                            <select id="hashtag_count" onchange="updateConfig()">
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">Number of hashtags per post</small>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #fd7e14, #ffb142); color: white;">
+                                <i class="fas fa-language"></i>
+                            </div>
+                            <h2 class="card-title">Language Settings</h2>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Content Language</label>
+                            <select id="language" onchange="updateConfig()">
+                                <option value="English">English</option>
+                                <option value="Arabic">Arabic (العربية)</option>
+                                <option value="Spanish">Spanish (Español)</option>
+                                <option value="French">French (Français)</option>
+                                <option value="German">German (Deutsch)</option>
+                                <option value="Chinese">Chinese (中文)</option>
+                                <option value="Japanese">Japanese (日本語)</option>
+                                <option value="Portuguese">Portuguese (Português)</option>
+                            </select>
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">Language for generated posts</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Target Audience Keywords</label>
+                            <input type="text" id="audience_keywords" placeholder="e.g., startups, tech leaders, marketers" onchange="updateConfig()" style="min-height: 60px;">
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">Who should the posts appeal to?</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Content Topics</label>
+                            <input type="text" id="content_topics" placeholder="e.g., AI, automation, productivity" onchange="updateConfig()" style="min-height: 60px;">
+                            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">Main topics to focus on</small>
+                        </div>
+                    </div>
+
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <h2 class="card-title">Preview: How Your Posts Will Sound</h2>
+                        </div>
+
+                        <div id="style-preview" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+                            <div style="text-align: center; color: #6c757d;">
+                                <i class="fas fa-file-alt" style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                                <p>Generate or preview a post to see how your selected persona and style affects the output</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1459,8 +1702,197 @@
             document.getElementById('current-time').textContent = now.toLocaleTimeString();
         }
 
+        // ============= KNOWLEDGE BASE FUNCTIONS =============
+
+        async function uploadKnowledgeBase() {
+            const files = document.getElementById('kb-files').files;
+            if (files.length === 0) {
+                alert('Please select PDF files to upload');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            document.getElementById('kb-upload-spinner').innerHTML = '<span class="spinner"></span>';
+            document.getElementById('kb-upload-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Uploading...';
+
+            try {
+                const response = await fetch('/api/upload-knowledge-base', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                document.getElementById('kb-upload-spinner').innerHTML = '';
+
+                if (result.success) {
+                    document.getElementById('kb-upload-status').className = 'status success';
+                    document.getElementById('kb-upload-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
+                    document.getElementById('kb-files').value = '';
+                    setTimeout(checkKBStatus, 1000);
+                } else {
+                    document.getElementById('kb-upload-status').className = 'status error';
+                    document.getElementById('kb-upload-status').innerHTML = '<i class="fas fa-times"></i> ' + result.message;
+                }
+            } catch (e) {
+                document.getElementById('kb-upload-spinner').innerHTML = '';
+                document.getElementById('kb-upload-status').className = 'status error';
+                document.getElementById('kb-upload-status').innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
+            }
+        }
+
+        async function trainModel() {
+            document.getElementById('train-spinner').innerHTML = '<span class="spinner"></span>';
+            document.getElementById('train-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Training model...';
+
+            try {
+                const response = await fetch('/api/train-model', { method: 'POST' });
+                const result = await response.json();
+
+                document.getElementById('train-spinner').innerHTML = '';
+
+                if (result.success) {
+                    document.getElementById('train-status').className = 'status success';
+                    document.getElementById('train-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
+                    setTimeout(checkKBStatus, 1000);
+                } else {
+                    document.getElementById('train-status').className = 'status error';
+                    document.getElementById('train-status').innerHTML = '<i class="fas fa-times"></i> ' + result.message;
+                }
+            } catch (e) {
+                document.getElementById('train-spinner').innerHTML = '';
+                document.getElementById('train-status').className = 'status error';
+                document.getElementById('train-status').innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
+            }
+        }
+
+        async function checkKBStatus() {
+            try {
+                const response = await fetch('/api/knowledge-base-status');
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('kb-pdf-count').textContent = result.pdf_count;
+                    document.getElementById('kb-status').textContent = result.status;
+                    document.getElementById('kb-status').style.color = result.trained ? '#28a745' : '#dc3545';
+                    document.getElementById('kb-ready').innerHTML = result.rag_ready ? '✅ Yes' : '❌ No';
+                    document.getElementById('kb-ready').style.color = result.rag_ready ? '#28a745' : '#dc3545';
+                }
+            } catch (e) {
+                console.error('Status check failed:', e);
+            }
+        }
+
+        // ============= PERSONA FUNCTIONS =============
+
+        const personaDefinitions = {
+            'professional': {
+                'name': 'Professional Advisor',
+                'description': 'Formal, authoritative, industry expert tone',
+                'tone': 'professional',
+                'language': 'English',
+                'style': 'formal',
+                'keywords': ['industry', 'expertise', 'strategic', 'insight'],
+                'emoji_usage': 'minimal',
+                'hashtag_count': '3'
+            },
+            'casual_friendly': {
+                'name': 'Friendly Innovator',
+                'description': 'Casual, approachable, conversational tone',
+                'tone': 'casual',
+                'language': 'English',
+                'style': 'conversational',
+                'keywords': ['innovation', 'growth', 'community', 'value'],
+                'emoji_usage': 'moderate',
+                'hashtag_count': '5'
+            },
+            'thought_leader': {
+                'name': 'Thought Leader',
+                'description': 'Insightful, visionary, trend-focused',
+                'tone': 'inspirational',
+                'language': 'English',
+                'style': 'narrative',
+                'keywords': ['future', 'vision', 'transformation', 'impact'],
+                'emoji_usage': 'strategic',
+                'hashtag_count': '4'
+            },
+            'storyteller': {
+                'name': 'Storyteller',
+                'description': 'Narrative-driven, emotional connection',
+                'tone': 'narrative',
+                'language': 'English',
+                'style': 'story-based',
+                'keywords': ['experience', 'journey', 'learning', 'growth'],
+                'emoji_usage': 'adaptive',
+                'hashtag_count': '3'
+            }
+        };
+
+        function updatePersona() {
+            const persona_key = document.getElementById('active_persona').value;
+            const persona = personaDefinitions[persona_key];
+
+            if (persona) {
+                // Update style settings
+                document.getElementById('tone').value = persona.tone;
+                document.getElementById('style').value = persona.style;
+                document.getElementById('emoji_usage').value = persona.emoji_usage;
+                document.getElementById('hashtag_count').value = persona.hashtag_count;
+
+                // Show persona details
+                const detailsHtml = `
+                    <div>
+                        <h3 style="color: #2c3e50; margin-bottom: 0.5rem;">${persona.name}</h3>
+                        <p style="color: #6c757d; margin-bottom: 1rem;">${persona.description}</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <small style="color: #6c757d; font-weight: 600;">Tone</small>
+                                <div style="color: #667eea; font-weight: 500;">${persona.tone}</div>
+                            </div>
+                            <div>
+                                <small style="color: #6c757d; font-weight: 600;">Style</small>
+                                <div style="color: #667eea; font-weight: 500;">${persona.style}</div>
+                            </div>
+                            <div>
+                                <small style="color: #6c757d; font-weight: 600;">Emojis</small>
+                                <div style="color: #667eea; font-weight: 500;">${persona.emoji_usage}</div>
+                            </div>
+                            <div>
+                                <small style="color: #6c757d; font-weight: 600;">Hashtags</small>
+                                <div style="color: #667eea; font-weight: 500;">${persona.hashtag_count} per post</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef;">
+                            <small style="color: #6c757d; font-weight: 600;">Key Topics</small>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                                ${persona.keywords.map(k => `<span class="hashtag">${k}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('persona-details').innerHTML = detailsHtml;
+                updateConfig();
+            }
+        }
+
+        function loadPersonas() {
+            fetch('/api/personas')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Personas loaded - update preview on persona change
+                        updatePersona();
+                    }
+                });
+        }
+
         // Initialize
         loadConfig();
+        checkKBStatus();
+        loadPersonas();
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
     </script>
