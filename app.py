@@ -282,16 +282,19 @@ def post_now():
 
 @app.route('/api/upload-knowledge-base', methods=['POST'])
 def upload_knowledge_base():
-    """Upload PDF files to the knowledge base"""
+    """Upload PDF or DOCX files to the knowledge base"""
     try:
         from rag_system import RAGStore
         from pdf_processor import load_pdfs
+        from werkzeug.utils import secure_filename
         
         if 'files' not in request.files:
+            logger.warning("Upload request missing 'files' field")
             return jsonify({'success': False, 'message': 'No files provided'}), 400
         
         files = request.files.getlist('files')
-        if not files:
+        if not files or all(not f.filename for f in files):
+            logger.warning("No files selected in upload")
             return jsonify({'success': False, 'message': 'No files selected'}), 400
         
         # Create if data/pdfs doesn't exist
@@ -299,28 +302,59 @@ def upload_knowledge_base():
         
         # Save uploaded files
         uploaded_count = 0
+        allowed_extensions = ('.pdf', '.docx')
+        
         for file in files:
-            if file and file.filename.endswith('.pdf'):
-                filepath = os.path.join('data/pdfs', file.filename)
+            if not file or not file.filename:
+                continue
+            
+            filename = secure_filename(file.filename)
+            file_ext = filename.lower()
+            
+            # Check if file has allowed extension
+            if not any(file_ext.endswith(ext) for ext in allowed_extensions):
+                logger.warning("Skipping non-PDF/DOCX file: %s", filename)
+                continue
+            
+            try:
+                filepath = os.path.join('data/pdfs', filename)
                 file.save(filepath)
+                logger.info("Saved file: %s", filepath)
                 uploaded_count += 1
+            except Exception as e:
+                logger.exception("Failed to save file %s: %s", filename, e)
+                continue
         
         if uploaded_count == 0:
-            return jsonify({'success': False, 'message': 'No PDF files found in upload'}), 400
+            logger.warning("No PDF/DOCX files found in upload")
+            return jsonify({'success': False, 'message': 'No PDF or DOCX files found in upload'}), 400
         
         # Rebuild RAG system with new documents
+        rag_error = None
         try:
+            logger.info("Starting RAG rebuild with %d new files", uploaded_count)
             rag = RAGStore(persist_dir="data/chroma_db")
             docs = load_pdfs("data/pdfs")
-            rag.build_from_documents(docs)
-            rag.persist()
+            logger.info("Loaded %d documents for RAG", len(docs))
+            if docs:
+                rag.build_from_documents(docs)
+                rag.persist()
+                logger.info("RAG build successful")
+            else:
+                logger.warning("No documents loaded from PDFs/DOCX files")
         except Exception as e:
-            logger.warning("Could not build RAG from PDFs: %s", e)
-            return jsonify({'success': False, 'message': f'RAG build failed: {str(e)}'}), 500
+            rag_error = str(e)
+            logger.exception("RAG build error: %s", e)
+        
+        # Return success even if RAG fails (files were uploaded)
+        response_msg = f'Successfully uploaded {uploaded_count} file(s)'
+        if rag_error:
+            response_msg += f' (RAG training skipped: {rag_error})'
         
         return jsonify({
             'success': True,
-            'message': f'Successfully uploaded and processed {uploaded_count} PDF file(s)'
+            'message': response_msg,
+            'uploaded': uploaded_count
         })
     except Exception as e:
         logger.exception("Knowledge base upload failed")

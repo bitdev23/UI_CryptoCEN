@@ -937,18 +937,18 @@
                             <h2 class="card-title">Upload Knowledge Base</h2>
                         </div>
 
-                        <p style="color: #6c757d; margin-bottom: 1rem;">Upload PDF files to train the AI model on your company knowledge, products, and services.</p>
+                        <p style="color: #6c757d; margin-bottom: 1rem;">Upload PDF or DOCX files to train the AI model on your company knowledge, products, and services.</p>
 
                         <div class="form-group">
-                            <label class="form-label">Select PDF Files</label>
-                            <input type="file" id="kb-files" multiple accept=".pdf" style="padding: 1rem; border: 2px dashed #667eea; border-radius: 8px; background: #f8f9fa;">
+                            <label class="form-label">Select PDF or DOCX Files</label>
+                            <input type="file" id="kb-files" multiple accept=".pdf,.docx" style="padding: 1rem; border: 2px dashed #667eea; border-radius: 8px; background: #f8f9fa;">
                         </div>
 
                         <div class="btn-group">
                             <button onclick="uploadKnowledgeBase()" class="btn">
                                 <span id="kb-upload-spinner"></span>
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                Upload PDFs
+                                Upload Files
                             </button>
                         </div>
                         <div id="kb-upload-status"></div>
@@ -1252,6 +1252,9 @@
         }
 
         async function testApi() {
+            // First, save the current config
+            await updateConfig();
+            
             document.getElementById('api-spinner').innerHTML = '<span class="spinner"></span>';
             const response = await fetch('/api/test-api', { method: 'POST' });
             const result = await response.json();
@@ -1707,7 +1710,7 @@
         async function uploadKnowledgeBase() {
             const files = document.getElementById('kb-files').files;
             if (files.length === 0) {
-                alert('Please select PDF files to upload');
+                alert('Please select PDF or DOCX files to upload');
                 return;
             }
 
