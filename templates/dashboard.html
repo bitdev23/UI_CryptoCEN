@@ -220,6 +220,28 @@
             color: #495057;
             cursor: pointer;
         }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #495057;
+            cursor: pointer;
+        }
+        .radio-label input[type="radio"] {
+            margin-right: 0.75rem;
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+        .radio-text {
+            flex: 1;
+        }
         .btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -619,11 +641,6 @@
                                 <i class="fas fa-wand-magic-sparkles"></i>
                                 Generate Preview
                             </button>
-                            <button onclick="generateAndPost()" class="btn success">
-                                <span id="post-gen-spinner"></span>
-                                <i class="fas fa-paper-plane"></i>
-                                Generate & Post Now
-                            </button>
                         </div>
 
                         <div id="gen-status"></div>
@@ -635,6 +652,18 @@
                             </div>
                             <div id="preview-content" style="margin-bottom: 1rem; font-style: italic;"></div>
                             <div id="preview-hashtags" class="hashtags"></div>
+                            
+                            <div class="btn-group" style="margin-top: 1rem;">
+                                <button onclick="postPreviewNow()" class="btn success">
+                                    <span id="post-preview-spinner"></span>
+                                    <i class="fas fa-paper-plane"></i>
+                                    Post Now
+                                </button>
+                                <button onclick="schedulePreview()" class="btn primary">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    Schedule for Later
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -670,6 +699,14 @@
                                 <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
                             </select>
                         </div>
+
+                        <div class="btn-group">
+                            <button onclick="saveScheduleSettings()" class="btn success">
+                                <i class="fas fa-save"></i>
+                                Save Schedule Settings
+                            </button>
+                        </div>
+                        <div id="schedule-status"></div>
                     </div>
 
                     <div class="card">
@@ -681,14 +718,29 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="test_mode" onchange="updateConfig()">
-                                Test Mode (Preview only, don't actually post)
-                            </label>
+                            <label class="form-label">Deployment Mode</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="deployment_mode" value="live" id="live_mode" onchange="updateConfig()">
+                                    <span class="radio-text">Live Mode (Post to LinkedIn)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="deployment_mode" value="test" id="test_mode_radio" onchange="updateConfig()">
+                                    <span class="radio-text">Test Mode (Preview only)</span>
+                                </label>
+                            </div>
                             <p style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
-                                When disabled, posts will be automatically published to LinkedIn at the scheduled time.
+                                In Live Mode, posts will be automatically published to LinkedIn at the scheduled time.
                             </p>
                         </div>
+
+                        <div class="btn-group">
+                            <button onclick="saveDeploymentSettings()" class="btn success">
+                                <i class="fas fa-save"></i>
+                                Save Deployment Settings
+                            </button>
+                        </div>
+                        <div id="deployment-status"></div>
 
                         <div class="btn-group">
                             <button onclick="postNow()" class="btn">
@@ -902,11 +954,26 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="market_grounding" onchange="updateConfig()">
-                                Enable Market Data in Posts
-                            </label>
+                            <label class="form-label">Market Data in Posts</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="market_grounding_radio" value="enabled" id="market_enabled" onchange="updateConfig()">
+                                    <span class="radio-text">Enable Market Data</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="market_grounding_radio" value="disabled" id="market_disabled" onchange="updateConfig()">
+                                    <span class="radio-text">Disable Market Data</span>
+                                </label>
+                            </div>
                         </div>
+
+                        <div class="btn-group">
+                            <button onclick="saveContentSettings()" class="btn success">
+                                <i class="fas fa-save"></i>
+                                Save Content Settings
+                            </button>
+                        </div>
+                        <div id="content-status"></div>
                     </div>
 
                     <div class="card full-width">
@@ -948,7 +1015,7 @@
                             <button onclick="uploadKnowledgeBase()" class="btn">
                                 <span id="kb-upload-spinner"></span>
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                Upload Files
+                                Click to Upload
                             </button>
                         </div>
                         <div id="kb-upload-status"></div>
@@ -1141,6 +1208,14 @@
                             <input type="text" id="content_topics" placeholder="e.g., AI, automation, productivity" onchange="updateConfig()" style="min-height: 60px;">
                             <small style="color: #6c757d; display: block; margin-top: 0.5rem;">Main topics to focus on</small>
                         </div>
+
+                        <div class="btn-group">
+                            <button onclick="savePersonaSettings()" class="btn success">
+                                <i class="fas fa-save"></i>
+                                Save Persona & Style Settings
+                            </button>
+                        </div>
+                        <div id="persona-status"></div>
                     </div>
 
                     <div class="card full-width">
@@ -1198,11 +1273,34 @@
                 document.getElementById('content_profile').value = config.CONTENT_PROFILE;
                 document.getElementById('min_length').value = config.MIN_POST_LENGTH;
                 document.getElementById('max_length').value = config.MAX_POST_LENGTH;
-                document.getElementById('market_grounding').checked = config.ENABLE_MARKET_GROUNDING;
+                
+                // Set market grounding radio buttons
+                if (config.ENABLE_MARKET_GROUNDING) {
+                    document.getElementById('market_enabled').checked = true;
+                } else {
+                    document.getElementById('market_disabled').checked = true;
+                }
+                
                 document.getElementById('post_hour').value = config.POST_TIME_HOUR;
                 document.getElementById('post_minute').value = config.POST_TIME_MINUTE;
                 document.getElementById('timezone').value = config.TIMEZONE;
-                document.getElementById('test_mode').checked = config.TEST_MODE;
+                
+                // Set deployment mode radio buttons
+                if (config.TEST_MODE) {
+                    document.getElementById('test_mode_radio').checked = true;
+                } else {
+                    document.getElementById('live_mode').checked = true;
+                }
+
+                // Load persona settings
+                document.getElementById('active_persona').value = config.ACTIVE_PERSONA || 'professional';
+                document.getElementById('tone').value = config.TONE || 'professional';
+                document.getElementById('style').value = config.STYLE || 'formal';
+                document.getElementById('emoji_usage').value = config.EMOJI_USAGE || 'moderate';
+                document.getElementById('hashtag_count').value = config.HASHTAG_COUNT || '3';
+                document.getElementById('language').value = config.LANGUAGE || 'English';
+                document.getElementById('audience_keywords').value = config.AUDIENCE_KEYWORDS || '';
+                document.getElementById('content_topics').value = config.CONTENT_TOPICS || '';
 
                 updateChecklist();
                 updateDashboardMetrics();
@@ -1234,11 +1332,11 @@
                 CONTENT_PROFILE: document.getElementById('content_profile').value,
                 MIN_POST_LENGTH: parseInt(document.getElementById('min_length').value),
                 MAX_POST_LENGTH: parseInt(document.getElementById('max_length').value),
-                ENABLE_MARKET_GROUNDING: document.getElementById('market_grounding').checked,
+                ENABLE_MARKET_GROUNDING: document.querySelector('input[name="market_grounding_radio"]:checked')?.value === 'enabled',
                 POST_TIME_HOUR: parseInt(document.getElementById('post_hour').value),
                 POST_TIME_MINUTE: parseInt(document.getElementById('post_minute').value),
                 TIMEZONE: document.getElementById('timezone').value,
-                TEST_MODE: document.getElementById('test_mode').checked
+                TEST_MODE: document.querySelector('input[name="deployment_mode"]:checked')?.value === 'test'
             };
 
             await fetch('/api/config', {
@@ -1301,29 +1399,135 @@
             }
         }
 
-        async function generateAndPost() {
-            document.getElementById('post-gen-spinner').innerHTML = '<span class="spinner"></span>';
-            document.getElementById('gen-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Generating and posting...';
+        async function saveScheduleSettings() {
+            const config = {
+                POST_TIME_HOUR: parseInt(document.getElementById('post_hour').value),
+                POST_TIME_MINUTE: parseInt(document.getElementById('post_minute').value),
+                TIMEZONE: document.getElementById('timezone').value
+            };
 
             try {
-                const response = await fetch('/api/post-now', { method: 'POST' });
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
                 const result = await response.json();
+                
+                const statusDiv = document.getElementById('schedule-status');
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '<i class="fas fa-check"></i> Schedule settings saved!';
+                
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            } catch (e) {
+                const statusDiv = document.getElementById('schedule-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Failed to save settings';
+            }
+        }
 
-                document.getElementById('post-gen-spinner').innerHTML = '';
+        async function saveContentSettings() {
+            const config = {
+                CONTENT_PROFILE: document.getElementById('content_profile').value,
+                MIN_POST_LENGTH: parseInt(document.getElementById('min_length').value),
+                MAX_POST_LENGTH: parseInt(document.getElementById('max_length').value),
+                ENABLE_MARKET_GROUNDING: document.querySelector('input[name="market_grounding_radio"]:checked')?.value === 'enabled'
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const result = await response.json();
+                
+                const statusDiv = document.getElementById('content-status');
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '<i class="fas fa-check"></i> Content settings saved!';
+                
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            } catch (e) {
+                const statusDiv = document.getElementById('content-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Failed to save settings';
+            }
+        }
+
+        async function savePersonaSettings() {
+            const config = {
+                ACTIVE_PERSONA: document.getElementById('active_persona').value,
+                TONE: document.getElementById('tone').value,
+                STYLE: document.getElementById('style').value,
+                EMOJI_USAGE: document.getElementById('emoji_usage').value,
+                HASHTAG_COUNT: document.getElementById('hashtag_count').value,
+                LANGUAGE: document.getElementById('language').value,
+                AUDIENCE_KEYWORDS: document.getElementById('audience_keywords').value,
+                CONTENT_TOPICS: document.getElementById('content_topics').value
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const result = await response.json();
+                
+                const statusDiv = document.getElementById('persona-status');
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '<i class="fas fa-check"></i> Persona & style settings saved!';
+                
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 3000);
+            } catch (e) {
+                const statusDiv = document.getElementById('persona-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Failed to save settings';
+            }
+        }
+
+        async function schedulePreview() {
+            if (!document.getElementById('preview').style.display || document.getElementById('preview').style.display === 'none') {
+                alert('Please generate a preview first');
+                return;
+            }
+            
+            const content = document.getElementById('preview-content').textContent;
+            const hashtags = Array.from(document.getElementById('preview-hashtags').querySelectorAll('.hashtag')).map(span => span.textContent);
+            
+            // Show date/time picker
+            const scheduleDate = prompt('Enter date and time to schedule (YYYY-MM-DD HH:MM):', 
+                                      new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' '));
+            
+            if (!scheduleDate) return;
+            
+            try {
+                const response = await fetch('/api/schedule-post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: content,
+                        hashtags: hashtags,
+                        schedule_time: scheduleDate
+                    })
+                });
+                const result = await response.json();
 
                 if (result.success) {
                     document.getElementById('gen-status').className = 'status success';
-                    document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
-                    document.getElementById('preview-content').textContent = result.post.content;
-                    document.getElementById('preview-hashtags').innerHTML = result.post.hashtags.map(tag => `<span class="hashtag">${tag}</span>`).join('');
-                    document.getElementById('preview').style.display = 'block';
+                    document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> Post scheduled successfully!';
                     loadDashboardData();
                 } else {
                     document.getElementById('gen-status').className = 'status error';
                     document.getElementById('gen-status').innerHTML = '<i class="fas fa-times"></i> ' + result.message;
                 }
             } catch (e) {
-                document.getElementById('post-gen-spinner').innerHTML = '';
                 document.getElementById('gen-status').className = 'status error';
                 document.getElementById('gen-status').innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
             }

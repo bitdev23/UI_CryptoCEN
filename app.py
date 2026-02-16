@@ -45,6 +45,14 @@ def load_config():
         'MIN_POST_LENGTH': int(os.getenv('MIN_POST_LENGTH', '150')),
         'MAX_POST_LENGTH': int(os.getenv('MAX_POST_LENGTH', '1000')),
         'ENABLE_MARKET_GROUNDING': os.getenv('ENABLE_MARKET_GROUNDING', 'true').lower() in ('true', '1'),
+        'ACTIVE_PERSONA': os.getenv('ACTIVE_PERSONA', 'professional'),
+        'TONE': os.getenv('TONE', 'professional'),
+        'STYLE': os.getenv('STYLE', 'formal'),
+        'EMOJI_USAGE': os.getenv('EMOJI_USAGE', 'moderate'),
+        'HASHTAG_COUNT': os.getenv('HASHTAG_COUNT', '3'),
+        'LANGUAGE': os.getenv('LANGUAGE', 'English'),
+        'AUDIENCE_KEYWORDS': os.getenv('AUDIENCE_KEYWORDS', ''),
+        'CONTENT_TOPICS': os.getenv('CONTENT_TOPICS', '')
     }
     return config
 
@@ -65,6 +73,14 @@ TIMEZONE={config['TIMEZONE']}
 MIN_POST_LENGTH={config['MIN_POST_LENGTH']}
 MAX_POST_LENGTH={config['MAX_POST_LENGTH']}
 ENABLE_MARKET_GROUNDING={'true' if config['ENABLE_MARKET_GROUNDING'] else 'false'}
+ACTIVE_PERSONA={config.get('ACTIVE_PERSONA', 'professional')}
+TONE={config.get('TONE', 'professional')}
+STYLE={config.get('STYLE', 'formal')}
+EMOJI_USAGE={config.get('EMOJI_USAGE', 'moderate')}
+HASHTAG_COUNT={config.get('HASHTAG_COUNT', '3')}
+LANGUAGE={config.get('LANGUAGE', 'English')}
+AUDIENCE_KEYWORDS={config.get('AUDIENCE_KEYWORDS', '')}
+CONTENT_TOPICS={config.get('CONTENT_TOPICS', '')}
 """
     with open('.env', 'w') as f:
         f.write(env_content)
@@ -75,13 +91,71 @@ def scheduled_post_job():
     """Job to run scheduled posting"""
     try:
         logger.info("Running scheduled post job")
-        from ai_provider import AIProvider
-        from linkedin_poster import LinkedInPoster
-        import random
-        import config as cfg
         
+        # Check for scheduled posts that are due
+        if os.path.exists('data/scheduled_posts.json'):
+            try:
+                with open('data/scheduled_posts.json', 'r') as f:
+                    scheduled_posts = json.load(f)
+                
+                current_time = datetime.now()
+                posts_to_remove = []
+                
+                for post in scheduled_posts:
+                    schedule_time = datetime.fromisoformat(post['schedule_time'])
+                    if current_time >= schedule_time:
+                        # Post is due
+                        from linkedin_poster import LinkedInPoster
+                        poster = LinkedInPoster(test_mode=False)  # Always post scheduled posts
+                        result = poster.post(post['content'])
+                        
+                        logger.info(f"Posted scheduled post: {result}")
+                        
+                        # Add to posts history
+                        post_data = {
+                            'content': post['content'],
+                            'hashtags': post['hashtags'],
+                            'theme': 'scheduled',
+                            'created_at': datetime.now().isoformat(),
+                            'posted': result.get('status') == 'posted',
+                            'test_mode': False,
+                            'scheduled': True
+                        }
+                        
+                        # Load existing posts
+                        posts = []
+                        if os.path.exists('data/posts.json'):
+                            try:
+                                with open('data/posts.json', 'r') as f:
+                                    posts = json.load(f)
+                            except:
+                                posts = []
+                        
+                        posts.append(post_data)
+                        
+                        # Save posts
+                        with open('data/posts.json', 'w') as f:
+                            json.dump(posts, f, indent=2)
+                        
+                        posts_to_remove.append(post)
+                
+                # Remove posted scheduled posts
+                for post in posts_to_remove:
+                    scheduled_posts.remove(post)
+                
+                # Save updated scheduled posts
+                with open('data/scheduled_posts.json', 'w') as f:
+                    json.dump(scheduled_posts, f, indent=2)
+                    
+            except Exception as e:
+                logger.exception("Error processing scheduled posts: %s", e)
+        
+        # Generate and post new content (existing logic)
         config_obj = load_config()
-        
+        if config_obj['TEST_MODE']:
+            logger.info("Skipping daily post generation - TEST_MODE is enabled")
+            return
+            
         # Generate content directly (simplified version)
         ai = AIProvider()
         profile_key = config_obj['CONTENT_PROFILE']
@@ -290,15 +364,46 @@ def get_posts():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
-@app.route('/api/scheduler/status', methods=['GET'])
-def scheduler_status():
-    """Get scheduler status"""
-    config = load_config()
-    return jsonify({
-        'enabled': not config['TEST_MODE'],
-        'schedule': f"{config['POST_TIME_HOUR']:02d}:{config['POST_TIME_MINUTE']:02d}",
-        'timezone': config['TIMEZONE']
-    })
+@app.route('/api/schedule-post', methods=['POST'])
+def schedule_post():
+    """Schedule a post for later"""
+    try:
+        data = request.get_json()
+        content = data.get('content', '')
+        hashtags = data.get('hashtags', [])
+        schedule_time = data.get('schedule_time', '')
+        
+        if not content or not schedule_time:
+            return jsonify({'success': False, 'message': 'Content and schedule time required'})
+        
+        # Load existing scheduled posts
+        scheduled_posts = []
+        if os.path.exists('data/scheduled_posts.json'):
+            try:
+                with open('data/scheduled_posts.json', 'r') as f:
+                    scheduled_posts = json.load(f)
+            except:
+                scheduled_posts = []
+        
+        # Add new scheduled post
+        scheduled_post = {
+            'content': content,
+            'hashtags': hashtags,
+            'schedule_time': schedule_time,
+            'created_at': datetime.now().isoformat(),
+            'id': len(scheduled_posts) + 1
+        }
+        
+        scheduled_posts.append(scheduled_post)
+        
+        # Save back
+        with open('data/scheduled_posts.json', 'w') as f:
+            json.dump(scheduled_posts, f, indent=2)
+        
+        return jsonify({'success': True, 'message': f'Post scheduled for {schedule_time}'})
+    except Exception as e:
+        logger.exception("Failed to schedule post")
+        return jsonify({'success': False, 'message': f"Scheduling failed: {str(e)}"})
 
 @app.route('/api/post-now', methods=['POST'])
 def post_now():
