@@ -307,7 +307,7 @@ def test_linkedin():
     except Exception as e:
         return jsonify({'success': False, 'message': f"LinkedIn Error: {str(e)}"})
 
-@app.route('/api/generate-preview', methods=['GET'])
+@app.route('/api/generate-preview', methods=['GET', 'POST'])
 def generate_preview():
     """Generate a preview post"""
     try:
@@ -315,12 +315,19 @@ def generate_preview():
         import random
         import config as cfg
         
+        logger.info("Generate preview request received")
+        
         ai = AIProvider()
         config_obj = load_config()
-        profile_key = config_obj['CONTENT_PROFILE']
-        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
-        theme = random.choice(profile.get('content_themes', []))
-        fmt = random.choice(cfg.POST_FORMATS)
+        profile_key = config_obj.get('CONTENT_PROFILE', 'arab_global_crypto')
+        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES.get(cfg.DEFAULT_PROFILE, {}))
+        
+        content_themes = profile.get('content_themes', ['AI', 'Technology', 'Business'])
+        theme = random.choice(content_themes) if content_themes else 'Technology'
+        
+        post_formats = getattr(cfg, 'POST_FORMATS', ['article', 'opinion', 'announcement'])
+        fmt = random.choice(post_formats) if post_formats else 'article'
+        
         services = profile.get('company_info', {}).get('services', '')
         
         # Simple prompt for preview generation
@@ -330,10 +337,19 @@ Company context: {services}
 
 Post format: {fmt}
 
-Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters."""
+Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters."""
 
+        logger.info(f"Generating preview with prompt: {prompt[:100]}...")
+        
         result = ai.generate(prompt, max_tokens=500)
+        if not result or 'text' not in result:
+            logger.error(f"Invalid AI response: {result}")
+            return jsonify({'success': False, 'message': "AI returned empty response"}), 400
+            
         content = result['text'].strip()
+        
+        if not content:
+            return jsonify({'success': False, 'message': "Generated content is empty"}), 400
         
         # Generate some basic hashtags
         hashtags = ['#LinkedIn', '#Business', '#Innovation']
@@ -342,6 +358,8 @@ Make it engaging, professional, and include relevant hashtags. Keep it between {
         if 'arab' in theme.lower():
             hashtags.extend(['#MiddleEast', '#UAE', '#Dubai'])
         
+        logger.info(f"Successfully generated preview: {content[:100]}...")
+        
         return jsonify({
             'success': True,
             'post': content,
@@ -349,7 +367,8 @@ Make it engaging, professional, and include relevant hashtags. Keep it between {
             'theme': theme
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': f"Generation Error: {str(e)}"})
+        logger.exception("Generate preview failed")
+        return jsonify({'success': False, 'message': f"Generation Error: {str(e)}"}), 500
 
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
