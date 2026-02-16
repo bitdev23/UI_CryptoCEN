@@ -7,12 +7,18 @@ from flask import Flask, render_template, request, jsonify
 import os
 import json
 import logging
+import threading
+import time
+import schedule
+import pytz
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -62,6 +68,103 @@ ENABLE_MARKET_GROUNDING={'true' if config['ENABLE_MARKET_GROUNDING'] else 'false
 """
     with open('.env', 'w') as f:
         f.write(env_content)
+
+# ============= SCHEDULER FUNCTIONS =============
+
+def scheduled_post_job():
+    """Job to run scheduled posting"""
+    try:
+        logger.info("Running scheduled post job")
+        from ai_provider import AIProvider
+        from linkedin_poster import LinkedInPoster
+        import random
+        import config as cfg
+        
+        config_obj = load_config()
+        
+        # Generate content directly (simplified version)
+        ai = AIProvider()
+        profile_key = config_obj['CONTENT_PROFILE']
+        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
+        theme = random.choice(profile.get('content_themes', []))
+        fmt = random.choice(cfg.POST_FORMATS)
+        services = profile.get('company_info', {}).get('services', '')
+        
+        # Simple prompt for post generation
+        prompt = f"""Generate a LinkedIn post about: {theme}
+
+Company context: {services}
+
+Post format: {fmt}
+
+Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters."""
+
+        result = ai.generate(prompt, max_tokens=500)
+        content = result['text'].strip()
+        
+        # Generate some basic hashtags
+        hashtags = ['#LinkedIn', '#Business', '#Innovation']
+        if 'crypto' in theme.lower():
+            hashtags.extend(['#Crypto', '#Blockchain', '#DigitalAssets'])
+        if 'arab' in theme.lower():
+            hashtags.extend(['#MiddleEast', '#UAE', '#Dubai'])
+        
+        # Post to LinkedIn
+        poster = LinkedInPoster(test_mode=config_obj['TEST_MODE'])
+        post_result = poster.post(content)
+        
+        # Save to posts history
+        post_data = {
+            'content': content,
+            'hashtags': hashtags,
+            'theme': theme,
+            'created_at': datetime.now().isoformat(),
+            'posted': post_result.get('status') == 'posted',
+            'test_mode': config_obj['TEST_MODE'],
+            'scheduled': True
+        }
+        
+        # Load existing posts
+        posts = []
+        if os.path.exists('data/posts.json'):
+            try:
+                with open('data/posts.json', 'r') as f:
+                    posts = json.load(f)
+            except:
+                posts = []
+        
+        posts.append(post_data)
+        
+        # Save back
+        with open('data/posts.json', 'w') as f:
+            json.dump(posts, f, indent=2)
+        
+        logger.info("Scheduled post completed: %s", "Posted" if post_result.get('status') == 'posted' else "Test mode")
+        
+    except Exception as e:
+        logger.exception("Scheduled post job failed: %s", e)
+
+def start_scheduler():
+    """Start the background scheduler"""
+    def scheduler_thread():
+        config = load_config()
+        if config['TEST_MODE']:
+            logger.info("Scheduler not started - TEST_MODE is enabled")
+            return
+            
+        tz = pytz.timezone(config['TIMEZONE'])
+        schedule_time = f"{config['POST_TIME_HOUR']:02d}:{config['POST_TIME_MINUTE']:02d}"
+        
+        schedule.every().day.at(schedule_time).do(scheduled_post_job)
+        logger.info("Scheduler started - will post daily at %s %s", schedule_time, config['TIMEZONE'])
+        
+        while True:
+            schedule.run_pending()
+            time.sleep(60)  # Check every minute
+    
+    thread = threading.Thread(target=scheduler_thread, daemon=True)
+    thread.start()
+    logger.info("Scheduler thread started")
 
 # ============= ROUTES =============
 
@@ -203,48 +306,49 @@ def post_now():
     try:
         from ai_provider import AIProvider
         from linkedin_poster import LinkedInPoster
-        from content_generator import ContentGenerator
-        from rag_system import RAGStore
         import random
         import config as cfg
         
         config_obj = load_config()
         
-        # Build RAG system
-        rag = RAGStore(persist_dir="data/chroma_db")
-        if not rag.is_built():
-            # If not built, try to build it
-            try:
-                from pdf_processor import load_pdfs
-                docs = load_pdfs("data/pdfs")
-                rag.build_from_documents(docs)
-                rag.persist()
-            except Exception as e:
-                logger.warning("Could not build RAG from PDFs: %s", e)
-        
-        # Generate content
+        # Generate content directly (simplified version)
         ai = AIProvider()
-        cg = ContentGenerator(rag, ai)
         profile_key = config_obj['CONTENT_PROFILE']
         profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
         theme = random.choice(profile.get('content_themes', []))
         fmt = random.choice(cfg.POST_FORMATS)
         services = profile.get('company_info', {}).get('services', '')
-        query = f"{theme} {services}"
         
-        post = cg.generate_post(theme, fmt, query)
+        # Simple prompt for post generation
+        prompt = f"""Generate a LinkedIn post about: {theme}
+
+Company context: {services}
+
+Post format: {fmt}
+
+Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters."""
+
+        result = ai.generate(prompt, max_tokens=500)
+        content = result['text'].strip()
+        
+        # Generate some basic hashtags
+        hashtags = ['#LinkedIn', '#Business', '#Innovation']
+        if 'crypto' in theme.lower():
+            hashtags.extend(['#Crypto', '#Blockchain', '#DigitalAssets'])
+        if 'arab' in theme.lower():
+            hashtags.extend(['#MiddleEast', '#UAE', '#Dubai'])
         
         # Post to LinkedIn
         poster = LinkedInPoster(test_mode=config_obj['TEST_MODE'])
-        result = poster.post(post['content'])
+        post_result = poster.post(content)
         
         # Save to posts history
         post_data = {
-            'content': post['content'],
-            'hashtags': post.get('hashtags', []),
+            'content': content,
+            'hashtags': hashtags,
             'theme': theme,
             'created_at': datetime.now().isoformat(),
-            'posted': result.get('status') == 'posted',
+            'posted': post_result.get('status') == 'posted',
             'test_mode': config_obj['TEST_MODE']
         }
         
@@ -263,14 +367,14 @@ def post_now():
         with open('data/posts.json', 'w') as f:
             json.dump(posts, f, indent=2)
         
-        status_message = "Post published successfully!" if result.get('status') == 'posted' else "Post preview generated (test mode)"
+        status_message = "Post published successfully!" if post_result.get('status') == 'posted' else "Post preview generated (test mode)"
         
         return jsonify({
             'success': True,
             'message': status_message,
             'post': {
-                'content': post['content'],
-                'hashtags': post.get('hashtags', []),
+                'content': content,
+                'hashtags': hashtags,
                 'theme': theme
             }
         })
@@ -502,6 +606,9 @@ def knowledge_base_status():
         }), 500
 
 if __name__ == '__main__':
+    # Start the scheduler in background
+    start_scheduler()
+    
     # Disable debug mode in production
     debug_mode = os.getenv('FLASK_ENV') != 'production'
     app.run(debug=debug_mode, port=int(os.getenv('PORT', 5000)), host='0.0.0.0')
