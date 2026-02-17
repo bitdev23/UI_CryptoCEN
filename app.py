@@ -306,14 +306,19 @@ def update_config():
         data = request.get_json()
         config = load_config()
         
-        # Only update if new values provided (preserve masked values)
+        # Update all provided configuration values
         for key in data:
-            if data[key] and not data[key].startswith('***'):
-                config[key] = data[key]
+            value = data[key]
+            # Skip masked values (don't overwrite with ***) but allow False, 0, empty strings
+            if isinstance(value, str) and value.startswith('***'):
+                continue
+            config[key] = value
         
         save_config(config)
+        logger.info(f"Configuration saved. TEST_MODE={config.get('TEST_MODE')}")
         return jsonify({'success': True, 'message': 'Configuration saved!'})
     except Exception as e:
+        logger.exception("Failed to save config")
         return jsonify({'success': False, 'message': str(e)}), 400
 
 @app.route('/api/test-api', methods=['POST'])

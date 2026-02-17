@@ -1339,11 +1339,18 @@
                 TEST_MODE: document.querySelector('input[name="deployment_mode"]:checked')?.value === 'test'
             };
 
-            await fetch('/api/config', {
+            const response = await fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             });
+            
+            const result = await response.json();
+            console.log('Config save response:', result);
+            
+            if (!result.success) {
+                console.error('Config save failed:', result.message);
+            }
 
             updateChecklist();
             updateDashboardMetrics();
@@ -1597,6 +1604,73 @@
                 document.getElementById('post-spinner').innerHTML = '';
                 document.getElementById('post-status').className = 'status error';
                 document.getElementById('post-status').innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
+            }
+        }
+
+        async function postPreviewNow() {
+            const previewContent = document.getElementById('preview-content').textContent;
+            const hashtags = Array.from(document.getElementById('preview-hashtags').querySelectorAll('.hashtag')).map(span => span.textContent);
+            
+            if (!previewContent) {
+                alert('Please generate a preview first');
+                return;
+            }
+
+            document.getElementById('post-preview-spinner').innerHTML = '<span class="spinner"></span>';
+            document.getElementById('gen-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Posting to LinkedIn...';
+
+            try {
+                // First save config to ensure TEST_MODE is correct
+                await updateConfig();
+                
+                // Now post
+                const response = await fetch('/api/post-now', { method: 'POST' });
+                const result = await response.json();
+
+                document.getElementById('post-preview-spinner').innerHTML = '';
+
+                if (result.success) {
+                    document.getElementById('gen-status').className = 'status success';
+                    document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
+                    console.log('Post successful:', result);
+                    loadDashboardData();
+                    // Clear preview
+                    document.getElementById('preview').style.display = 'none';
+                } else {
+                    document.getElementById('gen-status').className = 'status error';
+                    document.getElementById('gen-status').innerHTML = '<i class="fas fa-times"></i> ' + result.message;
+                    console.error('Post failed:', result);
+                }
+            } catch (e) {
+                document.getElementById('post-preview-spinner').innerHTML = '';
+                document.getElementById('gen-status').className = 'status error';
+                document.getElementById('gen-status').innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
+                console.error('Post error:', e);
+            }
+        }
+
+        async function saveScheduleSettings() {
+            try {
+                // Save config first
+                await updateConfig();
+                
+                const statusDiv = document.getElementById('deployment-status');
+                const testMode = document.querySelector('input[name="deployment_mode"]:checked')?.value === 'test';
+                const mode = testMode ? 'Test Mode' : 'Live Mode';
+                
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '<i class="fas fa-check"></i> Deployment mode saved: ' + mode;
+                console.log('Settings saved:', {testMode, mode});
+                
+                // Refresh config to verify
+                setTimeout(() => {
+                    loadConfig();
+                }, 500);
+            } catch (e) {
+                const statusDiv = document.getElementById('deployment-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Error: ' + e.message;
+                console.error('Save failed:', e);
             }
         }
 
