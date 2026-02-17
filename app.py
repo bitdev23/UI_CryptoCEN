@@ -29,31 +29,55 @@ app.config['JSON_SORT_KEYS'] = False
 
 def load_config():
     """Load configuration from .env file"""
-    config = {
-        'AI_PROVIDER': os.getenv('AI_PROVIDER', 'google'),
-        'GOOGLE_API_KEY': os.getenv('GOOGLE_API_KEY', ''),
-        'ANTHROPIC_API_KEY': os.getenv('ANTHROPIC_API_KEY', ''),
-        'LINKEDIN_ACCESS_TOKEN': os.getenv('LINKEDIN_ACCESS_TOKEN', ''),
-        'LINKEDIN_PERSON_ID': os.getenv('LINKEDIN_PERSON_ID', ''),
-        'LINKEDIN_CLIENT_ID': os.getenv('LINKEDIN_CLIENT_ID', ''),
-        'LINKEDIN_CLIENT_SECRET': os.getenv('LINKEDIN_CLIENT_SECRET', ''),
-        'TEST_MODE': os.getenv('TEST_MODE', 'true').lower() in ('true', '1'),
-        'CONTENT_PROFILE': os.getenv('CONTENT_PROFILE', 'arab_global_crypto'),
-        'POST_TIME_HOUR': int(os.getenv('POST_TIME_HOUR', '11')),
-        'POST_TIME_MINUTE': int(os.getenv('POST_TIME_MINUTE', '0')),
-        'TIMEZONE': os.getenv('TIMEZONE', 'Asia/Kolkata'),
-        'MIN_POST_LENGTH': int(os.getenv('MIN_POST_LENGTH', '150')),
-        'MAX_POST_LENGTH': int(os.getenv('MAX_POST_LENGTH', '1000')),
-        'ENABLE_MARKET_GROUNDING': os.getenv('ENABLE_MARKET_GROUNDING', 'true').lower() in ('true', '1'),
-        'ACTIVE_PERSONA': os.getenv('ACTIVE_PERSONA', 'professional'),
-        'TONE': os.getenv('TONE', 'professional'),
-        'STYLE': os.getenv('STYLE', 'formal'),
-        'EMOJI_USAGE': os.getenv('EMOJI_USAGE', 'moderate'),
-        'HASHTAG_COUNT': os.getenv('HASHTAG_COUNT', '3'),
-        'LANGUAGE': os.getenv('LANGUAGE', 'English'),
-        'AUDIENCE_KEYWORDS': os.getenv('AUDIENCE_KEYWORDS', ''),
-        'CONTENT_TOPICS': os.getenv('CONTENT_TOPICS', '')
+    # Read .env file directly to get current values
+    config = {}
+    if os.path.exists('.env'):
+        with open('.env', 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip()
+    
+    # Set defaults for missing values
+    defaults = {
+        'AI_PROVIDER': 'google',
+        'GOOGLE_API_KEY': '',
+        'ANTHROPIC_API_KEY': '',
+        'LINKEDIN_ACCESS_TOKEN': '',
+        'LINKEDIN_PERSON_ID': '',
+        'LINKEDIN_CLIENT_ID': '',
+        'LINKEDIN_CLIENT_SECRET': '',
+        'TEST_MODE': 'true',
+        'CONTENT_PROFILE': 'arab_global_crypto',
+        'POST_TIME_HOUR': '11',
+        'POST_TIME_MINUTE': '0',
+        'TIMEZONE': 'Asia/Kolkata',
+        'MIN_POST_LENGTH': '150',
+        'MAX_POST_LENGTH': '1000',
+        'ENABLE_MARKET_GROUNDING': 'true',
+        'ACTIVE_PERSONA': 'professional',
+        'TONE': 'professional',
+        'STYLE': 'formal',
+        'EMOJI_USAGE': 'moderate',
+        'HASHTAG_COUNT': '3',
+        'LANGUAGE': 'English',
+        'AUDIENCE_KEYWORDS': '',
+        'CONTENT_TOPICS': ''
     }
+    
+    for key, default in defaults.items():
+        if key not in config:
+            config[key] = default
+    
+    # Convert string values to appropriate types
+    config['TEST_MODE'] = config['TEST_MODE'].lower() in ('true', '1')
+    config['POST_TIME_HOUR'] = int(config['POST_TIME_HOUR'])
+    config['POST_TIME_MINUTE'] = int(config['POST_TIME_MINUTE'])
+    config['MIN_POST_LENGTH'] = int(config['MIN_POST_LENGTH'])
+    config['MAX_POST_LENGTH'] = int(config['MAX_POST_LENGTH'])
+    config['ENABLE_MARKET_GROUNDING'] = config['ENABLE_MARKET_GROUNDING'].lower() in ('true', '1')
+    
     return config
 
 def save_config(config):
@@ -88,67 +112,9 @@ CONTENT_TOPICS={config.get('CONTENT_TOPICS', '')}
 # ============= SCHEDULER FUNCTIONS =============
 
 def scheduled_post_job():
-    """Job to run scheduled posting"""
+    """Job to run daily automated posting"""
     try:
-        logger.info("Running scheduled post job")
-        
-        # Check for scheduled posts that are due
-        if os.path.exists('data/scheduled_posts.json'):
-            try:
-                with open('data/scheduled_posts.json', 'r') as f:
-                    scheduled_posts = json.load(f)
-                
-                current_time = datetime.now()
-                posts_to_remove = []
-                
-                for post in scheduled_posts:
-                    schedule_time = datetime.fromisoformat(post['schedule_time'])
-                    if current_time >= schedule_time:
-                        # Post is due
-                        from linkedin_poster import LinkedInPoster
-                        poster = LinkedInPoster(test_mode=False)  # Always post scheduled posts
-                        result = poster.post(post['content'])
-                        
-                        logger.info(f"Posted scheduled post: {result}")
-                        
-                        # Add to posts history
-                        post_data = {
-                            'content': post['content'],
-                            'hashtags': post['hashtags'],
-                            'theme': 'scheduled',
-                            'created_at': datetime.now().isoformat(),
-                            'posted': result.get('status') == 'posted',
-                            'test_mode': False,
-                            'scheduled': True
-                        }
-                        
-                        # Load existing posts
-                        posts = []
-                        if os.path.exists('data/posts.json'):
-                            try:
-                                with open('data/posts.json', 'r') as f:
-                                    posts = json.load(f)
-                            except:
-                                posts = []
-                        
-                        posts.append(post_data)
-                        
-                        # Save posts
-                        with open('data/posts.json', 'w') as f:
-                            json.dump(posts, f, indent=2)
-                        
-                        posts_to_remove.append(post)
-                
-                # Remove posted scheduled posts
-                for post in posts_to_remove:
-                    scheduled_posts.remove(post)
-                
-                # Save updated scheduled posts
-                with open('data/scheduled_posts.json', 'w') as f:
-                    json.dump(scheduled_posts, f, indent=2)
-                    
-            except Exception as e:
-                logger.exception("Error processing scheduled posts: %s", e)
+        logger.info("Running daily scheduled post job")
         
         # Generate and post new content (existing logic)
         config_obj = load_config()
@@ -222,19 +188,83 @@ def start_scheduler():
     """Start the background scheduler"""
     def scheduler_thread():
         config = load_config()
-        if config['TEST_MODE']:
-            logger.info("Scheduler not started - TEST_MODE is enabled")
-            return
-            
         tz = pytz.timezone(config['TIMEZONE'])
         schedule_time = f"{config['POST_TIME_HOUR']:02d}:{config['POST_TIME_MINUTE']:02d}"
         
-        schedule.every().day.at(schedule_time).do(scheduled_post_job)
-        logger.info("Scheduler started - will post daily at %s %s", schedule_time, config['TIMEZONE'])
+        # Schedule daily automated posts only if not in test mode
+        if not config['TEST_MODE']:
+            schedule.every().day.at(schedule_time).do(scheduled_post_job)
+            logger.info("Daily scheduler started - will post daily at %s %s", schedule_time, config['TIMEZONE'])
         
         while True:
+            # Always check for UI-scheduled posts
+            config = load_config()  # Reload config
+            if not config['TEST_MODE']:
+                # Only process scheduled posts if not in test mode
+                check_scheduled_posts()
+            
+            # Run any pending scheduled jobs (daily posts)
             schedule.run_pending()
             time.sleep(60)  # Check every minute
+    
+    def check_scheduled_posts():
+        """Check and post any due scheduled posts"""
+        try:
+            if os.path.exists('data/scheduled_posts.json'):
+                with open('data/scheduled_posts.json', 'r') as f:
+                    scheduled_posts = json.load(f)
+                
+                current_time = datetime.now()
+                posts_to_remove = []
+                
+                for post in scheduled_posts:
+                    schedule_time = datetime.fromisoformat(post['schedule_time'])
+                    if current_time >= schedule_time:
+                        # Post is due
+                        from linkedin_poster import LinkedInPoster
+                        poster = LinkedInPoster(test_mode=False)  # Always post scheduled posts
+                        result = poster.post(post['content'])
+                        
+                        logger.info(f"Posted scheduled post: {result}")
+                        
+                        # Add to posts history
+                        post_data = {
+                            'content': post['content'],
+                            'hashtags': post['hashtags'],
+                            'theme': 'scheduled',
+                            'created_at': datetime.now().isoformat(),
+                            'posted': result.get('status') == 'posted',
+                            'test_mode': False,
+                            'scheduled': True
+                        }
+                        
+                        # Load existing posts
+                        posts = []
+                        if os.path.exists('data/posts.json'):
+                            try:
+                                with open('data/posts.json', 'r') as f:
+                                    posts = json.load(f)
+                            except:
+                                posts = []
+                        
+                        posts.append(post_data)
+                        
+                        # Save posts
+                        with open('data/posts.json', 'w') as f:
+                            json.dump(posts, f, indent=2)
+                        
+                        posts_to_remove.append(post)
+                
+                # Remove posted scheduled posts
+                for post in posts_to_remove:
+                    scheduled_posts.remove(post)
+                
+                # Save updated scheduled posts
+                with open('data/scheduled_posts.json', 'w') as f:
+                    json.dump(scheduled_posts, f, indent=2)
+                    
+        except Exception as e:
+            logger.exception("Error processing scheduled posts: %s", e)
     
     thread = threading.Thread(target=scheduler_thread, daemon=True)
     thread.start()
@@ -491,7 +521,12 @@ Make it engaging, professional, and include relevant hashtags. Keep it between {
         with open('data/posts.json', 'w') as f:
             json.dump(posts, f, indent=2)
         
-        status_message = "Post published successfully!" if post_result.get('status') == 'posted' else "Post preview generated (test mode)"
+        if post_result.get('status') == 'posted':
+            status_message = "Post published successfully!"
+        elif config_obj['TEST_MODE']:
+            status_message = "Post preview generated (test mode)"
+        else:
+            status_message = f"Failed to post: {post_result.get('error', 'Unknown error')}"
         
         return jsonify({
             'success': True,

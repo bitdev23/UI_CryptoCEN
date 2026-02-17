@@ -8,8 +8,12 @@ logger = logging.getLogger("valtrilabs.linkedin")
 
 
 class LinkedInPoster:
-    def __init__(self, test_mode: bool = True):
-        self.test_mode = os.getenv("TEST_MODE", str(test_mode)).lower() in ("1", "true", "yes")
+    def __init__(self, test_mode: Optional[bool] = None):
+        # Allow explicit test_mode override, otherwise use environment
+        if test_mode is not None:
+            self.test_mode = test_mode
+        else:
+            self.test_mode = os.getenv("TEST_MODE", "true").lower() in ("1", "true", "yes")
         self.access_token = os.getenv("LINKEDIN_ACCESS_TOKEN")
         self.person_id = os.getenv("LINKEDIN_PERSON_ID")
         self.ayrshare_key = os.getenv("AYRSHARE_API_KEY")

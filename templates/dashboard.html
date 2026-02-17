@@ -1521,10 +1521,33 @@
             const hashtags = Array.from(document.getElementById('preview-hashtags').querySelectorAll('.hashtag')).map(span => span.textContent);
             
             // Show date/time picker
-            const scheduleDate = prompt('Enter date and time to schedule (YYYY-MM-DD HH:MM):', 
+            const scheduleDate = prompt('Enter date and time to schedule (YYYY-MM-DD HH:MM or just HH:MM for today):', 
                                       new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' '));
             
             if (!scheduleDate) return;
+            
+            let scheduleTime;
+            try {
+                // Try to parse the input
+                if (scheduleDate.includes(' ')) {
+                    // Full date time format
+                    const [datePart, timePart] = scheduleDate.split(' ');
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hour, minute] = timePart.split(':').map(Number);
+                    scheduleTime = new Date(year, month - 1, day, hour, minute).toISOString();
+                } else if (scheduleDate.includes(':')) {
+                    // Just time for today
+                    const today = new Date();
+                    const [hour, minute] = scheduleDate.split(':').map(Number);
+                    today.setHours(hour, minute, 0, 0);
+                    scheduleTime = today.toISOString();
+                } else {
+                    throw new Error('Invalid format');
+                }
+            } catch (e) {
+                alert('Invalid date/time format. Please use YYYY-MM-DD HH:MM or just HH:MM for today.');
+                return;
+            }
             
             try {
                 const response = await fetch('/api/schedule-post', {
@@ -1533,7 +1556,7 @@
                     body: JSON.stringify({
                         content: content,
                         hashtags: hashtags,
-                        schedule_time: scheduleDate
+                        schedule_time: scheduleTime
                     })
                 });
                 const result = await response.json();
