@@ -371,10 +371,18 @@ Make it engaging, professional, and include relevant hashtags. Keep it between {
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
-        result = ai.generate(prompt, max_tokens=500)
+        # Add timeout for AI generation
+        import time
+        start_time = time.time()
+        try:
+            result = ai.generate(prompt, max_tokens=500)
+        except Exception as e:
+            logger.error(f"AI generation failed after {time.time() - start_time:.2f}s: {e}")
+            return jsonify({'success': False, 'message': f"AI generation failed: {str(e)}"}), 500
+            
         if not result or 'text' not in result:
             logger.error(f"Invalid AI response: {result}")
-            return jsonify({'success': False, 'message': "AI returned empty response"}), 400
+            return jsonify({'success': False, 'message': "AI returned invalid response"}), 400
             
         content = result['text'].strip()
         

@@ -31,14 +31,33 @@ Switch content profile to crypto
 - Set `CONTENT_PROFILE=arab_global_crypto` in `.env` or in GitHub Secrets to switch to crypto/Exchange-related content.
 - Ensure `LINKEDIN_PERSON_ID` is your personal URN (e.g. `urn:li:person:vvQE2g2rkz`) if you want posts on your personal account.
 
-Deploying on GitHub Actions (free)
+Deploying on Render (recommended)
 
 1. Push this repo to GitHub.
-2. Go to Settings → Secrets and create the following repository secrets:
-	- `LINKEDIN_ACCESS_TOKEN` (must include `w_member_social` scope)
-	- `LINKEDIN_PERSON_ID` (your personal URN)
-	- `AI_PROVIDER`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` as needed
-3. The workflow `.github/workflows/scheduled_post.yml` runs daily at 11:00 IST and invokes `python main.py` to post.
+2. Go to [Render.com](https://render.com) and create a new Web Service.
+3. Connect your GitHub repo and select this repository.
+4. Configure the service:
+   - **Runtime**: Docker
+   - **Build Command**: (leave default)
+   - **Start Command**: (leave default)
+5. Add environment variables in Render dashboard:
+   - `AI_PROVIDER`: `google`
+   - `GOOGLE_API_KEY`: Your Google AI API key
+   - `LINKEDIN_ACCESS_TOKEN`: Your LinkedIn access token
+   - `LINKEDIN_PERSON_ID`: Your LinkedIn person URN
+   - `LINKEDIN_CLIENT_ID`: Your LinkedIn app client ID
+   - `LINKEDIN_CLIENT_SECRET`: Your LinkedIn app client secret
+   - `TEST_MODE`: `false` (for live posting)
+   - `CONTENT_PROFILE`: `arab_global_crypto`
+   - `POST_TIME_HOUR`: `11`
+   - `POST_TIME_MINUTE`: `0`
+   - `TIMEZONE`: `Asia/Kolkata`
+   - `MIN_POST_LENGTH`: `150`
+   - `MAX_POST_LENGTH`: `1000`
+   - `ENABLE_MARKET_GROUNDING`: `true`
+6. Deploy and access your dashboard at the provided URL.
+
+The `render.yaml` file is configured for automatic deployment with these settings.
 
 Notes & limitations
 
