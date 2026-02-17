@@ -13,7 +13,7 @@ services:
   - key: CONTENT_PROFILE
     value: arab_global_crypto
   - key: TEST_MODE
-    value: "true"
+    value: "false"
   - key: POST_TIME_HOUR
     value: "11"
   - key: POST_TIME_MINUTE
