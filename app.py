@@ -11,8 +11,12 @@ import threading
 import time
 import schedule
 import pytz
+import random
 from datetime import datetime
 from dotenv import load_dotenv
+from ai_provider import AIProvider
+from config import PROFILES, DEFAULT_PROFILE, POST_FORMATS
+from linkedin_poster import LinkedInPoster
 
 load_dotenv()
 
@@ -24,6 +28,12 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
+
+# ============= KNOWLEDGE BASE CONFIGURATION =============
+MAX_DOCUMENTS_PER_USER = 100        # Maximum documents allowed
+MAX_PDF_SIZE = 50 * 1024 * 1024     # 50 MB per file
+MAX_TOTAL_FILE_SIZE = 500 * 1024 * 1024  # 500 MB total
+MAX_TRAINING_TIME = 300             # 5 minutes timeout
 
 # ============= CONFIGURATION HELPERS =============
 
@@ -125,9 +135,9 @@ def scheduled_post_job():
         # Generate content directly (simplified version)
         ai = AIProvider()
         profile_key = config_obj['CONTENT_PROFILE']
-        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
+        profile = PROFILES.get(profile_key, PROFILES[DEFAULT_PROFILE])
         theme = random.choice(profile.get('content_themes', []))
-        fmt = random.choice(cfg.POST_FORMATS)
+        fmt = random.choice(POST_FORMATS)
         services = profile.get('company_info', {}).get('services', '')
         
         # Simple prompt for post generation
@@ -365,14 +375,22 @@ def generate_preview():
         
         services = profile.get('company_info', {}).get('services', '')
         
-        # Simple prompt for preview generation
-        prompt = f"""Generate a LinkedIn post about: {theme}
+        # Improved prompt for better human-like content
+        prompt = f"""Generate a professional LinkedIn post about: {theme}
 
-Company context: {services}
+Context: {services}
 
-Post format: {fmt}
+Requirements:
+- Write in a natural, human-like tone (not generic AI)
+- Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
+- Be specific and authentic
+- Include 1-2 actionable insights or takeaways
+- Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters
+- Do NOT include hashtags in the post body
 
-Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters."""
+Format: {fmt}
+
+Write ONLY the post content, nothing else."""
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
@@ -469,7 +487,7 @@ def schedule_post():
 
 @app.route('/api/post-now', methods=['POST'])
 def post_now():
-    """Generate and post immediately"""
+    """Post content immediately (either from preview or generate new)"""
     try:
         from ai_provider import AIProvider
         from linkedin_poster import LinkedInPoster
@@ -477,33 +495,57 @@ def post_now():
         import config as cfg
         
         config_obj = load_config()
+        data = request.get_json() or {}
+        use_preview = data.get('usePreview', False)
+        preview_content = data.get('content', '')
+        preview_hashtags = data.get('hashtags', [])
         
-        # Generate content directly (simplified version)
-        ai = AIProvider()
-        profile_key = config_obj['CONTENT_PROFILE']
-        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
-        theme = random.choice(profile.get('content_themes', []))
-        fmt = random.choice(cfg.POST_FORMATS)
-        services = profile.get('company_info', {}).get('services', '')
-        
-        # Simple prompt for post generation
-        prompt = f"""Generate a LinkedIn post about: {theme}
+        # If preview content provided, use it; otherwise generate new
+        if use_preview and preview_content:
+            content = preview_content
+            hashtags = preview_hashtags
+            theme = 'User Preview'  # Mark as user-provided preview
+            logger.info(f"Posting preview content ({len(content)} chars)")
+        else:
+            # Generate new content
+            ai = AIProvider()
+            profile_key = config_obj['CONTENT_PROFILE']
+            profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
+            theme = random.choice(profile.get('content_themes', []))
+            fmt = random.choice(cfg.POST_FORMATS)
+            services = profile.get('company_info', {}).get('services', '')
+            
+            # Improved prompt for better human-like content
+            prompt = f"""Generate a professional LinkedIn post about: {theme}
 
-Company context: {services}
+Context: {services}
 
-Post format: {fmt}
+Requirements:
+- Write in a natural, human-like tone (not generic AI)
+- Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
+- Be specific and authentic
+- Include 1-2 actionable insights or takeaways
+- Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters
+- Do NOT include hashtags in the post body
 
-Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters."""
+Format: {fmt}
 
-        result = ai.generate(prompt, max_tokens=500)
-        content = result['text'].strip()
-        
-        # Generate some basic hashtags
-        hashtags = ['#LinkedIn', '#Business', '#Innovation']
-        if 'crypto' in theme.lower():
-            hashtags.extend(['#Crypto', '#Blockchain', '#DigitalAssets'])
-        if 'arab' in theme.lower():
-            hashtags.extend(['#MiddleEast', '#UAE', '#Dubai'])
+Write ONLY the post content, nothing else."""
+            
+            ai = AIProvider()
+            result = ai.generate(prompt, max_tokens=500)
+            content = result['text'].strip()
+            
+            # Generate relevant hashtags based on theme
+            hashtags = ['#LinkedIn', '#Business']
+            if 'crypto' in theme.lower():
+                hashtags.extend(['#Crypto', '#Blockchain', '#Web3'])
+            if 'exchange' in theme.lower():
+                hashtags.extend(['#Trading', '#DigitalAssets'])
+            if 'arab' in theme.lower():
+                hashtags.extend(['#MiddleEast', '#UAE', '#Dubai'])
+            
+            logger.info(f"Generated new content ({len(content)} chars) for theme: {theme}")
         
         # Post to LinkedIn
         poster = LinkedInPoster(test_mode=config_obj['TEST_MODE'])
@@ -576,9 +618,20 @@ def upload_knowledge_base():
         # Create if data/pdfs doesn't exist
         os.makedirs('data/pdfs', exist_ok=True)
         
-        # Save uploaded files
+        # Check document count limit
+        existing_files = [f for f in os.listdir('data/pdfs') if f.endswith(('.pdf', '.docx'))]
+        if len(existing_files) >= MAX_DOCUMENTS_PER_USER:
+            logger.warning(f"Document limit reached: {len(existing_files)}/{MAX_DOCUMENTS_PER_USER}")
+            return jsonify({
+                'success': False, 
+                'message': f'Maximum {MAX_DOCUMENTS_PER_USER} documents allowed. Delete some files first.'
+            }), 400
+        
+        # Save uploaded files with validation
         uploaded_count = 0
+        skipped_count = 0
         allowed_extensions = ('.pdf', '.docx')
+        skipped_reasons = []
         
         for file in files:
             if not file or not file.filename:
@@ -590,6 +643,26 @@ def upload_knowledge_base():
             # Check if file has allowed extension
             if not any(file_ext.endswith(ext) for ext in allowed_extensions):
                 logger.warning("Skipping non-PDF/DOCX file: %s", filename)
+                skipped_reasons.append(f"{filename}: Not a PDF or DOCX file")
+                skipped_count += 1
+                continue
+            
+            # Check file size
+            if len(file.read()) > MAX_PDF_SIZE:
+                file.seek(0)
+                logger.warning(f"File too large: {filename} (max {MAX_PDF_SIZE/1024/1024}MB)")
+                skipped_reasons.append(f"{filename}: File too large (max 50MB)")
+                skipped_count += 1
+                continue
+            
+            file.seek(0)
+            
+            # Check if we've hit the document limit
+            current_count = len([f for f in os.listdir('data/pdfs') if f.endswith(('.pdf', '.docx'))])
+            if current_count >= MAX_DOCUMENTS_PER_USER:
+                logger.warning(f"Hit document limit during batch upload")
+                skipped_reasons.append(f"{filename}: Document limit reached")
+                skipped_count += 1
                 continue
             
             try:
@@ -599,11 +672,17 @@ def upload_knowledge_base():
                 uploaded_count += 1
             except Exception as e:
                 logger.exception("Failed to save file %s: %s", filename, e)
+                skipped_reasons.append(f"{filename}: Error saving file")
+                skipped_count += 1
                 continue
         
         if uploaded_count == 0:
-            logger.warning("No PDF/DOCX files found in upload")
-            return jsonify({'success': False, 'message': 'No PDF or DOCX files found in upload'}), 400
+            logger.warning("No PDF/DOCX files uploaded successfully")
+            reason_text = " | ".join(skipped_reasons) if skipped_reasons else "Unknown error"
+            return jsonify({
+                'success': False, 
+                'message': f'No files uploaded. {reason_text}'
+            }), 400
         
         # Rebuild RAG system with new documents
         rag_error = None
@@ -616,21 +695,23 @@ def upload_knowledge_base():
                 rag.build_from_documents(docs)
                 rag.persist()
                 logger.info("RAG build successful")
-            else:
-                logger.warning("No documents loaded from PDFs/DOCX files")
         except Exception as e:
             rag_error = str(e)
             logger.exception("RAG build error: %s", e)
         
-        # Return success even if RAG fails (files were uploaded)
+        # Build response message
         response_msg = f'Successfully uploaded {uploaded_count} file(s)'
+        if skipped_count > 0:
+            response_msg += f' ({skipped_count} skipped)'
         if rag_error:
-            response_msg += f' (RAG training skipped: {rag_error})'
+            response_msg += f' (RAG training note: {rag_error})'
         
         return jsonify({
             'success': True,
             'message': response_msg,
-            'uploaded': uploaded_count
+            'uploaded': uploaded_count,
+            'skipped': skipped_count,
+            'skipped_reasons': skipped_reasons
         })
     except Exception as e:
         logger.exception("Knowledge base upload failed")
@@ -722,29 +803,47 @@ def train_model():
         from rag_system import RAGStore
         from pdf_processor import load_pdfs
         
-        rag = RAGStore(persist_dir="data/chroma_db")
+        # Check if documents exist
+        if not os.path.exists('data/pdfs'):
+            return jsonify({
+                'success': False,
+                'message': 'Knowledge base folder not found. Upload documents first.'
+            }), 400
         
-        # Load and build
-        if os.path.exists('data/pdfs'):
+        # Load all documents
+        try:
             docs = load_pdfs("data/pdfs")
-            if not docs:
-                return jsonify({
-                    'success': False,
-                    'message': 'No documents found in knowledge base'
-                }), 400
-            
+        except Exception as e:
+            logger.exception(f"Failed to load documents: {e}")
+            return jsonify({
+                'success': False,
+                'message': f'Error loading documents: {str(e)}'
+            }), 400
+        
+        if not docs:
+            return jsonify({
+                'success': False,
+                'message': 'No valid PDF or DOCX documents found in knowledge base'
+            }), 400
+        
+        # Build RAG model with error handling
+        try:
+            rag = RAGStore(persist_dir="data/chroma_db")
             rag.build_from_documents(docs)
             rag.persist()
+            logger.info(f"Successfully trained RAG with {len(docs)} documents")
             
             return jsonify({
                 'success': True,
-                'message': f'Model trained successfully with {len(docs)} documents'
+                'message': f'✅ Model trained successfully with {len(docs)} documents',
+                'document_count': len(docs)
             })
-        else:
+        except Exception as e:
+            logger.exception(f"RAG build failed: {e}")
             return jsonify({
                 'success': False,
-                'message': 'Knowledge base (data/pdfs) not found'
-            }), 400
+                'message': f'Error training model: {str(e)}'
+            }), 500
     except Exception as e:
         logger.exception("Model training failed")
         return jsonify({'success': False, 'message': f'Training failed: {str(e)}'}), 500
@@ -757,24 +856,142 @@ def knowledge_base_status():
         
         rag = RAGStore(persist_dir="data/chroma_db")
         
+        # Count documents
+        file_count = 0
         pdf_count = 0
+        docx_count = 0
         if os.path.exists('data/pdfs'):
-            pdf_count = len([f for f in os.listdir('data/pdfs') if f.endswith('.pdf')])
+            files = os.listdir('data/pdfs')
+            pdf_count = len([f for f in files if f.endswith('.pdf')])
+            docx_count = len([f for f in files if f.endswith('.docx')])
+            file_count = pdf_count + docx_count
         
+        # Check if RAG is trained
         is_trained = rag.is_built()
+        doc_count_in_rag = rag.get_document_count()
         
         return jsonify({
             'success': True,
             'trained': is_trained,
-            'pdf_count': pdf_count,
-            'status': 'Ready for use' if is_trained else 'Needs training',
-            'rag_ready': is_trained
+            'pdf_count': file_count,
+            'pdf_count_detail': pdf_count,
+            'docx_count': docx_count,
+            'rag_document_count': doc_count_in_rag,
+            'status': 'Ready for use' if is_trained else ('Needs training' if file_count > 0 else 'No documents'),
+            'rag_ready': is_trained,
+            'max_documents': MAX_DOCUMENTS_PER_USER
         })
     except Exception as e:
         logger.exception("Knowledge base status check failed")
         return jsonify({
             'success': False,
             'message': f'Status check failed: {str(e)}'
+        }), 500
+
+@app.route('/api/list-knowledge-base-files', methods=['GET'])
+def list_knowledge_base_files():
+    """List all uploaded knowledge base files"""
+    try:
+        files_list = []
+        if os.path.exists('data/pdfs'):
+            for filename in os.listdir('data/pdfs'):
+                if filename.endswith(('.pdf', '.docx')):
+                    filepath = os.path.join('data/pdfs', filename)
+                    file_size = os.path.getsize(filepath)
+                    file_type = 'PDF' if filename.endswith('.pdf') else 'DOCX'
+                    files_list.append({
+                        'name': filename,
+                        'type': file_type,
+                        'size': round(file_size / 1024 / 1024, 2),  # MB
+                        'size_bytes': file_size
+                    })
+        
+        # Sort by name
+        files_list.sort(key=lambda x: x['name'])
+        
+        return jsonify({
+            'success': True,
+            'files': files_list,
+            'count': len(files_list)
+        })
+    except Exception as e:
+        logger.exception("Failed to list files")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to list files: {str(e)}'
+        }), 500
+
+@app.route('/api/delete-knowledge-base-file', methods=['POST'])
+def delete_knowledge_base_file():
+    """Delete a knowledge base file"""
+    try:
+        from rag_system import RAGStore
+        from pdf_processor import load_pdfs
+        
+        data = request.get_json()
+        if not data or 'filename' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Filename required'
+            }), 400
+        
+        filename = data['filename']
+        # Sanitize filename
+        if '/' in filename or '\\' in filename or '..' in filename:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid filename'
+            }), 400
+        
+        filepath = os.path.join('data/pdfs', filename)
+        
+        # Check if file exists
+        if not os.path.exists(filepath):
+            return jsonify({
+                'success': False,
+                'message': 'File not found'
+            }), 404
+        
+        # Delete file
+        try:
+            os.remove(filepath)
+            logger.info(f"Deleted knowledge base file: {filename}")
+        except Exception as e:
+            logger.exception(f"Failed to delete file: {e}")
+            return jsonify({
+                'success': False,
+                'message': f'Failed to delete file: {str(e)}'
+            }), 500
+        
+        # Rebuild RAG with remaining documents
+        rag_error = None
+        try:
+            if any(os.path.isfile(os.path.join('data/pdfs', f)) 
+                   and f.endswith(('.pdf', '.docx')) 
+                   for f in os.listdir('data/pdfs')):
+                rag = RAGStore(persist_dir="data/chroma_db")
+                docs = load_pdfs("data/pdfs")
+                if docs:
+                    rag.build_from_documents(docs)
+                    rag.persist()
+                    logger.info(f"Rebuilt RAG with remaining {len(docs)} documents")
+        except Exception as e:
+            rag_error = str(e)
+            logger.exception(f"RAG rebuild after deletion failed: {e}")
+        
+        response_msg = f'Successfully deleted {filename}'
+        if rag_error:
+            response_msg += f' (Note: RAG rebuild skipped - {rag_error})'
+        
+        return jsonify({
+            'success': True,
+            'message': response_msg
+        })
+    except Exception as e:
+        logger.exception("Delete knowledge base file failed")
+        return jsonify({
+            'success': False,
+            'message': f'Delete failed: {str(e)}'
         }), 500
 
 if __name__ == '__main__':

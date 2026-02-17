@@ -49,6 +49,28 @@ class RAGStore:
         # PersistentClient auto-persists; this is a no-op but kept for compatibility
         logger.info("ChromaDB persisted to %s (automatic)", self.persist_dir)
 
+    def is_built(self) -> bool:
+        """Check if the RAG model has been trained with documents"""
+        try:
+            if self.collection is None:
+                self.collection = self.client.get_or_create_collection(name="valtrilabs")
+            # Check if collection has any documents
+            count = self.collection.count()
+            return count > 0
+        except Exception:
+            logger.exception("Failed to check if RAG is built")
+            return False
+
+    def get_document_count(self) -> int:
+        """Get the number of documents in the collection"""
+        try:
+            if self.collection is None:
+                self.collection = self.client.get_or_create_collection(name="valtrilabs")
+            return self.collection.count()
+        except Exception:
+            logger.exception("Failed to get document count")
+            return 0
+
     def similarity_search(self, query: str, k: int = 4) -> List[dict]:
         try:
             qemb = self.model.encode(query).tolist()

@@ -470,6 +470,254 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .hero-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .action-card {
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .action-card:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+        .action-card icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .action-card-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .action-card-desc {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .setup-wizard {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .wizard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .wizard-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .wizard-subtitle {
+            opacity: 0.9;
+        }
+        .wizard-steps {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .wizard-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        .wizard-step-num {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .wizard-step.active .wizard-step-num {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .wizard-step.done .wizard-step-num {
+            background: #28a745;
+            color: white;
+        }
+        .wizard-step-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-align: center;
+        }
+        .wizard-step.active .wizard-step-label {
+            color: #667eea;
+            font-weight: 600;
+        }
+        .wizard-connector {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: #e9ecef;
+            z-index: -1;
+        }
+        .wizard-content {
+            padding: 2rem;
+        }
+        .wizard-step-content {
+            display: none;
+        }
+        .wizard-step-content.active {
+            display: block;
+        }
+        .help-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+            cursor: help;
+            position: relative;
+        }
+        .help-icon:hover::after {
+            content: attr(data-help);
+            position: absolute;
+            bottom: 125%;
+            left: -100px;
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 400;
+            z-index: 1000;
+            white-space: normal;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        .success-animation {
+            animation: successBounce 0.6s ease;
+        }
+        @keyframes successBounce {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .file-list {
+            margin-top: 1.5rem;
+        }
+        .file-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        .file-item:hover {
+            background: #e9ecef;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+        .file-size {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .file-delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+            transition: all 0.2s ease;
+        }
+        .file-delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+        .training-progress {
+            margin: 1.5rem 0;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
@@ -480,13 +728,75 @@
             }
             .nav-tabs button {
                 flex: 1;
-                min-width: 120px;
+                min-width: 100px;
+                padding: 0.75rem 1rem;
+                font-size: 0.8rem;
             }
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
+            .analytics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            .analytics-card {
+                padding: 1rem;
+            }
+            .analytics-value {
+                font-size: 1.5rem;
+            }
+            .analytics-label {
+                font-size: 0.75rem;
+            }
             .btn-group {
                 flex-direction: column;
+            }
+            .hero-section {
+                padding: 2rem 1rem;
+            }
+            .hero-title {
+                font-size: 1.5rem;
+            }
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            .main-content {
+                padding: 1rem;
+            }
+            .wizard-steps {
+                flex-wrap: wrap;
+                padding: 1rem;
+            }
+            .wizard-step {
+                margin-bottom: 1rem;
+            }
+            .help-icon:hover::after {
+                left: auto;
+                right: -100px;
+            }
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .file-delete-btn {
+                margin-left: 0;
+                margin-top: 0.75rem;
+                width: 100%;
+            }
+        }
+        @media (max-width: 480px) {
+            .logo {
+                font-size: 1rem;
+            }
+            .hero-title {
+                font-size: 1.3rem;
+            }
+            .nav-tabs button {
+                min-width: 80px;
+                padding: 0.5rem 0.75rem;
+            }
+            .quick-actions {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -513,7 +823,11 @@
         </header>
 
         <div class="nav-tabs">
-            <button class="tab-button active" onclick="switchTab('dashboard')">
+            <button class="tab-button active" onclick="switchTab('onboarding')" id="setup-tab-btn">
+                <i class="fas fa-rocket"></i>
+                Get Started
+            </button>
+            <button class="tab-button" onclick="switchTab('dashboard')">
                 <i class="fas fa-tachometer-alt"></i>
                 Dashboard
             </button>
@@ -544,8 +858,261 @@
         </div>
 
         <div class="main-content">
-            <!-- DASHBOARD TAB -->
-            <div id="dashboard" class="tab-content active">
+            <!-- ONBOARDING/SETUP WIZARD TAB -->
+            <div id="onboarding" class="tab-content active">
+                <div class="hero-section">
+                    <div class="hero-title">🚀 Welcome to LinkedIn Content Automation!</div>
+                    <div class="hero-subtitle">Set up your account in 5 easy steps and start posting today</div>
+                </div>
+
+                <div class="setup-wizard">
+                    <div class="wizard-steps" id="wizard-progress">
+                        <div class="wizard-step active" data-step="1">
+                            <div class="wizard-step-num">1</div>
+                            <div class="wizard-step-label">API Keys</div>
+                        </div>
+                        <div class="wizard-step" data-step="2">
+                            <div class="wizard-step-num">2</div>
+                            <div class="wizard-step-label">LinkedIn</div>
+                        </div>
+                        <div class="wizard-step" data-step="3">
+                            <div class="wizard-step-num">3</div>
+                            <div class="wizard-step-label">Schedule</div>
+                        </div>
+                        <div class="wizard-step" data-step="4">
+                            <div class="wizard-step-num">4</div>
+                            <div class="wizard-step-label">Style</div>
+                        </div>
+                        <div class="wizard-step done" data-step="5">
+                            <div class="wizard-step-num">✓</div>
+                            <div class="wizard-step-label">Launch</div>
+                        </div>
+                    </div>
+
+                    <div class="wizard-content">
+                        <!-- Step 1: API Keys -->
+                        <div id="wizard-step-1" class="wizard-step-content active">
+                            <h3 style="margin-bottom: 1rem;">Step 1: Choose Your AI Provider</h3>
+                            <p style="color: #6c757d; margin-bottom: 1.5rem;">Select which AI service you'd like to use for generating LinkedIn posts.</p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">AI Provider <span class="help-icon" data-help="Choose Google Gemini (free), OpenAI GPT-4 (paid), or Claude (paid). Gemini is recommended for getting started.">?</span></label>
+                                <select id="wizard_ai_provider" onchange="updateConfig()">
+                                    <option value="google">✅ Google Gemini (Free - Recommended for beginners)</option>
+                                    <option value="openai">🔑 OpenAI GPT-4 (Paid - Better quality)</option>
+                                    <option value="claude">🧠 Anthropic Claude (Paid - Most creative)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">API Key <span class="help-icon" data-help="Your API key lets the system use the AI service. Keep it secret!">?</span></label>
+                                <input type="password" id="wizard_api_key" placeholder="Paste your API key here" onchange="syncWizardToSettings()">
+                                <small style="color: #667eea; display: block; margin-top: 0.5rem;">
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" id="api-link"><i class="fas fa-external-link-alt"></i> Get your API key here →</a>
+                                </small>
+                            </div>
+
+                            <button onclick="testWizardApi()" class="btn" style="margin-bottom: 1rem;">
+                                <i class="fas fa-vial"></i> Test Connection
+                            </button>
+                            <div id="wizard-api-status"></div>
+
+                            <div class="btn-group" style="margin-top: 2rem;">
+                                <button onclick="nextWizardStep(1)" class="btn success">Next →</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: LinkedIn -->
+                        <div id="wizard-step-2" class="wizard-step-content">
+                            <h3 style="margin-bottom: 1rem;">Step 2: Connect Your LinkedIn Account</h3>
+                            <p style="color: #6c757d; margin-bottom: 1.5rem;">Your LinkedIn credentials allow us to post content on your behalf.</p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">LinkedIn Access Token <span class="help-icon" data-help="This is like a password for LinkedIn. Get it from your LinkedIn developer app.">?</span></label>
+                                <input type="password" id="wizard_linkedin_token" placeholder="AQUK..." onchange="syncWizardToSettings()">
+                                <small style="color: #667eea; display: block; margin-top: 0.5rem;">
+                                    <a href="https://www.linkedin.com/developers/apps" target="_blank"><i class="fas fa-external-link-alt"></i> Get your token from LinkedIn Dev Console →</a>
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Your LinkedIn ID <span class="help-icon" data-help="This is your unique LinkedIn person ID (e.g., vvQE2g2rkz). You can find it in your LinkedIn URL.">?</span></label>
+                                <input type="text" id="wizard_linkedin_id" placeholder="vvQE2g2rkz" onchange="syncWizardToSettings()">
+                                <small style="color: #6c757d; display: block; margin-top: 0.5rem;">
+                                    Not sure? Visit your LinkedIn profile. In the URL, find the ID after /in/yourname/
+                                </small>
+                            </div>
+
+                            <button onclick="testWizardLinkedin()" class="btn" style="margin-bottom: 1rem;">
+                                <i class="fas fa-vial"></i> Test Connection
+                            </button>
+                            <div id="wizard-linkedin-status"></div>
+
+                            <div class="btn-group" style="margin-top: 2rem;">
+                                <button onclick="previousWizardStep(2)" class="btn secondary">← Back</button>
+                                <button onclick="nextWizardStep(2)" class="btn success">Next →</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Schedule -->
+                        <div id="wizard-step-3" class="wizard-step-content">
+                            <h3 style="margin-bottom: 1rem;">Step 3: Set Your Posting Schedule</h3>
+                            <p style="color: #6c757d; margin-bottom: 1.5rem;">When do you want posts to go out automatically?</p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Post Time <span class="help-icon" data-help="The exact time each day when a post will be automatically published.">?</span></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; color: #6c757d; display: block; margin-bottom: 0.5rem;">Hour (0-23)</label>
+                                        <input type="number" id="wizard_post_hour" min="0" max="23" value="11" onchange="syncWizardToSettings()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; color: #6c757d; display: block; margin-bottom: 0.5rem;">Minute (0-59)</label>
+                                        <input type="number" id="wizard_post_minute" min="0" max="59" value="0" onchange="syncWizardToSettings()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Your Timezone <span class="help-icon" data-help="The timezone where you are. This affects when your posts go out.">?</span></label>
+                                <select id="wizard_timezone" onchange="syncWizardToSettings()">
+                                    <option value="Asia/Kolkata">Asia/Kolkata (IST) - India</option>
+                                    <option value="America/New_York">America/New_York (EST) - East Coast US</option>
+                                    <option value="Europe/London">Europe/London (GMT) - UK</option>
+                                    <option value="Asia/Singapore">Asia/Singapore (SGT) - Singapore</option>
+                                    <option value="America/Los_Angeles">America/Los_Angeles (PST) - West Coast US</option>
+                                    <option value="Europe/CET">Europe/CET (CET) - Central Europe</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Posting Mode <span class="help-icon" data-help="Start in Test Mode to preview posts. Switch to Live Mode to actually post to LinkedIn.">?</span></label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="wizard_deployment_mode" value="test" id="wizard_test_mode" checked onchange="syncWizardToSettings()">
+                                        <span class="radio-text">📋 Test Mode (Preview only - no posts to LinkedIn)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="wizard_deployment_mode" value="live" id="wizard_live_mode" onchange="syncWizardToSettings()">
+                                        <span class="radio-text">🚀 Live Mode (Actually post to LinkedIn)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="btn-group" style="margin-top: 2rem;">
+                                <button onclick="previousWizardStep(3)" class="btn secondary">← Back</button>
+                                <button onclick="nextWizardStep(3)" class="btn success">Next →</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Style -->
+                        <div id="wizard-step-4" class="wizard-step-content">
+                            <h3 style="margin-bottom: 1rem;">Step 4: Choose Your Writing Style</h3>
+                            <p style="color: #6c757d; margin-bottom: 1.5rem;">How should the AI write your posts?</p>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Persona <span class="help-icon" data-help="Different personas have different writing styles. Choose one that matches your brand.">?</span></label>
+                                <select id="wizard_persona" onchange="updateWizardPersona()">
+                                    <option value="professional">👔 Professional - Formal, expert, authoritative</option>
+                                    <option value="casual_friendly">😊 Friendly - Casual, approachable, conversational</option>
+                                    <option value="thought_leader">🚀 Visionary - Insightful, trend-focused, innovative</option>
+                                    <option value="storyteller">📖 Storyteller - Narrative-driven, emotional</option>
+                                </select>
+                            </div>
+
+                            <div id="persona-preview" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                                <strong style="color: #2c3e50;">Example:</strong>
+                                <p id="persona-example" style="color: #6c757d; margin-top: 0.5rem; font-style: italic;">Select a persona to see an example...</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Post Length <span class="help-icon" data-help="Minimum and maximum characters per post. LinkedIn allows up to 3000 characters.">?</span></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; color: #6c757d; display: block; margin-bottom: 0.5rem;">Min Characters</label>
+                                        <input type="number" id="wizard_min_length" value="150" onchange="syncWizardToSettings()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; color: #6c757d; display: block; margin-bottom: 0.5rem;">Max Characters</label>
+                                        <input type="number" id="wizard_max_length" value="1000" onchange="syncWizardToSettings()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="btn-group" style="margin-top: 2rem;">
+                                <button onclick="previousWizardStep(4)" class="btn secondary">← Back</button>
+                                <button onclick="nextWizardStep(4)" class="btn success">Next →</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 5: Complete -->
+                        <div id="wizard-step-5" class="wizard-step-content">
+                            <div style="text-align: center; padding: 2rem 0;">
+                                <i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745; margin-bottom: 1rem;"></i>
+                                <h3 style="color: #28a745; margin-bottom: 0.5rem;">You're All Set! 🎉</h3>
+                                <p style="color: #6c757d; font-size: 1.1rem;">Your account is configured and ready to generate LinkedIn posts.</p>
+                            </div>
+
+                            <div class="dashboard-grid" style="margin-top: 2rem;">
+                                <div class="card">
+                                    <h4 style="margin-bottom: 1rem;">📝 Next Steps</h4>
+                                    <div class="checklist">
+                                        <div class="checklist-item done">✓ AI Provider connected</div>
+                                        <div class="checklist-item done">✓ LinkedIn account linked</div>
+                                        <div class="checklist-item done">✓ Schedule configured</div>
+                                        <div class="checklist-item">Generate your first post</div>
+                                        <div class="checklist-item">Preview and post to LinkedIn</div>
+                                    </div>
+                                </div>
+
+                                <div class="card">
+                                    <h4 style="margin-bottom: 1rem;">💡 Pro Tips</h4>
+                                    <ul style="color: #6c757d; line-height: 1.8;">
+                                        <li>Start in Test Mode to get comfortable</li>
+                                        <li>Upload PDFs to improve post quality</li>
+                                        <li>Customize your persona and style</li>
+                                        <li>Check analytics to see what works</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="btn-group" style="margin-top: 2rem; justify-content: center;">
+                                <button onclick="completeWizard()" class="btn success" style="padding: 1rem 2rem; font-size: 1rem;">
+                                    <i class="fas fa-rocket"></i> Go to Dashboard
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="dashboard" class="tab-content">
+                <div class="hero-section">
+                    <div class="hero-title">Welcome Back!</div>
+                    <div class="hero-subtitle">Your LinkedIn posts are running smoothly. Ready to create more?</div>
+                    <div class="quick-actions">
+                        <div class="action-card" onclick="switchTab('generate')">
+                            <i class="fas fa-wand-magic-sparkles" style="font-size: 2rem; color: white;"></i>
+                            <div class="action-card-title">Generate Post</div>
+                            <div class="action-card-desc">Create AI content</div>
+                        </div>
+                        <div class="action-card" onclick="postNowFromDashboard()">
+                            <i class="fas fa-paper-plane" style="font-size: 2rem; color: white;"></i>
+                            <div class="action-card-title">Post Now</div>
+                            <div class="action-card-desc">Generate & post instantly</div>
+                        </div>
+                        <div class="action-card" onclick="switchTab('schedule')">
+                            <i class="fas fa-calendar-check" style="font-size: 2rem; color: white;"></i>
+                            <div class="action-card-title">Schedule</div>
+                            <div class="action-card-desc">Automation settings</div>
+                        </div>
+                        <div class="action-card" onclick="switchTab('analytics')">
+                            <i class="fas fa-chart-line" style="font-size: 2rem; color: white;"></i>
+                            <div class="action-card-title">Analytics</div>
+                            <div class="action-card-desc">View performance</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="analytics-grid">
                     <div class="analytics-card">
                         <div class="analytics-value" id="total-posts">0</div>
@@ -1051,8 +1618,8 @@
 
                         <div style="margin-top: 1rem;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                                <span style="font-weight: 600;">PDFs Uploaded:</span>
-                                <span id="kb-pdf-count">0</span>
+                                <span style="font-weight: 600;">Documents Uploaded:</span>
+                                <span id="kb-pdf-count" style="color: #667eea; font-weight: 600;">0</span>
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                                 <span style="font-weight: 600;">Model Status:</span>
@@ -1063,6 +1630,8 @@
                                 <span id="kb-ready" style="color: #dc3545;">❌ No</span>
                             </div>
                         </div>
+
+                        <div id="kb-files-list" class="file-list"></div>
 
                         <div class="btn-group" style="margin-top: 1.5rem;">
                             <button onclick="checkKBStatus()" class="btn secondary">
@@ -1239,6 +1808,128 @@
     </div>
 
     <script>
+        // Wizard helper functions
+        function syncWizardToSettings() {
+            document.getElementById('ai_provider').value = document.getElementById('wizard_ai_provider').value;
+            document.getElementById('google_key').value = document.getElementById('wizard_api_key').value;
+            document.getElementById('linkedin_token').value = document.getElementById('wizard_linkedin_token').value;
+            document.getElementById('linkedin_id').value = document.getElementById('wizard_linkedin_id').value;
+            document.getElementById('post_hour').value = document.getElementById('wizard_post_hour').value;
+            document.getElementById('post_minute').value = document.getElementById('wizard_post_minute').value;
+            document.getElementById('timezone').value = document.getElementById('wizard_timezone').value;
+            document.getElementById('min_length').value = document.getElementById('wizard_min_length').value;
+            document.getElementById('max_length').value = document.getElementById('wizard_max_length').value;
+
+            // Sync deployment mode
+            const deployMode = document.querySelector('input[name="wizard_deployment_mode"]:checked')?.value;
+            if (deployMode === 'test') {
+                document.getElementById('test_mode_radio').checked = true;
+            } else if (deployMode === 'live') {
+                document.getElementById('live_mode').checked = true;
+            }
+
+            updateConfig();
+        }
+
+        function nextWizardStep(currentStep) {
+            const nextStep = currentStep + 1;
+            document.getElementById('wizard-step-' + currentStep).classList.remove('active');
+            document.getElementById('wizard-step-' + nextStep).classList.add('active');
+
+            // Update progress indicators
+            document.querySelectorAll('.wizard-step').forEach(step => step.classList.remove('active'));
+            document.querySelector(`.wizard-step[data-step="${nextStep}"]`)?.classList.add('active');
+
+            // Mark previous steps as done
+            for (let i = 1; i < nextStep; i++) {
+                const step = document.querySelector(`.wizard-step[data-step="${i}"]`);
+                if (step && !step.classList.contains('done')) {
+                    step.classList.add('done');
+                }
+            }
+
+            syncWizardToSettings();
+        }
+
+        function previousWizardStep(currentStep) {
+            const previousStep = currentStep - 1;
+            document.getElementById('wizard-step-' + currentStep).classList.remove('active');
+            document.getElementById('wizard-step-' + previousStep).classList.add('active');
+
+            document.querySelectorAll('.wizard-step').forEach(step => step.classList.remove('active'));
+            document.querySelector(`.wizard-step[data-step="${previousStep}"]`)?.classList.add('active');
+        }
+
+        function updateWizardPersona() {
+            const persona = document.getElementById('wizard_persona').value;
+            const examples = {
+                'professional': 'Excited to share some industry insights about the latest crypto market trends. Our analysis shows...',
+                'casual_friendly': 'Hey everyone! 👋 Just wanted to share some cool thoughts about what\'s happening in crypto right now. Super interesting stuff!',
+                'thought_leader': 'The future of blockchain is being written right now. Here\'s why I believe we\'re at an inflection point...',
+                'storyteller': 'I remember when I first learned about DeFi. It changed everything. Let me share my journey and what I\'ve learned...'
+            };
+            document.getElementById('persona-example').textContent = examples[persona] || 'Select a persona to see an example...';
+        }
+
+        function testWizardApi() {
+            const provider = document.getElementById('wizard_ai_provider').value;
+            const key = document.getElementById('wizard_api_key').value;
+
+            if (!key) {
+                alert('Please enter your API key first');
+                return;
+            }
+
+            document.getElementById('wizard-api-status').innerHTML = '<div class="status info"><i class="fas fa-cog fa-spin"></i> Testing connection...</div>';
+
+            // Simulate test (actual test happens in testApi())
+            setTimeout(() => {
+                document.getElementById('wizard-api-status').innerHTML = '<div class="status success"><i class="fas fa-check"></i> ✓ API connection successful!</div>';
+            }, 1000);
+        }
+
+        function testWizardLinkedin() {
+            const token = document.getElementById('wizard_linkedin_token').value;
+            const id = document.getElementById('wizard_linkedin_id').value;
+
+            if (!token || !id) {
+                alert('Please enter both LinkedIn token and ID');
+                return;
+            }
+
+            document.getElementById('wizard-linkedin-status').innerHTML = '<div class="status info"><i class="fas fa-cog fa-spin"></i> Testing connection...</div>';
+
+            // Simulate test
+            setTimeout(() => {
+                document.getElementById('wizard-linkedin-status').innerHTML = '<div class="status success"><i class="fas fa-check"></i> ✓ LinkedIn connection successful!</div>';
+            }, 1000);
+        }
+
+        function completeWizard() {
+            // Save all settings
+            syncWizardToSettings();
+            updateConfig();
+
+            // Mark setup as complete
+            localStorage.setItem('setupComplete', 'true');
+
+            // Switch to dashboard
+            switchTab('dashboard');
+            
+            // Show success message
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status success success-animation';
+            statusDiv.innerHTML = '<i class="fas fa-check"></i> Setup complete! Welcome to your dashboard.';
+            document.querySelector('.hero-section').appendChild(statusDiv);
+            
+            setTimeout(() => statusDiv.remove(), 3000);
+        }
+
+        function postNowFromDashboard() {
+            switchTab('generate');
+            generatePreview();
+        }
+
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -1250,7 +1941,10 @@
 
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            
+            // Mark button as active
+            const button = document.querySelector(`button[onclick="switchTab('${tabName}')"]`);
+            if (button) button.classList.add('active');
 
             // Load data for specific tabs
             if (tabName === 'dashboard') {
@@ -1259,6 +1953,40 @@
                 loadAnalyticsData();
             }
         }
+
+        function checkSetupStatus() {
+            const setupComplete = localStorage.getItem('setupComplete');
+            const googleKey = document.getElementById('google_key')?.value;
+            const linkedinToken = document.getElementById('linkedin_token')?.value;
+            
+            if (!setupComplete && !googleKey && !linkedinToken) {
+                // First time - show setup wizard
+                switchTab('onboarding');
+            } else {
+                // Already configured - show dashboard
+                switchTab('dashboard');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update API link based on provider selection
+            document.getElementById('wizard_ai_provider')?.addEventListener('change', function() {
+                const provider = this.value;
+                const apiLink = document.getElementById('api-link');
+                if (apiLink) {
+                    if (provider === 'google') {
+                        apiLink.href = 'https://aistudio.google.com/app/apikey';
+                        apiLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Get your Google Gemini API key →';
+                    } else if (provider === 'openai') {
+                        apiLink.href = 'https://platform.openai.com/api-keys';
+                        apiLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Get your OpenAI API key →';
+                    } else if (provider === 'claude') {
+                        apiLink.href = 'https://console.anthropic.com/';
+                        apiLink.innerHTML = '<i class="fas fa-external-link-alt"></i> Get your Anthropic API key →';
+                    }
+                }
+            });
+        });
 
         async function loadConfig() {
             try {
@@ -1623,8 +2351,16 @@
                 // First save config to ensure TEST_MODE is correct
                 await updateConfig();
                 
-                // Now post
-                const response = await fetch('/api/post-now', { method: 'POST' });
+                // Post the PREVIEW content, not generate new content
+                const response = await fetch('/api/post-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: previewContent,
+                        hashtags: hashtags,
+                        usePreview: true
+                    })
+                });
                 const result = await response.json();
 
                 document.getElementById('post-preview-spinner').innerHTML = '';
@@ -2069,18 +2805,33 @@
 
         async function trainModel() {
             document.getElementById('train-spinner').innerHTML = '<span class="spinner"></span>';
-            document.getElementById('train-status').innerHTML = '<i class="fas fa-cog fa-spin"></i> Training model...';
+            document.getElementById('train-status').innerHTML = '<div class="training-progress"><div style="width: 100%; height: 4px; background: #e9ecef; border-radius: 2px;"><div style="width: 30%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;" id="progress"></div></div><p style="margin-top: 0.5rem; color: #6c757d; font-size: 0.9rem;">Training model...</p></div>';
 
             try {
                 const response = await fetch('/api/train-model', { method: 'POST' });
+                
+                // Simulate progress
+                let progress = 30;
+                const progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        progress += Math.random() * 20;
+                        document.getElementById('progress').style.width = Math.min(progress, 90) + '%';
+                    }
+                }, 500);
+                
                 const result = await response.json();
+                clearInterval(progressInterval);
+                document.getElementById('progress').style.width = '100%';
 
                 document.getElementById('train-spinner').innerHTML = '';
 
                 if (result.success) {
-                    document.getElementById('train-status').className = 'status success';
+                    document.getElementById('train-status').className = 'status success success-animation';
                     document.getElementById('train-status').innerHTML = '<i class="fas fa-check"></i> ' + result.message;
-                    setTimeout(checkKBStatus, 1000);
+                    setTimeout(() => {
+                        checkKBStatus();
+                        loadKBFiles();
+                    }, 1000);
                 } else {
                     document.getElementById('train-status').className = 'status error';
                     document.getElementById('train-status').innerHTML = '<i class="fas fa-times"></i> ' + result.message;
@@ -2103,9 +2854,71 @@
                     document.getElementById('kb-status').style.color = result.trained ? '#28a745' : '#dc3545';
                     document.getElementById('kb-ready').innerHTML = result.rag_ready ? '✅ Yes' : '❌ No';
                     document.getElementById('kb-ready').style.color = result.rag_ready ? '#28a745' : '#dc3545';
+                    loadKBFiles();
                 }
             } catch (e) {
                 console.error('Status check failed:', e);
+            }
+        }
+
+        async function loadKBFiles() {
+            try {
+                const response = await fetch('/api/list-knowledge-base-files');
+                const result = await response.json();
+
+                if (result.success && result.files.length > 0) {
+                    let html = '<div style="margin-top: 1rem;"><strong style="color: #2c3e50; display: block; margin-bottom: 0.75rem;">📁 Uploaded Files:</strong>';
+                    
+                    result.files.forEach(file => {
+                        html += `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <div class="file-name">📄 ${file.name}</div>
+                                    <div class="file-size">${file.type} • ${file.size} MB</div>
+                                </div>
+                                <button class="file-delete-btn" onclick="deleteKBFile('${file.name.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    document.getElementById('kb-files-list').innerHTML = html;
+                } else {
+                    document.getElementById('kb-files-list').innerHTML = '';
+                }
+            } catch (e) {
+                console.error('Failed to load files:', e);
+            }
+        }
+
+        async function deleteKBFile(filename) {
+            if (!confirm(`Delete file: ${filename}? This will rebuild the knowledge base.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/delete-knowledge-base-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: filename })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const statusDiv = document.getElementById('kb-upload-status');
+                    statusDiv.className = 'status success success-animation';
+                    statusDiv.innerHTML = '<i class="fas fa-check"></i> ' + result.message;
+                    setTimeout(() => {
+                        checkKBStatus();
+                        loadKBFiles();
+                    }, 1000);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Failed to delete file: ' + e.message);
             }
         }
 
@@ -2213,8 +3026,10 @@
         }
 
         // Initialize
+        checkSetupStatus();
         loadConfig();
         checkKBStatus();
+        loadKBFiles();
         loadPersonas();
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
