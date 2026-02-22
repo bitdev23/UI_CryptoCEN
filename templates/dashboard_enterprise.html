@@ -105,7 +105,7 @@
             align-items: center;
         }
         .btn {
-            padding: 0.6rem 1.2rem;
+            padding: 1rem 1.8rem;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -114,8 +114,9 @@
             display: inline-flex;
             align-items: center;
             gap: 0.6rem;
-            font-size: 0.95rem;
+            font-size: 1rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            min-height: 50px;
         }
         .btn:active {
             transform: translateY(1px);
@@ -295,7 +296,7 @@
             height: 6px;
             border: none;
             border-radius: 3px;
-            background: linear-gradient(to right, #e0e0e0 0%, #e0e0e0 100%);
+            background: linear-gradient(to right, var(--primary) 0%, #d4daf7 50%, #e8ebf9 100%);
             -webkit-appearance: none;
             appearance: none;
         }
@@ -421,8 +422,9 @@
             align-items: center;
             min-width: 340px;
             animation: slideIn 0.3s ease;
-            color: #2c3e50;
-            font-weight: 500;
+            color: #1a1a1a;
+            font-weight: 600;
+            font-size: 0.95rem;
         }
         @keyframes slideIn {
             from {
@@ -436,17 +438,19 @@
         }
         .toast.success {
             border-left: 5px solid var(--success);
-            background: linear-gradient(90deg, rgba(82, 196, 26, 0.05) 0%, white 100%);
+            background: linear-gradient(90deg, rgba(82, 196, 26, 0.08) 0%, white 100%);
         }
         .toast.success i {
             color: var(--success);
+            font-size: 1.2rem;
         }
         .toast.error {
             border-left: 5px solid var(--error);
-            background: linear-gradient(90deg, rgba(245, 34, 45, 0.05) 0%, white 100%);
+            background: linear-gradient(90deg, rgba(245, 34, 45, 0.08) 0%, white 100%);
         }
         .toast.error i {
             color: var(--error);
+            font-size: 1.2rem;
         }
         .toast.info {
             border-left: 5px solid var(--info);
