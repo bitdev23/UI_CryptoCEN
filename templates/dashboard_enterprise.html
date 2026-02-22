@@ -422,10 +422,15 @@
             align-items: center;
             min-width: 340px;
             animation: slideIn 0.3s ease;
-            color: #000000;
+            color: #000000 !important;
             font-weight: 700;
             font-size: 1rem;
             line-height: 1.5;
+        }
+        .toast span {
+            color: #000000 !important;
+            font-weight: 600;
+            flex: 1;
         }
         @keyframes slideIn {
             from {
@@ -754,9 +759,9 @@
                 </div>
             </div>
 
-            <!-- CONTENT CREATOR TAB -->
+            <!-- LINKEDIN POST TAB -->
             <div id="content-creator" class="tab-content">
-                <h2>Content Creator</h2>
+                <h2>LinkedIn Post Generator</h2>
                 <p class="text-muted" style="margin-bottom: 2rem;">Generate AI-powered LinkedIn posts tailored to your industry.</p>
 
                 <div class="grid grid-2">
@@ -1128,7 +1133,7 @@
         // Update page title
         const titles = {
             'dashboard': 'Dashboard',
-            'content-creator': 'Content Creator',
+            'content-creator': 'LinkedIn Post',
             'scheduler': 'Scheduler',
             'knowledge-base': 'Knowledge Base',
             'settings': 'Settings',
