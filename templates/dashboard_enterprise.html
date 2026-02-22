@@ -416,15 +416,16 @@
             background: white;
             border-radius: 6px;
             box-shadow: 0 6px 25px rgba(0,0,0,0.18);
-            padding: 1rem 1.5rem;
+            padding: 1.2rem 1.5rem;
             display: flex;
             gap: 1rem;
             align-items: center;
             min-width: 340px;
             animation: slideIn 0.3s ease;
-            color: #1a1a1a;
-            font-weight: 600;
-            font-size: 0.95rem;
+            color: #000000;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1.5;
         }
         @keyframes slideIn {
             from {
@@ -438,7 +439,8 @@
         }
         .toast.success {
             border-left: 5px solid var(--success);
-            background: linear-gradient(90deg, rgba(82, 196, 26, 0.08) 0%, white 100%);
+            background: #ffffff;
+            border: 2px solid #52c41a;
         }
         .toast.success i {
             color: var(--success);
@@ -446,7 +448,8 @@
         }
         .toast.error {
             border-left: 5px solid var(--error);
-            background: linear-gradient(90deg, rgba(245, 34, 45, 0.08) 0%, white 100%);
+            background: #ffffff;
+            border: 2px solid #f5222d;
         }
         .toast.error i {
             color: var(--error);
@@ -454,7 +457,8 @@
         }
         .toast.info {
             border-left: 5px solid var(--info);
-            background: linear-gradient(90deg, rgba(24, 144, 255, 0.05) 0%, white 100%);
+            background: #ffffff;
+            border: 2px solid #1890ff;
         }
         .toast.info i {
             color: var(--info);
@@ -616,16 +620,18 @@
             }
         }
         #post-text {
-            font-size: 0.95rem;
+            font-size: 1.05rem;
             line-height: 1.8;
-            color: #2c3e50;
+            color: #000000;
             background: white;
             padding: 1.5rem;
             border-radius: 6px;
+            border: 2px solid var(--primary);
             border-left: 4px solid var(--primary);
             white-space: pre-wrap;
             word-wrap: break-word;
             margin-bottom: 1.5rem;
+            font-weight: 500;
         }
         .preview-actions {
             display: flex;
