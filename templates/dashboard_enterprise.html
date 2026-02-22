@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium LinkedIn Automation Platform</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #52c41a;
+            --error: #f5222d;
+            --warning: #faad14;
+            --info: #1890ff;
+            --light: #f0f2f5;
+            --dark: #262626;
+            --border: #d9d9d9;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background: #f8f9fa;
+            color:#2c3e50;
+            line-height: 1.6;
+        }
+        .app-container {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+        }
+        /* SIDEBAR */
+        .sidebar {
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 1.5rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .nav-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(255, 255, 255, 0.8);
+            border: 2px solid transparent;
+        }
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-left: 3px solid white;
+        }
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+        /* CONTENT AREA */
+        .content-area {
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 1.75rem;
+            color: var(--dark);
+        }
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .btn-secondary:hover {
+            background: var(--light);
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: #389e0d;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4);
+        }
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #cf1322;
+        }
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        .btn i {
+            font-size: 1rem;
+        }
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        /* TABS */
+        .tab-navigation {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 0;
+            border-bottom: 2px solid var(--border);
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 1rem 2rem;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            margin-bottom: -2px;
+        }
+        .tab-btn:hover {
+            color: var(--primary);
+            background: var(--light);
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 0 8px 8px 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 2rem;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* CARDS */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+        .card-header h2 {
+            font-size: 1.25rem;
+            color: var(--dark);
+        }
+        .card-header-badge {
+            background: var(--info);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        /* FORMS */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-hint {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 0.3rem;
+        }
+        /* GRID */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+        /* ALERTS */
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .alert-info {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            color: #0050b3;
+        }
+        .alert-success {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #274000;
+        }
+        .alert-error {
+            background: #fff7f6;
+            border: 1px solid #ffccc7;
+            color: #92400e;
+        }
+        .alert i {
+            font-size: 1.2rem;
+        }
+        /* TOAST STYLES */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .toast {
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 1rem 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            min-width: 320px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .toast.success {
+            border-left: 4px solid var(--success);
+            color: var(--success);
+        }
+        .toast.error {
+            border-left: 4px solid var(--error);
+            color: var(--error);
+        }
+        .toast.info {
+            border-left: 4px solid var(--info);
+            color: var(--info);
+        }
+        .toast i {
+            font-size: 1.25rem;
+        }
+        .toast-close {
+            cursor: pointer;
+            color: #6c757d;
+            margin-left: auto;
+            font-weight: bold;
+        }
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        .modal-body {
+            padding: 2rem;
+        }
+        .modal-footer {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+        /* STATUS INDICATOR */
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-badge.active {
+            background: #f6ffed;
+            color: #274000;
+        }
+        .status-badge.pending {
+            background: #fff7e6;
+            color: #ad6800;
+        }
+        .status-badge.error {
+            background: #fff7f6;
+            color: #92400e;
+        }
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+                position: fixed;
+                left: 0;
+                top: 0;
+                z-index: 900;
+                width: 280px;
+                height: 100vh;
+            }
+            .sidebar.active {
+                display: block;
+            }
+            .header {
+                flex-wrap: wrap;
+            }
+            .tab-btn {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-muted {
+            color: #6c757d;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid var(--light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-brain"></i>
+            <span>ContentAI Pro</span>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item active" onclick="switchTab('dashboard')">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('content-creator')">
+                <i class="fas fa-pen-fancy"></i>
+                <span>Content Creator</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('scheduler')">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Scheduler</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('knowledge-base')">
+                <i class="fas fa-book"></i>
+                <span>Knowledge Base</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('settings')">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('analytics')">
+                <i class="fas fa-chart-bar"></i>
+                <span>Analytics</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="content-area">
+        <!-- HEADER -->
+        <header class="header">
+            <h1 id="page-title">Dashboard</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openIndustrySelector()">
+                    <i class="fas fa-layer-group"></i>
+                    Select Industry
+                </button>
+                <button class="btn btn-secondary" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN PANEL -->
+        <main class="main-content">
+            <!-- DASHBOARD TAB -->
+            <div id="dashboard" class="tab-content active">
+                <h2>Welcome to ContentAI Pro</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Manage your LinkedIn content with AI-driven insights and multi-industry support.</p>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Quick Tip:</strong> Select your industry and role to get personalized content recommendations tailored to your audience.
+                    </div>
+                </div>
+
+                <div class="grid grid-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Posts This Month</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);">8</div>
+                            <div class="text-muted">+2 scheduled</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Engagement Rate</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);">4.2%</div>
+                            <div class="text-muted">+0.3% vs last month</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Followers</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--info);">2,540</div>
+                            <div class="text-muted">+120 this month</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h2>Next Scheduled Post</h2>
+                        <span class="status-badge pending">In 2 hours</span>
+                    </div>
+                    <p id="next-post-content" style="font-style: italic; color: #6c757d; margin: 1rem 0;">Loading...</p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-primary btn-sm" onclick="showToast('success', 'Post content copied!', 'fas fa-check')">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="showToast('info', 'Rescheduling post...', 'fas fa-info-circle')">
+                            <i class="fas fa-sync"></i> Reschedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENT CREATOR TAB -->
+            <div id="content-creator" class="tab-content">
+                <h2>Content Creator</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Generate AI-powered LinkedIn posts tailored to your industry.</p>
+
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Content Parameters</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Industry</label>
+                            <select id="industry-select" onchange="updateContentHints()">
+                                <option value="tech">Technology & Software</option>
+                                <option value="finance">Finance & Banking</option>
+                                <option value="healthcare">Healthcare & Pharma</option>
+                                <option value="ecommerce">E-Commerce & Retail</option>
+                                <option value="crypto">Cryptocurrency & Blockchain</option>
+                                <option value="saas">SaaS & Startups</option>
+                            </select>
+                            <p class="form-hint">Select your primary industry</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Professional Role</label>
+                            <select id="role-select" onchange="updateContentHints()">
+                                <option value="ceo">CEO / Founder</option>
+                                <option value="cto">CTO / VP Engineering</option>
+                                <option value="dev">Software Developer</option>
+                                <option value="pm">Product Manager</option>
+                                <option value="hr">HR / People Ops</option>
+                                <option value="finance">Finance / CFO</option>
+                                <option value="ops">Operations</option>
+                                <option value="marketing">Marketing / Growth</option>
+                            </select>
+                            <p class="form-hint">Select your role for personalized content</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Number of Hashtags</label>
+                            <input type="range" id="hashtag-count" min="0" max="10" value="3" onchange="updateHashtagPreview()">
+                            <p class="form-hint"><span id="hashtag-display">3</span> hashtags (recommended 3-5 for max engagement)</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Emoji Usage</label>
+                            <select id="emoji-level" onchange="updateContentHints()">
+                                <option value="none">None</option>
+                                <option value="minimal">Minimal (1-2)</option>
+                                <option value="moderate" selected>Moderate (2-4)</option>
+                                <option value="high">High (5+)</option>
+                            </select>
+                            <p class="form-hint">Emojis increase engagement by 25% on average</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Content Topics (select multiple)</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="trends"> Trends & Industry News
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="tips"> Tips & Best Practices
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="case_study"> Case Studies
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="questions"> Questions & Engagement
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="personal"> Personal Stories
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
+                                    <input type="checkbox" value="product"> Product Insights
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Generate Post</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Topic (Optional)</label>
+                            <textarea id="topic-input" placeholder="Leave blank for AI-generated topic..." rows="3"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="generatePost()" style="width: 100%; margin-bottom: 1rem;">
+                            <i class="fas fa-magic"></i> Generate Post
+                        </button>
+                        <div id="post-preview" style="display: none; border: 2px dashed var(--border); padding: 1.5rem; border-radius: 6px; background: #f8f9fa;">
+                            <p id="post-text" style="white-space: pre-wrap; line-height: 1.8;"></p>
+                            <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-success btn-sm" onclick="schedulePost()">
+                                    <i class="fas fa-calendar"></i> Schedule
+                                </button>
+                                <button class="btn btn-primary btn-sm" onclick="postNow()">
+                                    <i class="fas fa-paper-plane"></i> Post Now
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="regeneratePost()">
+                                    <i class="fas fa-redo"></i> Regenerate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHEDULER TAB -->
+            <div id="scheduler" class="tab-content">
+                <h2>Schedule Posts</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Plan your LinkedIn content in advance.</p>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Scheduled Posts</h3>
+                    </div>
+                    <div id="scheduled-posts-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="text-center text-muted" style="padding: 2rem;">No scheduled posts yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KNOWLEDGE BASE TAB -->
+            <div id="knowledge-base" class="tab-content">
+                <h2>Knowledge Base</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Upload and train your industry-specific knowledge base for better content personalization.</p>
+
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Upload Documents</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Industry Focus</label>
+                            <select>
+                                <option>Technology</option>
+                                <option>Finance</option>
+                                <option>Healthcare</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Upload PDF or Document</label>
+                            <input type="file" accept=".pdf,.docx,.txt" id="kb-file">
+                            <p class="form-hint">Max 50MB. Supports PDF, DOCX, TXT</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="uploadKnowledgeBase()" style="width: 100%;">
+                            <i class="fas fa-upload"></i> Upload & Train
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Knowledge Base Status</h3>
+                        </div>
+                        <p id="kb-status" class="text-muted">No knowledge base trained yet</p>
+                        <div id="kb-progress" style="display: none; margin-top: 1rem;">
+                            <div style="text-align: center; margin-bottom: 1rem;">
+                                <div class="loading-spinner"></div>
+                            </div>
+                            <p class="text-center text-muted">Training your knowledge base...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div id="settings" class="tab-content">
+                <h2>Settings</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Configure your account and API keys.</p>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>AI Provider</h2>
+                    </div>
+                    <div class="form-group">
+                        <label>Select AI Provider</label>
+                        <select id="ai-provider" onchange="updateAISettings()">
+                            <option value="google">Google Gemini</option>
+                            <option value="openai">OpenAI GPT-4</option>
+                            <option value="anthropic">Claude (Anthropic)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="api-key" placeholder="••••••••••••">
+                        <p class="form-hint">Your API key is encrypted and stored securely</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAISettings()">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>LinkedIn Integration</h2>
+                    </div>
+                    <div class="form-group">
+                        <label>Access Token</label>
+                        <input type="password" id="linkedin-token" placeholder="••••••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label>Person ID</label>
+                        <input type="text" id="linkedin-person-id" placeholder="urn:li:person:XXXXXXXXX">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveLISettings()">
+                        <i class="fas fa-save"></i> Save LinkedIn Settings
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Default Posting Schedule</h2>
+                    </div>
+                    <div class="form-group">
+                        <label>Post Time (Daily)</label>
+                        <input type="time" id="post-time" value="11:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Timezone</label>
+                        <select id="timezone">
+                            <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                            <option value="America/New_York">America/New_York (EST)</option>
+                            <option value="Europe/London">Europe/London (GMT)</option>
+                            <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveScheduleSettings()">
+                        <i class="fas fa-save"></i> Save Schedule
+                    </button>
+                </div>
+            </div>
+
+            <!-- ANALYTICS TAB -->
+            <div id="analytics" class="tab-content">
+                <h2>Analytics & Insights</h2>
+                <p class="text-muted" style="margin-bottom: 2rem;">Track your LinkedIn performance metrics.</p>
+
+                <div class="grid grid-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Total Impressions</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);">12,540</div>
+                            <div class="text-muted">Last 30 days</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Total Engagements</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);">524</div>
+                            <div class="text-muted">Likes, comments, shares</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Top Post Performance</h3>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5rem; font-weight: 700; color: var(--warning);">8.2%</div>
+                            <div class="text-muted">Engagement rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- INDUSTRY SELECTOR MODAL -->
+<div id="industry-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Select Your Industry & Role</h2>
+            <button class="modal-close" onclick="closeModal('industry-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Industry</label>
+                <select id="modal-industry">
+                    <option value="tech">Technology & Software</option>
+                    <option value="finance">Finance & Banking</option>
+                    <option value="healthcare">Healthcare & Pharma</option>
+                    <option value="ecommerce">E-Commerce & Retail</option>
+                    <option value="crypto">Cryptocurrency & Blockchain</option>
+                    <option value="saas">SaaS & Startups</option>
+                    <option value="consulting">Consulting & Professional Services</option>
+                    <option value="manufacturing">Manufacturing & Industrial</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Your Role</label>
+                <select id="modal-role">
+                    <option value="ceo">CEO / Founder</option>
+                    <option value="cto">CTO / VP Engineering</option>
+                    <option value="dev">Software Developer</option>
+                    <option value="pm">Product Manager</option>
+                    <option value="hr">HR / People Ops</option>
+                    <option value="finance">Finance / CFO</option>
+                    <option value="ops">Operations</option>
+                    <option value="marketing">Marketing / Growth</option>
+                    <option value="sales">Sales / Business Development</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('industry-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveIndustryRole()">Save & Continue</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script>
+    // Toast notification system
+    function showToast(type = 'info', message = '', icon = '') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const iconEl = document.createElement('i');
+        iconEl.className = icon || 'fas fa-check';
+        
+        const messageEl = document.createElement('span');
+        messageEl.textContent = message;
+        
+        const closeEl = document.createElement('button');
+        closeEl.className = 'toast-close';
+        closeEl.innerHTML = '×';
+        closeEl.onclick = () => {
+            toast.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        };
+        
+        toast.appendChild(iconEl);
+        toast.appendChild(messageEl);
+        toast.appendChild(closeEl);
+        container.appendChild(toast);
+        
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 4000);
+    }
+
+    // Tab switching
+    function switchTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        
+        // Show selected tab
+        document.getElementById(tabId).classList.add('active');
+        event.target.closest('.nav-item').classList.add('active');
+        
+        // Update page title
+        const titles = {
+            'dashboard': 'Dashboard',
+            'content-creator': 'Content Creator',
+            'scheduler': 'Scheduler',
+            'knowledge-base': 'Knowledge Base',
+            'settings': 'Settings',
+            'analytics': 'Analytics'
+        };
+        document.getElementById('page-title').textContent = titles[tabId];
+    }
+
+    // Modal management
+    function openIndustrySelector() {
+        document.getElementById('industry-modal').classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function saveIndustryRole() {
+        const industry = document.getElementById('modal-industry').value;
+        const role = document.getElementById('modal-role').value;
+        
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'CONTENT_INDUSTRY': industry, 'USER_ROLE': role })
+        })
+        .then(r => r.json())
+        .then(data => {
+            showToast('success', `Industry set to ${industry} with role ${role}`, 'fas fa-check');
+            closeModal('industry-modal');
+        })
+        .catch(e => showToast('error', 'Failed to save settings', 'fas fa-exclamation-circle'));
+    }
+
+    // Content generation
+    function generatePost() {
+        const topic = document.getElementById('topic-input').value;
+        const industry = document.getElementById('industry-select').value;
+        const role = document.getElementById('role-select').value;
+        const hashtags = document.getElementById('hashtag-count').value;
+        const emojis = document.getElementById('emoji-level').value;
+        
+        showToast('info', 'Generating post...', 'fas fa-spinner');
+        
+        fetch('/api/generate-preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                topic, industry, role, hashtags, emojis
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success || data.content) {
+                document.getElementById('post-text').textContent = data.content || data.text;
+                document.getElementById('post-preview').style.display = 'block';
+                showToast('success', 'Post generated!', 'fas fa-check');
+            } else {
+                showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
+    }
+
+    function postNow() {
+        const content = document.getElementById('post-text').textContent;
+        
+        fetch('/api/post-now', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', 'Post published to LinkedIn!', 'fas fa-check');
+                document.getElementById('post-preview').style.display = 'none';
+                document.getElementById('topic-input').value = '';
+            } else {
+                showToast('error', data.message || 'Failed to post', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
+    }
+
+    function schedulePost() {
+        const content = document.getElementById('post-text').textContent;
+        const scheduleTime = prompt('Enter schedule time (YYYY-MM-DD HH:MM):');
+        
+        if (!scheduleTime) return;
+        
+        fetch('/api/schedule-post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, schedule_time: scheduleTime })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', 'Post scheduled successfully!', 'fas fa-calendar');
+                document.getElementById('post-preview').style.display = 'none';
+            } else {
+                showToast('error', data.message || 'Failed to schedule', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
+    }
+
+    function saveAISettings() {
+        const provider = document.getElementById('ai-provider').value;
+        const apiKey = document.getElementById('api-key').value;
+        
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                'AI_PROVIDER': provider,
+                [provider === 'openai' ? 'OPENAI_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'GOOGLE_API_KEY']: apiKey
+            })
+        })
+        .then(r => r.json())
+        .then(() => showToast('success', 'AI settings saved!', 'fas fa-check'))
+        .catch(e => showToast('error', 'Failed to save', 'fas fa-exclamation-circle'));
+    }
+
+    function saveLISettings() {
+        const token = document.getElementById('linkedin-token').value;
+        const personId = document.getElementById('linkedin-person-id').value;
+        
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                'LINKEDIN_ACCESS_TOKEN': token,
+                'LINKEDIN_PERSON_ID': personId
+            })
+        })
+        .then(r => r.json())
+        .then(() => showToast('success', 'LinkedIn settings saved!', 'fas fa-check'))
+        .catch(e => showToast('error', 'Failed to save', 'fas fa-exclamation-circle'));
+    }
+
+    function saveScheduleSettings() {
+        const time = document.getElementById('post-time').value;
+        const tz = document.getElementById('timezone').value;
+        const [hour, minute] = time.split(':');
+        
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                'POST_TIME_HOUR': hour,
+                'POST_TIME_MINUTE': minute,
+                'TIMEZONE': tz
+            })
+        })
+        .then(r => r.json())
+        .then(() => showToast('success', 'Schedule saved!', 'fas fa-check'))
+        .catch(e => showToast('error', 'Failed to save', 'fas fa-exclamation-circle'));
+    }
+
+    function updateHashtagPreview() {
+        const count = document.getElementById('hashtag-count').value;
+        document.getElementById('hashtag-display').textContent = count;
+    }
+
+    function updateAISettings() {
+        // Placeholder for dynamic UI updates
+    }
+
+    function updateContentHints() {
+        // Placeholder for showing content recommendations based on selections
+    }
+
+    function regeneratePost() {
+        generatePost();
+    }
+
+    function uploadKnowledgeBase() {
+        const file = document.getElementById('kb-file').files[0];
+        if (!file) {
+            showToast('error', 'Please select a file', 'fas fa-exclamation-circle');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        document.getElementById('kb-progress').style.display = 'block';
+        
+        fetch('/api/upload-knowledge-base', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('kb-progress').style.display = 'none';
+            if (data.success) {
+                showToast('success', 'Knowledge base trained!', 'fas fa-check');
+                document.getElementById('kb-file').value = '';
+            } else {
+                showToast('error', data.message || 'Upload failed', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => {
+            document.getElementById('kb-progress').style.display = 'none';
+            showToast('error', e.message, 'fas fa-exclamation-circle');
+        });
+    }
+
+    function logout() {
+        if (confirm('Are you sure you want to logout?')) {
+            window.location.href = '/login';
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        showToast('success', 'Welcome to ContentAI Pro!', 'fas fa-check');
+    });
+</script>
+</body>
+</html>
