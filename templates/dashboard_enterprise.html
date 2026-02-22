@@ -105,56 +105,68 @@
             align-items: center;
         }
         .btn {
-            padding: 0.5rem 1rem;
+            padding: 0.6rem 1.2rem;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
+            gap: 0.6rem;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .btn:active {
+            transform: translateY(1px);
         }
         .btn-primary {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
             color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         .btn-primary:hover {
-            background: #5568d3;
+            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         .btn-secondary {
             background: white;
             color: var(--primary);
             border: 2px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
         }
         .btn-secondary:hover {
-            background: var(--light);
+            background: #f8f9fa;
+            border-color: #5568d3;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
         }
         .btn-success {
-            background: var(--success);
+            background: linear-gradient(135deg, var(--success) 0%, #389e0d 100%);
             color: white;
+            box-shadow: 0 4px 15px rgba(82, 196, 26, 0.3);
         }
         .btn-success:hover {
-            background: #389e0d;
+            background: linear-gradient(135deg, #389e0d 0%, #2f7d05 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4);
+            box-shadow: 0 6px 20px rgba(82, 196, 26, 0.4);
         }
         .btn-danger {
-            background: var(--error);
+            background: linear-gradient(135deg, var(--error) 0%, #cf1322 100%);
             color: white;
+            box-shadow: 0 4px 15px rgba(245, 34, 45, 0.3);
         }
         .btn-danger:hover {
-            background: #cf1322;
+            background: linear-gradient(135deg, #cf1322 0%, #a3111e 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 34, 45, 0.4);
         }
         .btn-sm {
-            padding: 0.4rem 0.8rem;
+            padding: 0.45rem 0.9rem;
             font-size: 0.85rem;
         }
         .btn i {
-            font-size: 1rem;
+            font-size: 1.05rem;
         }
         .main-content {
             flex: 1;
@@ -174,7 +186,7 @@
         .tab-btn {
             background: transparent;
             border: none;
-            padding: 1rem 2rem;
+            padding: 1rem 1.5rem;
             cursor: pointer;
             font-weight: 600;
             color: #6c757d;
@@ -182,10 +194,13 @@
             transition: all 0.3s ease;
             position: relative;
             margin-bottom: -2px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         .tab-btn:hover {
             color: var(--primary);
-            background: var(--light);
+            background: rgba(102, 126, 234, 0.03);
         }
         .tab-btn.active {
             color: var(--primary);
@@ -200,6 +215,11 @@
         }
         .tab-content.active {
             display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         /* CARDS */
         .card {
@@ -209,6 +229,10 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid var(--border);
             margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
         .card-header {
             display: flex;
@@ -221,6 +245,12 @@
         .card-header h2 {
             font-size: 1.25rem;
             color: var(--dark);
+            margin: 0;
+        }
+        .card-header h3 {
+            font-size: 1.1rem;
+            color: var(--dark);
+            margin: 0;
         }
         .card-header-badge {
             background: var(--info);
@@ -236,20 +266,22 @@
         }
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.6rem;
             font-weight: 600;
             color: var(--dark);
+            font-size: 0.95rem;
         }
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.8rem;
             border: 1px solid var(--border);
             border-radius: 6px;
             font-family: inherit;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            background: white;
         }
         .form-group input:focus,
         .form-group textarea:focus,
@@ -258,12 +290,80 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
+        .form-group input[type="range"] {
+            padding: 0;
+            height: 6px;
+            border: none;
+            border-radius: 3px;
+            background: linear-gradient(to right, #e0e0e0 0%, #e0e0e0 100%);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #5568d3);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+            transition: all 0.2s ease;
+        }
+        .form-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .form-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #5568d3);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .form-group input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
         .form-hint {
             font-size: 0.85rem;
             color: #6c757d;
             margin-top: 0.3rem;
         }
-        /* GRID */
+        /* CHECKBOX STYLING */
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.8rem;
+            margin-top: 0.8rem;
+        }
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            border-radius: 4px;
+        }
+        .checkbox-wrapper label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: #333;
+            transition: color 0.2s ease;
+            user-select: none;
+        }
+        .checkbox-wrapper input[type="checkbox"]:hover ~ label,
+        .checkbox-wrapper:hover label {
+            color: var(--primary);
+        }
         .grid {
             display: grid;
             gap: 1.5rem;
@@ -314,13 +414,15 @@
         .toast {
             background: white;
             border-radius: 6px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.18);
             padding: 1rem 1.5rem;
             display: flex;
             gap: 1rem;
             align-items: center;
-            min-width: 320px;
+            min-width: 340px;
             animation: slideIn 0.3s ease;
+            color: #2c3e50;
+            font-weight: 500;
         }
         @keyframes slideIn {
             from {
@@ -333,25 +435,40 @@
             }
         }
         .toast.success {
-            border-left: 4px solid var(--success);
+            border-left: 5px solid var(--success);
+            background: linear-gradient(90deg, rgba(82, 196, 26, 0.05) 0%, white 100%);
+        }
+        .toast.success i {
             color: var(--success);
         }
         .toast.error {
-            border-left: 4px solid var(--error);
+            border-left: 5px solid var(--error);
+            background: linear-gradient(90deg, rgba(245, 34, 45, 0.05) 0%, white 100%);
+        }
+        .toast.error i {
             color: var(--error);
         }
         .toast.info {
-            border-left: 4px solid var(--info);
+            border-left: 5px solid var(--info);
+            background: linear-gradient(90deg, rgba(24, 144, 255, 0.05) 0%, white 100%);
+        }
+        .toast.info i {
             color: var(--info);
         }
         .toast i {
-            font-size: 1.25rem;
+            font-size: 1.4rem;
+            min-width: 24px;
         }
         .toast-close {
             cursor: pointer;
-            color: #6c757d;
+            color: #999;
             margin-left: auto;
             font-weight: bold;
+            transition: color 0.2s ease;
+            font-size: 1.2rem;
+        }
+        .toast-close:hover {
+            color: #333;
         }
         /* MODAL */
         .modal {
@@ -470,6 +587,46 @@
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        /* POST PREVIEW */
+        #post-preview {
+            display: none;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        #post-preview.visible {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #post-text {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: #2c3e50;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 1.5rem;
+        }
+        .preview-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
     </style>
 </head>
@@ -644,26 +801,33 @@
 
                         <div class="form-group">
                             <label>Content Topics (select multiple)</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="trends"> Trends & Industry News
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="tips"> Tips & Best Practices
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="case_study"> Case Studies
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="questions"> Questions & Engagement
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="personal"> Personal Stories
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0;">
-                                    <input type="checkbox" value="product"> Product Insights
-                                </label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-trends" value="trends">
+                                    <label for="topic-trends">Trends & Industry News</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-tips" value="tips">
+                                    <label for="topic-tips">Tips & Best Practices</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-case" value="case_study">
+                                    <label for="topic-case">Case Studies</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-questions" value="questions">
+                                    <label for="topic-questions">Questions & Engagement</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-personal" value="personal">
+                                    <label for="topic-personal">Personal Stories</label>
+                                </div>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" id="topic-product" value="product">
+                                    <label for="topic-product">Product Insights</label>
+                                </div>
                             </div>
+                            <p class="form-hint">Select topics that resonate with your audience for better engagement</p>
                         </div>
                     </div>
 
@@ -678,9 +842,9 @@
                         <button class="btn btn-primary" onclick="generatePost()" style="width: 100%; margin-bottom: 1rem;">
                             <i class="fas fa-magic"></i> Generate Post
                         </button>
-                        <div id="post-preview" style="display: none; border: 2px dashed var(--border); padding: 1.5rem; border-radius: 6px; background: #f8f9fa;">
-                            <p id="post-text" style="white-space: pre-wrap; line-height: 1.8;"></p>
-                            <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                        <div id="post-preview">
+                            <p id="post-text"></p>
+                            <div class="preview-actions">
                                 <button class="btn btn-success btn-sm" onclick="schedulePost()">
                                     <i class="fas fa-calendar"></i> Schedule
                                 </button>
