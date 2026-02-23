@@ -355,38 +355,88 @@ def generate_preview():
         from ai_provider import AIProvider
         import random
         import config as cfg
+        from rag_system import RAGStore
         
         logger.info("Generate preview request received")
         
+        req_data = request.get_json(silent=True) or {}
+
         ai = AIProvider()
         config_obj = load_config()
         profile_key = config_obj.get('CONTENT_PROFILE', 'arab_global_crypto')
         profile = cfg.PROFILES.get(profile_key, cfg.PROFILES.get(cfg.DEFAULT_PROFILE, {}))
+
+        user_topic = (req_data.get('topic') or '').strip()
+        user_industry = (req_data.get('industry') or config_obj.get('CONTENT_INDUSTRY', '')).strip()
+        user_role = (req_data.get('role') or config_obj.get('USER_ROLE', '')).strip()
         
         content_themes = profile.get('content_themes', ['AI', 'Technology', 'Business'])
-        theme = random.choice(content_themes) if content_themes else 'Technology'
+        theme = user_topic if user_topic else (random.choice(content_themes) if content_themes else 'Technology')
         
         post_formats = getattr(cfg, 'POST_FORMATS', ['article', 'opinion', 'announcement'])
         fmt = random.choice(post_formats) if post_formats else 'article'
         
         services = profile.get('company_info', {}).get('services', '')
+
+        kb_used = False
+        kb_sources = []
+        kb_context = ""
+        try:
+            rag = RAGStore(persist_dir="data/chroma_db")
+            if rag.is_built():
+                search_query = " | ".join(part for part in [theme, user_industry, user_role, services] if part)
+                kb_hits = rag.similarity_search(search_query, k=4)
+                if kb_hits:
+                    kb_used = True
+                    snippets = []
+                    for idx, hit in enumerate(kb_hits[:3], start=1):
+                        src = os.path.basename((hit.get('metadata') or {}).get('source', 'knowledge_base'))
+                        kb_sources.append(src)
+                        doc_text = (hit.get('document') or '').strip()
+                        if doc_text:
+                            snippets.append(f"[{idx}] Source: {src}\n{doc_text[:900]}")
+                    kb_context = "\n\n".join(snippets)
+        except Exception as kb_error:
+            logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
         
         # Improved prompt for better human-like content
-        prompt = f"""Generate a professional LinkedIn post about: {theme}
+        if kb_used and kb_context:
+            prompt = f"""Generate a professional LinkedIn post about: {theme}
 
-Context: {services}
+    Company Context: {services}
+    Audience Context: Industry={user_industry}, Role={user_role}
 
-Requirements:
-- Write in a natural, human-like tone (not generic AI)
-- Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
-- Be specific and authentic
-- Include 1-2 actionable insights or takeaways
-- Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters
-- Do NOT include hashtags in the post body
+    Knowledge Base Excerpts:
+    {kb_context}
 
-Format: {fmt}
+    Requirements:
+    - Use the knowledge-base excerpts above as the factual basis
+    - If a fact is not in the excerpts, keep wording general and do not invent specifics
+    - Write in a natural, human-like tone (not generic AI)
+    - Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
+    - Include 1-2 actionable insights or takeaways
+    - Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters
+    - Do NOT include hashtags in the post body
 
-Write ONLY the post content, nothing else."""
+    Format: {fmt}
+
+    Write ONLY the post content, nothing else."""
+        else:
+            prompt = f"""Generate a professional LinkedIn post about: {theme}
+
+    Context: {services}
+
+    Requirements:
+    - Write in a natural, human-like tone (not generic AI)
+    - Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
+    - Be specific and authentic
+    - Include 1-2 actionable insights or takeaways
+    - Keep it between {config_obj.get('MIN_POST_LENGTH', 150)} and {config_obj.get('MAX_POST_LENGTH', 1000)} characters
+    - Do NOT include hashtags in the post body
+
+    Format: {fmt}
+
+    Write ONLY the post content, nothing else."""
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
@@ -419,9 +469,13 @@ Write ONLY the post content, nothing else."""
         
         return jsonify({
             'success': True,
+            'content': content,
+            'text': content,
             'post': content,
             'hashtags': hashtags,
-            'theme': theme
+            'theme': theme,
+            'kb_used': kb_used,
+            'kb_sources': sorted(list(set(kb_sources)))
         })
     except Exception as e:
         logger.exception("Generate preview failed")
@@ -602,11 +656,15 @@ def upload_knowledge_base():
         from pdf_processor import load_pdfs
         from werkzeug.utils import secure_filename
         
-        if 'files' not in request.files:
-            logger.warning("Upload request missing 'files' field")
+        files = []
+        if 'files' in request.files:
+            files = request.files.getlist('files')
+        elif 'file' in request.files:
+            files = request.files.getlist('file')
+        else:
+            logger.warning("Upload request missing 'files' or 'file' field")
             return jsonify({'success': False, 'message': 'No files provided'}), 400
-        
-        files = request.files.getlist('files')
+
         if not files or all(not f.filename for f in files):
             logger.warning("No files selected in upload")
             return jsonify({'success': False, 'message': 'No files selected'}), 400

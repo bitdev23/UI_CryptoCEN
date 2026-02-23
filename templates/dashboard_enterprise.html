@@ -33,6 +33,10 @@
             min-height: 100vh;
             display: grid;
             grid-template-columns: 280px 1fr;
+            transition: grid-template-columns 0.3s ease;
+        }
+        .app-container.sidebar-collapsed {
+            grid-template-columns: 88px 1fr;
         }
         /* SIDEBAR */
         .sidebar {
@@ -44,6 +48,9 @@
             height: 100vh;
             overflow-y: auto;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            transition: padding 0.3s ease;
         }
         .sidebar-logo {
             font-size: 1.5rem;
@@ -53,10 +60,15 @@
             align-items: center;
             gap: 0.5rem;
         }
+        .sidebar-logo span {
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
         .sidebar-nav {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
+            flex: 1;
         }
         .nav-item {
             padding: 0.75rem 1rem;
@@ -82,18 +94,77 @@
             width: 20px;
             text-align: center;
         }
+        .nav-item span {
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+        .sidebar-toggle-wrap {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.22);
+        }
+        .sidebar-toggle {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.26);
+            transform: translateY(-1px);
+        }
+        .sidebar-toggle .toggle-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .app-container.sidebar-collapsed .sidebar {
+            padding: 1.5rem 0.8rem;
+        }
+        .app-container.sidebar-collapsed .sidebar-logo {
+            justify-content: center;
+        }
+        .app-container.sidebar-collapsed .sidebar-logo span,
+        .app-container.sidebar-collapsed .nav-item span,
+        .app-container.sidebar-collapsed .sidebar-toggle .toggle-label {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .app-container.sidebar-collapsed .nav-item {
+            justify-content: center;
+            padding: 0.75rem 0.5rem;
+        }
+        .app-container.sidebar-collapsed .sidebar-toggle {
+            width: 100%;
+        }
         /* CONTENT AREA */
         .content-area {
             display: flex;
             flex-direction: column;
         }
         .header {
-            background: white;
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid rgba(217, 217, 217, 0.7);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 8px 24px rgba(26, 32, 44, 0.06);
         }
         .header h1 {
             font-size: 1.75rem;
@@ -598,8 +669,40 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
+        .skeleton {
+            position: relative;
+            overflow: hidden;
+            background: #eef1f7;
+            border-color: #e4e8f3 !important;
+            color: transparent !important;
+            user-select: none;
+        }
+        .skeleton::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+            animation: shimmer 1.2s infinite;
+        }
+        .skeleton-text {
+            height: 1rem;
+            border-radius: 8px;
+        }
+        .next-post-skeleton {
+            margin: 1rem 0;
+            max-width: 85%;
+            height: 1rem;
+            border-radius: 8px;
+        }
+        #post-text.skeleton {
+            min-height: 140px;
+        }
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
         }
         /* POST PREVIEW */
         #post-preview {
@@ -643,6 +746,77 @@
             gap: 1rem;
             flex-wrap: wrap;
         }
+        .kb-file-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 240px;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+        .kb-file-item {
+            border: 1px solid #e6e9f2;
+            border-radius: 10px;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            background: #fff;
+        }
+        .kb-file-meta {
+            min-width: 0;
+            flex: 1;
+        }
+        .kb-file-name {
+            font-weight: 600;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kb-file-details {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.35rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .kb-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.2rem 0.55rem;
+            border: 1px solid transparent;
+        }
+        .kb-badge.pdf {
+            background: #fff1f0;
+            color: #cf1322;
+            border-color: #ffccc7;
+        }
+        .kb-badge.docx {
+            background: #e6f7ff;
+            color: #0050b3;
+            border-color: #91d5ff;
+        }
+        .kb-badge.size {
+            background: #f5f7fb;
+            color: #4b5563;
+            border-color: #dde3ef;
+            font-weight: 600;
+        }
+        .kb-empty {
+            text-align: center;
+            color: #6b7280;
+            padding: 1rem 0.5rem;
+            border: 1px dashed #d8deea;
+            border-radius: 10px;
+            background: #fafbff;
+        }
     </style>
 </head>
 <body>
@@ -660,7 +834,7 @@
             </div>
             <div class="nav-item" onclick="switchTab('content-creator')">
                 <i class="fas fa-pen-fancy"></i>
-                <span>Content Creator</span>
+                <span>LinkedIn Post</span>
             </div>
             <div class="nav-item" onclick="switchTab('scheduler')">
                 <i class="fas fa-calendar-alt"></i>
@@ -679,6 +853,12 @@
                 <span>Analytics</span>
             </div>
         </nav>
+        <div class="sidebar-toggle-wrap">
+            <button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
+                <i id="sidebar-toggle-icon" class="fas fa-angle-left"></i>
+                <span class="toggle-label">Collapse</span>
+            </button>
+        </div>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -747,7 +927,7 @@
                         <h2>Next Scheduled Post</h2>
                         <span class="status-badge pending">In 2 hours</span>
                     </div>
-                    <p id="next-post-content" style="font-style: italic; color: #6c757d; margin: 1rem 0;">Loading...</p>
+                    <p id="next-post-content" class="skeleton skeleton-text next-post-skeleton"></p>
                     <div style="display: flex; gap: 1rem;">
                         <button class="btn btn-primary btn-sm" onclick="showToast('success', 'Post content copied!', 'fas fa-check')">
                             <i class="fas fa-copy"></i> Copy
@@ -910,8 +1090,8 @@
                         </div>
                         <div class="form-group">
                             <label>Upload PDF or Document</label>
-                            <input type="file" accept=".pdf,.docx,.txt" id="kb-file">
-                            <p class="form-hint">Max 50MB. Supports PDF, DOCX, TXT</p>
+                            <input type="file" accept=".pdf,.docx" id="kb-file">
+                            <p class="form-hint">Max 50MB. Supports PDF and DOCX</p>
                         </div>
                         <button class="btn btn-primary" onclick="uploadKnowledgeBase()" style="width: 100%;">
                             <i class="fas fa-upload"></i> Upload & Train
@@ -927,6 +1107,9 @@
                                 <div class="loading-spinner"></div>
                             </div>
                             <p class="text-center text-muted">Training your knowledge base...</p>
+                        </div>
+                        <div class="kb-file-list" id="kb-files-list">
+                            <div class="kb-empty">No uploaded files yet</div>
                         </div>
                     </div>
                 </div>
@@ -1175,6 +1358,12 @@
         const role = document.getElementById('role-select').value;
         const hashtags = document.getElementById('hashtag-count').value;
         const emojis = document.getElementById('emoji-level').value;
+        const postPreview = document.getElementById('post-preview');
+        const postText = document.getElementById('post-text');
+
+        postPreview.style.display = 'block';
+        postText.textContent = '';
+        postText.classList.add('skeleton');
         
         showToast('info', 'Generating post...', 'fas fa-spinner');
         
@@ -1188,14 +1377,21 @@
         .then(r => r.json())
         .then(data => {
             if (data.success || data.content) {
-                document.getElementById('post-text').textContent = data.content || data.text;
-                document.getElementById('post-preview').style.display = 'block';
+                postText.classList.remove('skeleton');
+                postText.textContent = data.content || data.text;
+                postPreview.style.display = 'block';
                 showToast('success', 'Post generated!', 'fas fa-check');
             } else {
+                postText.classList.remove('skeleton');
+                postPreview.style.display = 'none';
                 showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
             }
         })
-        .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
+        .catch(e => {
+            postText.classList.remove('skeleton');
+            postPreview.style.display = 'none';
+            showToast('error', e.message, 'fas fa-exclamation-circle');
+        });
     }
 
     function postNow() {
@@ -1312,6 +1508,102 @@
         generatePost();
     }
 
+    function refreshKnowledgeBaseStatus() {
+        const kbStatusEl = document.getElementById('kb-status');
+        if (!kbStatusEl) {
+            return;
+        }
+
+        fetch('/api/knowledge-base-status')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                kbStatusEl.textContent = 'Unable to load knowledge base status';
+                return;
+            }
+
+            const readiness = data.rag_ready ? '✅ Trained and ready' : '⚠️ Not trained yet';
+            const docs = data.rag_document_count || 0;
+            const files = data.pdf_count || 0;
+            const pdfCount = data.pdf_count_detail || 0;
+            const docxCount = data.docx_count || 0;
+            kbStatusEl.textContent = `${readiness} • ${docs} vector doc(s) • ${files} file(s) [PDF: ${pdfCount}, DOCX: ${docxCount}]`;
+        })
+        .catch(() => {
+            kbStatusEl.textContent = 'Unable to load knowledge base status';
+        });
+    }
+
+    function refreshKnowledgeBaseFiles() {
+        const listEl = document.getElementById('kb-files-list');
+        if (!listEl) {
+            return;
+        }
+
+        fetch('/api/list-knowledge-base-files')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                listEl.innerHTML = '<div class="kb-empty">Unable to load uploaded files</div>';
+                return;
+            }
+
+            if (!data.files || data.files.length === 0) {
+                listEl.innerHTML = '<div class="kb-empty">No uploaded files yet</div>';
+                return;
+            }
+
+            listEl.innerHTML = data.files.map(file => {
+                const typeClass = (file.type || '').toLowerCase() === 'docx' ? 'docx' : 'pdf';
+                const safeName = (file.name || '').replace(/"/g, '&quot;');
+                return `
+                    <div class="kb-file-item">
+                        <div class="kb-file-meta">
+                            <div class="kb-file-name" title="${safeName}">${file.name}</div>
+                            <div class="kb-file-details">
+                                <span class="kb-badge ${typeClass}">${file.type}</span>
+                                <span class="kb-badge size">${file.size} MB</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="deleteKnowledgeBaseFile('${safeName}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        })
+        .catch(() => {
+            listEl.innerHTML = '<div class="kb-empty">Unable to load uploaded files</div>';
+        });
+    }
+
+    function deleteKnowledgeBaseFile(filename) {
+        if (!filename) {
+            return;
+        }
+
+        if (!confirm(`Delete ${filename}? This cannot be undone.`)) {
+            return;
+        }
+
+        fetch('/api/delete-knowledge-base-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message || 'File deleted', 'fas fa-check');
+                refreshKnowledgeBaseStatus();
+                refreshKnowledgeBaseFiles();
+            } else {
+                showToast('error', data.message || 'Delete failed', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => showToast('error', e.message || 'Delete failed', 'fas fa-exclamation-circle'));
+    }
+
     function uploadKnowledgeBase() {
         const file = document.getElementById('kb-file').files[0];
         if (!file) {
@@ -1320,7 +1612,7 @@
         }
         
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('files', file);
         
         document.getElementById('kb-progress').style.display = 'block';
         
@@ -1334,6 +1626,8 @@
             if (data.success) {
                 showToast('success', 'Knowledge base trained!', 'fas fa-check');
                 document.getElementById('kb-file').value = '';
+                refreshKnowledgeBaseStatus();
+                refreshKnowledgeBaseFiles();
             } else {
                 showToast('error', data.message || 'Upload failed', 'fas fa-exclamation-circle');
             }
@@ -1350,8 +1644,68 @@
         }
     }
 
+    function applySidebarState(isCollapsed) {
+        const appContainer = document.querySelector('.app-container');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        const toggleIcon = document.getElementById('sidebar-toggle-icon');
+        const toggleLabel = toggleBtn ? toggleBtn.querySelector('.toggle-label') : null;
+
+        if (!appContainer || !toggleBtn || !toggleIcon || !toggleLabel) {
+            return;
+        }
+
+        appContainer.classList.toggle('sidebar-collapsed', isCollapsed);
+
+        if (isCollapsed) {
+            toggleIcon.className = 'fas fa-angle-right';
+            toggleLabel.textContent = 'Expand';
+            toggleBtn.title = 'Expand sidebar';
+            toggleBtn.setAttribute('aria-label', 'Expand sidebar');
+        } else {
+            toggleIcon.className = 'fas fa-angle-left';
+            toggleLabel.textContent = 'Collapse';
+            toggleBtn.title = 'Collapse sidebar';
+            toggleBtn.setAttribute('aria-label', 'Collapse sidebar');
+        }
+    }
+
+    function toggleSidebar() {
+        const appContainer = document.querySelector('.app-container');
+        if (!appContainer) {
+            return;
+        }
+
+        const isCollapsed = !appContainer.classList.contains('sidebar-collapsed');
+        applySidebarState(isCollapsed);
+        localStorage.setItem('sidebarCollapsed', isCollapsed ? '1' : '0');
+    }
+
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
+        const savedCollapsedState = localStorage.getItem('sidebarCollapsed') === '1';
+        applySidebarState(savedCollapsedState);
+
+        document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+            const label = item.querySelector('span');
+            if (label) {
+                item.title = label.textContent.trim();
+            }
+        });
+
+        const nextPostContent = document.getElementById('next-post-content');
+        setTimeout(() => {
+            if (nextPostContent) {
+                nextPostContent.classList.remove('skeleton', 'skeleton-text', 'next-post-skeleton');
+                nextPostContent.style.margin = '1rem 0';
+                nextPostContent.style.color = '#4b5563';
+                nextPostContent.style.fontStyle = 'italic';
+                nextPostContent.textContent = 'No scheduled post yet. Generate a post and use Schedule to queue it.';
+            }
+        }, 900);
+
+        refreshKnowledgeBaseStatus();
+        refreshKnowledgeBaseFiles();
+
         showToast('success', 'Welcome to ContentAI Pro!', 'fas fa-check');
     });
 </script>
