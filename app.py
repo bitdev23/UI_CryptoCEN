@@ -1,7 +1,7 @@
 """
 Simple web dashboard for non-technical LinkedIn automation management.
 Run: python app.py
-Then open: http://localhost:5000
+Then open: http://localhost:5050
 """
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 import os
@@ -12,7 +12,7 @@ import time
 import schedule
 import pytz
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from ai_provider import AIProvider
 from config import PROFILES, DEFAULT_PROFILE, POST_FORMATS
@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+PDF_DIR = os.path.join(DATA_DIR, 'pdfs')
+CHROMA_DIR = os.path.join(DATA_DIR, 'chroma_db')
 
 # ============= KNOWLEDGE BASE CONFIGURATION =============
 MAX_DOCUMENTS_PER_USER = 100        # Maximum documents allowed
@@ -505,6 +510,15 @@ def schedule_post():
         
         if not content or not schedule_time:
             return jsonify({'success': False, 'message': 'Content and schedule time required'})
+
+        try:
+            scheduled_dt = datetime.fromisoformat(schedule_time)
+        except Exception:
+            return jsonify({'success': False, 'message': 'Invalid schedule time format'}), 400
+
+        min_dt = datetime.now() + timedelta(minutes=2)
+        if scheduled_dt < min_dt:
+            return jsonify({'success': False, 'message': 'Schedule time must be at least 2 minutes from now'}), 400
         
         # Load existing scheduled posts
         scheduled_posts = []
@@ -534,6 +548,97 @@ def schedule_post():
     except Exception as e:
         logger.exception("Failed to schedule post")
         return jsonify({'success': False, 'message': f"Scheduling failed: {str(e)}"})
+
+@app.route('/api/scheduled-posts', methods=['GET'])
+def get_scheduled_posts():
+    """Return scheduled posts ordered by schedule time"""
+    try:
+        scheduled_posts = []
+        if os.path.exists('data/scheduled_posts.json'):
+            with open('data/scheduled_posts.json', 'r') as f:
+                scheduled_posts = json.load(f)
+
+        def parse_dt(value):
+            try:
+                return datetime.fromisoformat(value)
+            except Exception:
+                return datetime.max
+
+        scheduled_posts.sort(key=lambda item: parse_dt(item.get('schedule_time', '')))
+
+        return jsonify({'success': True, 'posts': scheduled_posts})
+    except Exception as e:
+        logger.exception("Failed to load scheduled posts")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/reschedule-post', methods=['POST'])
+def reschedule_post():
+    """Reschedule an existing post by id"""
+    try:
+        data = request.get_json() or {}
+        post_id = data.get('id')
+        schedule_time = data.get('schedule_time', '')
+
+        if not post_id or not schedule_time:
+            return jsonify({'success': False, 'message': 'Post id and schedule time required'}), 400
+
+        try:
+            scheduled_dt = datetime.fromisoformat(schedule_time)
+        except Exception:
+            return jsonify({'success': False, 'message': 'Invalid schedule time format'}), 400
+
+        min_dt = datetime.now() + timedelta(minutes=2)
+        if scheduled_dt < min_dt:
+            return jsonify({'success': False, 'message': 'Schedule time must be at least 2 minutes from now'}), 400
+
+        scheduled_posts = []
+        if os.path.exists('data/scheduled_posts.json'):
+            with open('data/scheduled_posts.json', 'r') as f:
+                scheduled_posts = json.load(f)
+
+        updated = False
+        for post in scheduled_posts:
+            if str(post.get('id')) == str(post_id):
+                post['schedule_time'] = schedule_time
+                updated = True
+                break
+
+        if not updated:
+            return jsonify({'success': False, 'message': 'Scheduled post not found'}), 404
+
+        with open('data/scheduled_posts.json', 'w') as f:
+            json.dump(scheduled_posts, f, indent=2)
+
+        return jsonify({'success': True, 'message': 'Post rescheduled successfully'})
+    except Exception as e:
+        logger.exception("Failed to reschedule post")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/cancel-scheduled-post', methods=['POST'])
+def cancel_scheduled_post():
+    """Cancel a scheduled post by id"""
+    try:
+        data = request.get_json() or {}
+        post_id = data.get('id')
+        if not post_id:
+            return jsonify({'success': False, 'message': 'Post id required'}), 400
+
+        scheduled_posts = []
+        if os.path.exists('data/scheduled_posts.json'):
+            with open('data/scheduled_posts.json', 'r') as f:
+                scheduled_posts = json.load(f)
+
+        new_posts = [post for post in scheduled_posts if str(post.get('id')) != str(post_id)]
+        if len(new_posts) == len(scheduled_posts):
+            return jsonify({'success': False, 'message': 'Scheduled post not found'}), 404
+
+        with open('data/scheduled_posts.json', 'w') as f:
+            json.dump(new_posts, f, indent=2)
+
+        return jsonify({'success': True, 'message': 'Scheduled post canceled'})
+    except Exception as e:
+        logger.exception("Failed to cancel scheduled post")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/post-now', methods=['POST'])
 def post_now():
@@ -669,11 +774,11 @@ def upload_knowledge_base():
             logger.warning("No files selected in upload")
             return jsonify({'success': False, 'message': 'No files selected'}), 400
         
-        # Create if data/pdfs doesn't exist
-        os.makedirs('data/pdfs', exist_ok=True)
+        # Create if PDF directory doesn't exist
+        os.makedirs(PDF_DIR, exist_ok=True)
         
         # Check document count limit
-        existing_files = [f for f in os.listdir('data/pdfs') if f.endswith(('.pdf', '.docx'))]
+        existing_files = [f for f in os.listdir(PDF_DIR) if f.endswith(('.pdf', '.docx'))]
         if len(existing_files) >= MAX_DOCUMENTS_PER_USER:
             logger.warning(f"Document limit reached: {len(existing_files)}/{MAX_DOCUMENTS_PER_USER}")
             return jsonify({
@@ -712,7 +817,7 @@ def upload_knowledge_base():
             file.seek(0)
             
             # Check if we've hit the document limit
-            current_count = len([f for f in os.listdir('data/pdfs') if f.endswith(('.pdf', '.docx'))])
+            current_count = len([f for f in os.listdir(PDF_DIR) if f.endswith(('.pdf', '.docx'))])
             if current_count >= MAX_DOCUMENTS_PER_USER:
                 logger.warning(f"Hit document limit during batch upload")
                 skipped_reasons.append(f"{filename}: Document limit reached")
@@ -720,7 +825,7 @@ def upload_knowledge_base():
                 continue
             
             try:
-                filepath = os.path.join('data/pdfs', filename)
+                filepath = os.path.join(PDF_DIR, filename)
                 file.save(filepath)
                 logger.info("Saved file: %s", filepath)
                 uploaded_count += 1
@@ -742,8 +847,8 @@ def upload_knowledge_base():
         rag_error = None
         try:
             logger.info("Starting RAG rebuild with %d new files", uploaded_count)
-            rag = RAGStore(persist_dir="data/chroma_db")
-            docs = load_pdfs("data/pdfs")
+            rag = RAGStore(persist_dir=CHROMA_DIR)
+            docs = load_pdfs(PDF_DIR)
             logger.info("Loaded %d documents for RAG", len(docs))
             if docs:
                 rag.build_from_documents(docs)
@@ -858,7 +963,7 @@ def train_model():
         from pdf_processor import load_pdfs
         
         # Check if documents exist
-        if not os.path.exists('data/pdfs'):
+        if not os.path.exists(PDF_DIR):
             return jsonify({
                 'success': False,
                 'message': 'Knowledge base folder not found. Upload documents first.'
@@ -866,7 +971,7 @@ def train_model():
         
         # Load all documents
         try:
-            docs = load_pdfs("data/pdfs")
+            docs = load_pdfs(PDF_DIR)
         except Exception as e:
             logger.exception(f"Failed to load documents: {e}")
             return jsonify({
@@ -882,7 +987,7 @@ def train_model():
         
         # Build RAG model with error handling
         try:
-            rag = RAGStore(persist_dir="data/chroma_db")
+            rag = RAGStore(persist_dir=CHROMA_DIR)
             rag.build_from_documents(docs)
             rag.persist()
             logger.info(f"Successfully trained RAG with {len(docs)} documents")
@@ -908,14 +1013,14 @@ def knowledge_base_status():
     try:
         from rag_system import RAGStore
         
-        rag = RAGStore(persist_dir="data/chroma_db")
+        rag = RAGStore(persist_dir=CHROMA_DIR)
         
         # Count documents
         file_count = 0
         pdf_count = 0
         docx_count = 0
-        if os.path.exists('data/pdfs'):
-            files = os.listdir('data/pdfs')
+        if os.path.exists(PDF_DIR):
+            files = os.listdir(PDF_DIR)
             pdf_count = len([f for f in files if f.endswith('.pdf')])
             docx_count = len([f for f in files if f.endswith('.docx')])
             file_count = pdf_count + docx_count
@@ -947,10 +1052,10 @@ def list_knowledge_base_files():
     """List all uploaded knowledge base files"""
     try:
         files_list = []
-        if os.path.exists('data/pdfs'):
-            for filename in os.listdir('data/pdfs'):
+        if os.path.exists(PDF_DIR):
+            for filename in os.listdir(PDF_DIR):
                 if filename.endswith(('.pdf', '.docx')):
-                    filepath = os.path.join('data/pdfs', filename)
+                    filepath = os.path.join(PDF_DIR, filename)
                     file_size = os.path.getsize(filepath)
                     file_type = 'PDF' if filename.endswith('.pdf') else 'DOCX'
                     files_list.append({
@@ -989,27 +1094,53 @@ def delete_knowledge_base_file():
                 'message': 'Filename required'
             }), 400
         
-        filename = data['filename']
+        filename = (data['filename'] or '').strip()
         # Sanitize filename
         if '/' in filename or '\\' in filename or '..' in filename:
             return jsonify({
                 'success': False,
                 'message': 'Invalid filename'
             }), 400
-        
-        filepath = os.path.join('data/pdfs', filename)
-        
-        # Check if file exists
-        if not os.path.exists(filepath):
+
+        if not os.path.exists(PDF_DIR):
+            return jsonify({'success': False, 'message': 'Knowledge base folder not found'}), 404
+
+        existing_files = os.listdir(PDF_DIR)
+        candidates = [filename]
+        try:
+            from werkzeug.utils import secure_filename
+            safe = secure_filename(filename)
+            if safe and safe not in candidates:
+                candidates.append(safe)
+        except Exception:
+            pass
+        if ' ' in filename:
+            candidates.append(filename.replace(' ', '_'))
+        if '_' in filename:
+            candidates.append(filename.replace('_', ' '))
+
+        matched_name = None
+        existing_lower = {f.lower(): f for f in existing_files}
+        for candidate in candidates:
+            if candidate in existing_files:
+                matched_name = candidate
+                break
+            if candidate.lower() in existing_lower:
+                matched_name = existing_lower[candidate.lower()]
+                break
+
+        if not matched_name:
             return jsonify({
                 'success': False,
-                'message': 'File not found'
+                'message': f'File not found: {filename}'
             }), 404
+
+        filepath = os.path.join(PDF_DIR, matched_name)
         
         # Delete file
         try:
             os.remove(filepath)
-            logger.info(f"Deleted knowledge base file: {filename}")
+            logger.info(f"Deleted knowledge base file: {matched_name}")
         except Exception as e:
             logger.exception(f"Failed to delete file: {e}")
             return jsonify({
@@ -1020,11 +1151,11 @@ def delete_knowledge_base_file():
         # Rebuild RAG with remaining documents
         rag_error = None
         try:
-            if any(os.path.isfile(os.path.join('data/pdfs', f)) 
+            if any(os.path.isfile(os.path.join(PDF_DIR, f)) 
                    and f.endswith(('.pdf', '.docx')) 
-                   for f in os.listdir('data/pdfs')):
-                rag = RAGStore(persist_dir="data/chroma_db")
-                docs = load_pdfs("data/pdfs")
+                   for f in os.listdir(PDF_DIR)):
+                rag = RAGStore(persist_dir=CHROMA_DIR)
+                docs = load_pdfs(PDF_DIR)
                 if docs:
                     rag.build_from_documents(docs)
                     rag.persist()
@@ -1033,7 +1164,7 @@ def delete_knowledge_base_file():
             rag_error = str(e)
             logger.exception(f"RAG rebuild after deletion failed: {e}")
         
-        response_msg = f'Successfully deleted {filename}'
+        response_msg = f'Successfully deleted {matched_name}'
         if rag_error:
             response_msg += f' (Note: RAG rebuild skipped - {rag_error})'
         

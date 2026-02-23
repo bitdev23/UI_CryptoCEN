@@ -203,39 +203,40 @@
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         .btn-secondary {
-            background: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-        }
-        .btn-secondary:hover {
-            background: #f8f9fa;
-            border-color: #5568d3;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-        }
-        .btn-success {
-            background: linear-gradient(135deg, var(--success) 0%, #389e0d 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
             color: white;
-            box-shadow: 0 4px 15px rgba(82, 196, 26, 0.3);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        .btn-success:hover {
-            background: linear-gradient(135deg, #389e0d 0%, #2f7d05 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(82, 196, 26, 0.4);
+            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
+            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
-        .btn-danger {
-            background: linear-gradient(135deg, var(--error) 0%, #cf1322 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(245, 34, 45, 0.3);
+            background: linear-gradient(135deg, #16a34a 0%, #0f8a3a 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        .btn-danger:hover {
-            background: linear-gradient(135deg, #cf1322 0%, #a3111e 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 34, 45, 0.4);
+            background: linear-gradient(135deg, #0f8a3a 0%, #0b6b2d 100%);
+            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         .btn-sm {
-            padding: 0.45rem 0.9rem;
-            font-size: 0.85rem;
+            padding: 1rem 1.8rem;
+            font-size: 1rem;
+            min-height: 50px;
         }
         .btn i {
             font-size: 1.05rem;
@@ -741,6 +742,20 @@
             margin-bottom: 1.5rem;
             font-weight: 500;
         }
+        .post-placeholder {
+            background: #ffffff;
+            border-radius: 6px;
+            border: 2px dashed #cdd5f2;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #4b5563;
+            font-weight: 600;
+            display: none;
+        }
+        .post-placeholder i {
+            color: var(--primary);
+            margin-right: 0.5rem;
+        }
         .preview-actions {
             display: flex;
             gap: 1rem;
@@ -852,6 +867,10 @@
                 <i class="fas fa-chart-bar"></i>
                 <span>Analytics</span>
             </div>
+            <div class="nav-item" onclick="switchTab('post-history')">
+                <i class="fas fa-clock"></i>
+                <span>Post History</span>
+            </div>
         </nav>
         <div class="sidebar-toggle-wrap">
             <button id="sidebar-toggle" class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
@@ -925,15 +944,18 @@
                 <div class="card" style="margin-top: 2rem;">
                     <div class="card-header">
                         <h2>Next Scheduled Post</h2>
-                        <span class="status-badge pending">In 2 hours</span>
+                        <span id="next-post-status" class="status-badge pending">Pending</span>
                     </div>
                     <p id="next-post-content" class="skeleton skeleton-text next-post-skeleton"></p>
-                    <div style="display: flex; gap: 1rem;">
-                        <button class="btn btn-primary btn-sm" onclick="showToast('success', 'Post content copied!', 'fas fa-check')">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="copyNextScheduledPost()">
                             <i class="fas fa-copy"></i> Copy
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="showToast('info', 'Rescheduling post...', 'fas fa-info-circle')">
-                            <i class="fas fa-sync"></i> Reschedule
+                        <button class="btn btn-secondary btn-sm" onclick="rescheduleNextPost()">
+                            <i class="fas fa-calendar-alt"></i> Reschedule
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelNextPost()">
+                            <i class="fas fa-trash"></i> Cancel
                         </button>
                     </div>
                 </div>
@@ -1034,19 +1056,23 @@
                             <label>Topic (Optional)</label>
                             <textarea id="topic-input" placeholder="Leave blank for AI-generated topic..." rows="3"></textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="generatePost()" style="width: 100%; margin-bottom: 1rem;">
-                            <i class="fas fa-magic"></i> Generate Post
+                        <button class="btn btn-primary btn-generate" onclick="generatePost()" style="margin-bottom: 1rem;">
+                            <i class="fas fa-magic"></i> Generate Linkedin Post
                         </button>
                         <div id="post-preview">
+                            <div id="post-placeholder" class="post-placeholder">
+                                <i class="fas fa-hourglass-half"></i>
+                                Fasten your seat belt, generation in progress...
+                            </div>
                             <p id="post-text"></p>
                             <div class="preview-actions">
-                                <button class="btn btn-success btn-sm" onclick="schedulePost()">
+                                <button class="btn btn-post-schedule btn-sm" onclick="openScheduleModal()">
                                     <i class="fas fa-calendar"></i> Schedule
                                 </button>
-                                <button class="btn btn-primary btn-sm" onclick="postNow()">
+                                <button class="btn btn-post-now btn-sm" onclick="postNow()">
                                     <i class="fas fa-paper-plane"></i> Post Now
                                 </button>
-                                <button class="btn btn-secondary btn-sm" onclick="regeneratePost()">
+                                <button class="btn btn-post-regenerate btn-sm" onclick="regeneratePost()">
                                     <i class="fas fa-redo"></i> Regenerate
                                 </button>
                             </div>
@@ -1094,7 +1120,7 @@
                             <p class="form-hint">Max 50MB. Supports PDF and DOCX</p>
                         </div>
                         <button class="btn btn-primary" onclick="uploadKnowledgeBase()" style="width: 100%;">
-                            <i class="fas fa-upload"></i> Upload & Train
+                            <i class="fas fa-upload"></i> Upload & Train Your AI Model
                         </button>
                     </div>
                     <div class="card">
@@ -1138,7 +1164,7 @@
                         <p class="form-hint">Your API key is encrypted and stored securely</p>
                     </div>
                     <button class="btn btn-primary" onclick="saveAISettings()">
-                        <i class="fas fa-save"></i> Save Settings
+                        <i class="fas fa-save"></i> Save AI Settings
                     </button>
                 </div>
 
@@ -1229,12 +1255,15 @@
             <button class="modal-close" onclick="closeModal('industry-modal')">×</button>
         </div>
         <div class="modal-body">
-            <div class="form-group">
-                <label>Industry</label>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="copyNextScheduledPost()">
                 <select id="modal-industry">
                     <option value="tech">Technology & Software</option>
-                    <option value="finance">Finance & Banking</option>
-                    <option value="healthcare">Healthcare & Pharma</option>
+                        <button class="btn btn-secondary btn-sm" onclick="rescheduleNextPost()">
+                            <i class="fas fa-calendar-alt"></i> Reschedule
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelNextPost()">
+                            <i class="fas fa-trash"></i> Cancel
                     <option value="ecommerce">E-Commerce & Retail</option>
                     <option value="crypto">Cryptocurrency & Blockchain</option>
                     <option value="saas">SaaS & Startups</option>
@@ -1260,6 +1289,31 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('industry-modal')">Cancel</button>
             <button class="btn btn-primary" onclick="saveIndustryRole()">Save & Continue</button>
+        </div>
+    </div>
+</div>
+
+<!-- SCHEDULE MODAL -->
+<div id="schedule-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Schedule Post</h2>
+            <button class="modal-close" onclick="closeModal('schedule-modal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="schedule-date">
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                <input type="time" id="schedule-time">
+                <p class="form-hint">Select a time at least 2 minutes from now.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('schedule-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmSchedulePost()">Schedule</button>
         </div>
     </div>
 </div>
@@ -1320,19 +1374,69 @@
             'scheduler': 'Scheduler',
             'knowledge-base': 'Knowledge Base',
             'settings': 'Settings',
-            'analytics': 'Analytics'
+            'analytics': 'Analytics',
+            'post-history': 'Post History'
         };
         document.getElementById('page-title').textContent = titles[tabId];
     }
 
     // Modal management
     function openIndustrySelector() {
+        const modalIndustry = document.getElementById('modal-industry');
+        const modalRole = document.getElementById('modal-role');
+        const contentIndustry = document.getElementById('industry-select');
+        const contentRole = document.getElementById('role-select');
+
+        if (modalIndustry && contentIndustry && contentIndustry.value) {
+            modalIndustry.value = contentIndustry.value;
+        }
+        if (modalRole && contentRole && contentRole.value) {
+            modalRole.value = contentRole.value;
+        }
+
         document.getElementById('industry-modal').classList.add('active');
     }
 
     function closeModal(modalId) {
         document.getElementById(modalId).classList.remove('active');
     }
+
+    async function parseJsonResponse(response) {
+        const text = await response.text();
+        if (!text) {
+            throw new Error(`Empty response (${response.status})`);
+        }
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            throw new Error(`Invalid server response (${response.status})`);
+        }
+    }
+
+    function setSelectValue(selectId, value) {
+        const el = document.getElementById(selectId);
+        if (!el || !value) {
+            return;
+        }
+        const hasOption = Array.from(el.options).some(option => option.value === value);
+        if (hasOption) {
+            el.value = value;
+        }
+    }
+
+    function syncIndustryRoleUI(industry, role) {
+        setSelectValue('industry-select', industry);
+        setSelectValue('role-select', role);
+        setSelectValue('modal-industry', industry);
+        setSelectValue('modal-role', role);
+    }
+
+    let lastGeneratedHashtags = [];
+    let pendingScheduleContent = '';
+    let pendingScheduleHashtags = [];
+    let pendingScheduleId = null;
+    let nextScheduledPost = null;
+    let postHistoryCache = [];
 
     function saveIndustryRole() {
         const industry = document.getElementById('modal-industry').value;
@@ -1343,12 +1447,17 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 'CONTENT_INDUSTRY': industry, 'USER_ROLE': role })
         })
-        .then(r => r.json())
+        .then(r => parseJsonResponse(r))
         .then(data => {
+            if (!data.success) {
+                showToast('error', data.message || 'Failed to save settings', 'fas fa-exclamation-circle');
+                return;
+            }
+            syncIndustryRoleUI(industry, role);
             showToast('success', `Industry set to ${industry} with role ${role}`, 'fas fa-check');
             closeModal('industry-modal');
         })
-        .catch(e => showToast('error', 'Failed to save settings', 'fas fa-exclamation-circle'));
+        .catch(e => showToast('error', e.message || 'Failed to save settings', 'fas fa-exclamation-circle'));
     }
 
     // Content generation
@@ -1360,10 +1469,15 @@
         const emojis = document.getElementById('emoji-level').value;
         const postPreview = document.getElementById('post-preview');
         const postText = document.getElementById('post-text');
+        const postPlaceholder = document.getElementById('post-placeholder');
 
         postPreview.style.display = 'block';
         postText.textContent = '';
         postText.classList.add('skeleton');
+        postText.style.display = 'none';
+        if (postPlaceholder) {
+            postPlaceholder.style.display = 'block';
+        }
         
         showToast('info', 'Generating post...', 'fas fa-spinner');
         
@@ -1374,40 +1488,61 @@
                 topic, industry, role, hashtags, emojis
             })
         })
-        .then(r => r.json())
+        .then(r => parseJsonResponse(r))
         .then(data => {
-            if (data.success || data.content) {
+            const content = data.content || data.text || data.post;
+            if (data.success && content) {
                 postText.classList.remove('skeleton');
-                postText.textContent = data.content || data.text;
+                postText.style.display = 'block';
+                postText.textContent = content;
+                lastGeneratedHashtags = data.hashtags || [];
+                if (postPlaceholder) {
+                    postPlaceholder.style.display = 'none';
+                }
                 postPreview.style.display = 'block';
                 showToast('success', 'Post generated!', 'fas fa-check');
-            } else {
-                postText.classList.remove('skeleton');
-                postPreview.style.display = 'none';
-                showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
+                return;
             }
+
+            postText.classList.remove('skeleton');
+            postText.style.display = 'none';
+            postPreview.style.display = 'none';
+            if (postPlaceholder) {
+                postPlaceholder.style.display = 'none';
+            }
+            showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
         })
         .catch(e => {
             postText.classList.remove('skeleton');
+            postText.style.display = 'none';
             postPreview.style.display = 'none';
+            if (postPlaceholder) {
+                postPlaceholder.style.display = 'none';
+            }
             showToast('error', e.message, 'fas fa-exclamation-circle');
         });
     }
 
     function postNow() {
         const content = document.getElementById('post-text').textContent;
+        if (!content) {
+            showToast('error', 'No generated content to post', 'fas fa-exclamation-circle');
+            return;
+        }
         
         fetch('/api/post-now', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content })
+            body: JSON.stringify({ content, hashtags: lastGeneratedHashtags, usePreview: true })
         })
-        .then(r => r.json())
+        .then(r => parseJsonResponse(r))
         .then(data => {
             if (data.success) {
                 showToast('success', 'Post published to LinkedIn!', 'fas fa-check');
                 document.getElementById('post-preview').style.display = 'none';
                 document.getElementById('topic-input').value = '';
+                refreshPostHistory();
+                refreshScheduledPosts();
             } else {
                 showToast('error', data.message || 'Failed to post', 'fas fa-exclamation-circle');
             }
@@ -1415,22 +1550,113 @@
         .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
     }
 
-    function schedulePost() {
+    function openScheduleModal() {
         const content = document.getElementById('post-text').textContent;
-        const scheduleTime = prompt('Enter schedule time (YYYY-MM-DD HH:MM):');
-        
-        if (!scheduleTime) return;
-        
-        fetch('/api/schedule-post', {
+        if (!content) {
+            showToast('error', 'Generate a post before scheduling', 'fas fa-exclamation-circle');
+            return;
+        }
+
+        pendingScheduleContent = content;
+        pendingScheduleHashtags = lastGeneratedHashtags || [];
+        pendingScheduleId = null;
+
+        const dateInput = document.getElementById('schedule-date');
+        const timeInput = document.getElementById('schedule-time');
+        const now = new Date();
+        const minDate = new Date(now.getTime() + 2 * 60000);
+        const pad = value => String(value).padStart(2, '0');
+
+        const minDateValue = `${minDate.getFullYear()}-${pad(minDate.getMonth() + 1)}-${pad(minDate.getDate())}`;
+        dateInput.min = minDateValue;
+        dateInput.value = minDateValue;
+        timeInput.value = `${pad(minDate.getHours())}:${pad(minDate.getMinutes())}`;
+
+        updateScheduleMinTime();
+        document.getElementById('schedule-modal').classList.add('active');
+    }
+
+    function openScheduleModalWithPost(post) {
+        if (!post || !post.content) {
+            showToast('error', 'No scheduled post found', 'fas fa-exclamation-circle');
+            return;
+        }
+
+        pendingScheduleContent = post.content;
+        pendingScheduleHashtags = post.hashtags || [];
+
+        const dateInput = document.getElementById('schedule-date');
+        const timeInput = document.getElementById('schedule-time');
+        const scheduledDate = new Date(post.schedule_time);
+        const now = new Date();
+        const minDate = new Date(now.getTime() + 2 * 60000);
+        const pad = value => String(value).padStart(2, '0');
+
+        const baseDate = scheduledDate > minDate ? scheduledDate : minDate;
+        const minDateValue = `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`;
+
+        dateInput.min = minDateValue;
+        dateInput.value = minDateValue;
+        timeInput.value = `${pad(baseDate.getHours())}:${pad(baseDate.getMinutes())}`;
+        pendingScheduleId = post.id;
+
+        updateScheduleMinTime();
+        document.getElementById('schedule-modal').classList.add('active');
+    }
+
+    function updateScheduleMinTime() {
+        const dateInput = document.getElementById('schedule-date');
+        const timeInput = document.getElementById('schedule-time');
+        if (!dateInput || !timeInput) {
+            return;
+        }
+
+        const now = new Date();
+        const minDate = new Date(now.getTime() + 2 * 60000);
+        const pad = value => String(value).padStart(2, '0');
+        const todayStr = `${minDate.getFullYear()}-${pad(minDate.getMonth() + 1)}-${pad(minDate.getDate())}`;
+
+        if (dateInput.value === todayStr) {
+            timeInput.min = `${pad(minDate.getHours())}:${pad(minDate.getMinutes())}`;
+        } else {
+            timeInput.min = '';
+        }
+    }
+
+    function confirmSchedulePost() {
+        const dateValue = document.getElementById('schedule-date').value;
+        const timeValue = document.getElementById('schedule-time').value;
+        if (!dateValue || !timeValue) {
+            showToast('error', 'Please select date and time', 'fas fa-exclamation-circle');
+            return;
+        }
+
+        const scheduleTime = `${dateValue}T${timeValue}:00`;
+        const scheduledDate = new Date(scheduleTime);
+        const minDate = new Date(Date.now() + 2 * 60000);
+        if (scheduledDate < minDate) {
+            showToast('error', 'Schedule time must be at least 2 minutes from now', 'fas fa-exclamation-circle');
+            return;
+        }
+
+        const endpoint = pendingScheduleId ? '/api/reschedule-post' : '/api/schedule-post';
+        const payload = pendingScheduleId
+            ? { id: pendingScheduleId, schedule_time: scheduleTime }
+            : { content: pendingScheduleContent, hashtags: pendingScheduleHashtags, schedule_time: scheduleTime };
+
+        fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, schedule_time: scheduleTime })
+            body: JSON.stringify(payload)
         })
-        .then(r => r.json())
+        .then(r => parseJsonResponse(r))
         .then(data => {
             if (data.success) {
                 showToast('success', 'Post scheduled successfully!', 'fas fa-calendar');
                 document.getElementById('post-preview').style.display = 'none';
+                pendingScheduleId = null;
+                closeModal('schedule-modal');
+                refreshScheduledPosts();
             } else {
                 showToast('error', data.message || 'Failed to schedule', 'fas fa-exclamation-circle');
             }
@@ -1577,6 +1803,248 @@
         });
     }
 
+    function refreshScheduledPosts() {
+        const listEl = document.getElementById('scheduled-posts-list');
+        const nextPostEl = document.getElementById('next-post-content');
+        const nextPostStatus = document.getElementById('next-post-status');
+        if (!listEl) {
+            return;
+        }
+
+        fetch('/api/scheduled-posts')
+        .then(r => parseJsonResponse(r))
+        .then(data => {
+            if (!data.success || !data.posts) {
+                listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">Unable to load scheduled posts</div>';
+                return;
+            }
+
+            if (data.posts.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">No scheduled posts yet</div>';
+                if (nextPostEl) {
+                    nextPostEl.textContent = 'No scheduled post yet. Generate a post and use Schedule to queue it.';
+                }
+                if (nextPostStatus) {
+                    nextPostStatus.textContent = 'Not scheduled';
+                }
+                return;
+            }
+
+            const formatDate = value => {
+                const dt = new Date(value);
+                if (Number.isNaN(dt.getTime())) {
+                    return value;
+                }
+                return dt.toLocaleString();
+            };
+
+            listEl.innerHTML = data.posts.map(item => {
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Scheduled</h3>
+                            <span class="status-badge pending">${formatDate(item.schedule_time)}</span>
+                        </div>
+                        <p class="text-muted" style="margin: 0.5rem 0;">${item.content}</p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-sm" onclick="copyScheduledPost('${item.id}')">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="rescheduleScheduledPost('${item.id}')">
+                                <i class="fas fa-calendar-alt"></i> Reschedule
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="cancelScheduledPost('${item.id}')">
+                                <i class="fas fa-trash"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (nextPostEl) {
+                nextPostEl.textContent = data.posts[0].content;
+            }
+            if (nextPostStatus) {
+                nextPostStatus.textContent = formatDate(data.posts[0].schedule_time);
+            }
+            nextScheduledPost = data.posts[0];
+            postHistoryCache.scheduled = data.posts;
+        })
+        .catch(() => {
+            listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">Unable to load scheduled posts</div>';
+        });
+    }
+
+    function copyTextToClipboard(text) {
+        if (!text) {
+            showToast('error', 'Nothing to copy', 'fas fa-exclamation-circle');
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => showToast('success', 'Post content copied!', 'fas fa-check'))
+                .catch(() => showToast('error', 'Copy failed', 'fas fa-exclamation-circle'));
+        } else {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('success', 'Post content copied!', 'fas fa-check');
+        }
+    }
+
+    function copyEncodedText(encoded) {
+        try {
+            const text = decodeURIComponent(encoded);
+            copyTextToClipboard(text);
+        } catch (e) {
+            showToast('error', 'Copy failed', 'fas fa-exclamation-circle');
+        }
+    }
+
+    function copyNextScheduledPost() {
+        if (!nextScheduledPost) {
+            showToast('error', 'No scheduled post to copy', 'fas fa-exclamation-circle');
+            return;
+        }
+        copyTextToClipboard(nextScheduledPost.content);
+    }
+
+    function rescheduleNextPost() {
+        if (!nextScheduledPost) {
+            showToast('error', 'No scheduled post to reschedule', 'fas fa-exclamation-circle');
+            return;
+        }
+        openScheduleModalWithPost(nextScheduledPost);
+    }
+
+    function cancelNextPost() {
+        if (!nextScheduledPost) {
+            showToast('error', 'No scheduled post to cancel', 'fas fa-exclamation-circle');
+            return;
+        }
+        cancelScheduledPost(nextScheduledPost.id);
+    }
+
+    function copyScheduledPost(postId) {
+        const post = (postHistoryCache.scheduled || []).find(item => String(item.id) === String(postId));
+        if (!post) {
+            showToast('error', 'Post not found', 'fas fa-exclamation-circle');
+            return;
+        }
+        copyTextToClipboard(post.content);
+    }
+
+    function rescheduleScheduledPost(postId) {
+        const post = (postHistoryCache.scheduled || []).find(item => String(item.id) === String(postId));
+        if (!post) {
+            showToast('error', 'Post not found', 'fas fa-exclamation-circle');
+            return;
+        }
+        openScheduleModalWithPost(post);
+    }
+
+    function cancelScheduledPost(postId) {
+        if (!postId) {
+            return;
+        }
+        if (!confirm('Cancel this scheduled post?')) {
+            return;
+        }
+        fetch('/api/cancel-scheduled-post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: postId })
+        })
+        .then(r => parseJsonResponse(r))
+        .then(data => {
+            if (data.success) {
+                showToast('success', 'Scheduled post canceled', 'fas fa-check');
+                refreshScheduledPosts();
+            } else {
+                showToast('error', data.message || 'Cancel failed', 'fas fa-exclamation-circle');
+            }
+        })
+        .catch(e => showToast('error', e.message, 'fas fa-exclamation-circle'));
+    }
+
+    function refreshPostHistory() {
+        const listEl = document.getElementById('post-history-list');
+        if (!listEl) {
+            return;
+        }
+        fetch('/api/posts')
+        .then(r => parseJsonResponse(r))
+        .then(data => {
+            if (!data.success || !data.posts) {
+                listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">Unable to load posts</div>';
+                return;
+            }
+            postHistoryCache = data.posts;
+            applyPostHistoryFilters();
+        })
+        .catch(() => {
+            listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">Unable to load posts</div>';
+        });
+    }
+
+    function applyPostHistoryFilters() {
+        const listEl = document.getElementById('post-history-list');
+        if (!listEl) {
+            return;
+        }
+        const statusFilter = document.getElementById('history-status-filter').value;
+        const searchValue = document.getElementById('history-search').value.toLowerCase();
+        const themeValue = document.getElementById('history-theme').value.toLowerCase();
+
+        const filtered = (postHistoryCache || []).filter(post => {
+            const content = (post.content || '').toLowerCase();
+            const theme = (post.theme || '').toLowerCase();
+            const posted = !!post.posted;
+            if (statusFilter === 'posted' && !posted) {
+                return false;
+            }
+            if (statusFilter === 'preview' && posted) {
+                return false;
+            }
+            if (searchValue && !content.includes(searchValue)) {
+                return false;
+            }
+            if (themeValue && !theme.includes(themeValue)) {
+                return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div class="text-center text-muted" style="padding: 2rem;">No posts match your filters</div>';
+            return;
+        }
+
+        listEl.innerHTML = filtered.map(post => {
+            const statusLabel = post.posted ? 'Posted' : 'Preview';
+            const statusClass = post.posted ? 'success' : 'pending';
+            const dateValue = post.created_at ? new Date(post.created_at).toLocaleString() : 'Unknown date';
+            const encodedContent = encodeURIComponent(post.content || '');
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>${statusLabel}</h3>
+                        <span class="status-badge ${statusClass}">${dateValue}</span>
+                    </div>
+                    <p class="text-muted" style="margin: 0.5rem 0;">${post.content || ''}</p>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-sm" onclick="copyEncodedText('${encodedContent}')">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     function deleteKnowledgeBaseFile(filename) {
         if (!filename) {
             return;
@@ -1695,18 +2163,62 @@
         const nextPostContent = document.getElementById('next-post-content');
         setTimeout(() => {
             if (nextPostContent) {
-                nextPostContent.classList.remove('skeleton', 'skeleton-text', 'next-post-skeleton');
-                nextPostContent.style.margin = '1rem 0';
-                nextPostContent.style.color = '#4b5563';
-                nextPostContent.style.fontStyle = 'italic';
-                nextPostContent.textContent = 'No scheduled post yet. Generate a post and use Schedule to queue it.';
+                if (!nextScheduledPost) {
+                    nextPostContent.classList.remove('skeleton', 'skeleton-text', 'next-post-skeleton');
+                    nextPostContent.style.margin = '1rem 0';
+                    nextPostContent.style.color = '#4b5563';
+                    nextPostContent.style.fontStyle = 'italic';
+                    nextPostContent.textContent = 'No scheduled post yet. Generate a post and use Schedule to queue it.';
+                }
             }
         }, 900);
 
         refreshKnowledgeBaseStatus();
         refreshKnowledgeBaseFiles();
+        refreshScheduledPosts();
+        refreshPostHistory();
+
+        setInterval(() => {
+            refreshScheduledPosts();
+            refreshPostHistory();
+        }, 60000);
+
+        fetch('/api/config')
+        .then(r => parseJsonResponse(r))
+        .then(config => {
+            syncIndustryRoleUI(config.CONTENT_INDUSTRY, config.USER_ROLE);
+        })
+        .catch(() => {});
 
         showToast('success', 'Welcome to ContentAI Pro!', 'fas fa-check');
+    });
+
+    document.addEventListener('input', function(event) {
+        if (event.target && ['history-status-filter', 'history-search', 'history-theme'].includes(event.target.id)) {
+            applyPostHistoryFilters();
+        }
+    });
+
+    document.addEventListener('change', function(event) {
+        if (event.target && ['history-status-filter', 'history-search', 'history-theme'].includes(event.target.id)) {
+            applyPostHistoryFilters();
+        }
+    });
+
+    document.addEventListener('change', function(event) {
+        if (event.target && event.target.id === 'schedule-date') {
+            updateScheduleMinTime();
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+            activeModal.classList.remove('active');
+        }
     });
 </script>
 </body>

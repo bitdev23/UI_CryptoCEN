@@ -21,7 +21,12 @@ class RAGStore:
             logger.exception("Failed to init ChromaDB client")
             raise
         self.collection = None
-        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.model = None
+
+    def _get_model(self):
+        if self.model is None:
+            self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        return self.model
 
     def build_from_documents(self, docs: List[Tuple[str, str]], collection_name: str = "valtrilabs") -> None:
         """docs: list of (source, text)"""
@@ -30,12 +35,13 @@ class RAGStore:
             return
         try:
             self.collection = self.client.get_or_create_collection(name=collection_name)
+            model = self._get_model()
             ids = []
             metadatas = []
             embeddings = []
             documents = []
             for i, (src, text) in enumerate(docs):
-                emb = self.model.encode(text)
+                emb = model.encode(text)
                 ids.append(f"doc_{i}")
                 metadatas.append({"source": src})
                 embeddings.append(emb.tolist())
@@ -73,7 +79,8 @@ class RAGStore:
 
     def similarity_search(self, query: str, k: int = 4) -> List[dict]:
         try:
-            qemb = self.model.encode(query).tolist()
+            model = self._get_model()
+            qemb = model.encode(query).tolist()
             if self.collection is None:
                 self.collection = self.client.get_or_create_collection(name="valtrilabs")
             res = self.collection.query(query_embeddings=[qemb], n_results=k, include=['documents', 'metadatas', 'distances'])
