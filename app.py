@@ -3,7 +3,7 @@ Simple web dashboard for non-technical LinkedIn automation management.
 Run: python app.py
 Then open: http://localhost:5000
 """
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 import os
 import json
 import logging
@@ -286,26 +286,14 @@ def start_scheduler():
 
 @app.route('/')
 def dashboard():
-    """Main dashboard"""
+    """Main dashboard (enterprise)"""
     config = load_config()
-    
-    # Check if system is configured
-    is_configured = bool(
-        config['LINKEDIN_ACCESS_TOKEN'] and 
-        config['LINKEDIN_PERSON_ID'] and
-        (config['GOOGLE_API_KEY'] or config['ANTHROPIC_API_KEY'])
-    )
-    
-    return render_template('dashboard.html', 
-                         config=config, 
-                         is_configured=is_configured,
-                         current_time=datetime.now().isoformat())
+    return render_template('dashboard_enterprise.html', config=config)
 
 @app.route('/dashboard-enterprise')
 def dashboard_enterprise():
-    """Premium enterprise dashboard with multi-industry support"""
-    config = load_config()
-    return render_template('dashboard_enterprise.html', config=config)
+    """Legacy enterprise URL: redirect to main dashboard"""
+    return redirect(url_for('dashboard'))
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
@@ -1179,4 +1167,4 @@ if __name__ == '__main__':
     
     # Disable debug mode in production
     debug_mode = os.getenv('FLASK_ENV') != 'production'
-    app.run(debug=debug_mode, port=int(os.getenv('PORT', 5000)), host='0.0.0.0')
+    app.run(debug=debug_mode, port=int(os.getenv('PORT', 5050)), host='0.0.0.0')
