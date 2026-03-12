@@ -1,0 +1,901 @@
+"""
+Authentication system for ContentAI Pro
+Handles user registration, login, JWT validation
+"""
+
+import os
+import time
+import threading
+import requests
+from pathlib import Path
+from dotenv import load_dotenv, dotenv_values
+import jwt
+from functools import wraps
+from flask import request, jsonify, g
+from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
+from typing import Optional, Dict, Tuple, Callable, Any
+import logging
+
+# Load environment variables
+BASE_DIR = Path(__file__).resolve().parent
+_ENV_PATH = BASE_DIR / '.env'
+load_dotenv(dotenv_path=_ENV_PATH, override=False)
+if _ENV_PATH.exists():
+    for _key, _value in dotenv_values(_ENV_PATH).items():
+        if _value is None:
+            continue
+        _current = os.getenv(_key)
+        if _current is None or not str(_current).strip():
+            os.environ[_key] = _value
+
+logger = logging.getLogger("contentai.auth")
+
+# Initialize Supabase client
+supabase_url = os.getenv('SUPABASE_URL')
+supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
+_supabase_lock = threading.Lock()
+supabase: Optional[Client] = None
+
+
+def _auth_sdk_timeout() -> float:
+    raw = (
+        os.getenv('AUTH_SDK_TIMEOUT')
+        or os.getenv('AUTH_HTTP_TIMEOUT')
+        or os.getenv('AUTH_HTTP_READ_TIMEOUT')
+        or '30'
+    ).strip()
+    try:
+        return max(5.0, float(raw))
+    except Exception:
+        return 30.0
+
+
+def _create_supabase_client() -> Optional[Client]:
+    if not supabase_url or not supabase_key:
+        logger.warning("SUPABASE_URL or SUPABASE_KEY not set. Auth will not work.")
+        return None
+    try:
+        timeout = _auth_sdk_timeout()
+        options = ClientOptions(
+            postgrest_client_timeout=timeout,
+            storage_client_timeout=max(20.0, timeout)
+        )
+        return create_client(supabase_url, supabase_key, options=options)
+    except Exception as exc:
+        logger.error("Failed to initialize Supabase client: %s", exc)
+        return None
+
+
+def _get_supabase_client(force_refresh: bool = False) -> Optional[Client]:
+    global supabase
+    with _supabase_lock:
+        if force_refresh or supabase is None:
+            supabase = _create_supabase_client()
+        return supabase
+
+
+def _run_supabase_with_recovery(operation: Callable[[Client], Any], operation_name: str):
+    client = _get_supabase_client()
+    if not client:
+        raise RuntimeError("Supabase client not initialized")
+
+    try:
+        return _run_with_retries(lambda: operation(client), operation_name)
+    except Exception as exc:
+        if not _is_timeout_error(exc):
+            raise
+        logger.warning("%s timed out using existing Supabase client. Recreating client and retrying once.", operation_name)
+        refreshed = _get_supabase_client(force_refresh=True)
+        if not refreshed:
+            raise
+        return _run_with_retries(lambda: operation(refreshed), f"{operation_name} (refreshed)")
+
+
+_get_supabase_client(force_refresh=True)
+
+
+def _build_email_redirect_url() -> str:
+    """Build callback URL used in Supabase email verification links."""
+    explicit = (os.getenv('AUTH_REDIRECT_URL') or '').strip()
+    if explicit:
+        return explicit
+
+    base_url = (os.getenv('APP_BASE_URL') or 'http://127.0.0.1:5050').strip().rstrip('/')
+    return f"{base_url}/auth/callback"
+
+
+def _is_timeout_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    timeout_terms = ['timed out', 'timeout', 'read timeout', 'connect timeout']
+    return any(term in msg for term in timeout_terms)
+
+
+def _run_with_retries(operation: Callable[[], Any], operation_name: str, attempts: int = 3, delay_sec: float = 1.2):
+    try:
+        attempts = int((os.getenv('AUTH_RETRY_ATTEMPTS') or attempts))
+    except Exception:
+        attempts = attempts
+    try:
+        delay_sec = float((os.getenv('AUTH_RETRY_DELAY_SEC') or delay_sec))
+    except Exception:
+        delay_sec = delay_sec
+
+    attempts = max(1, attempts)
+    delay_sec = max(0.2, delay_sec)
+
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except Exception as exc:
+            last_error = exc
+            if not _is_timeout_error(exc) or attempt == attempts:
+                break
+            logger.warning("%s timed out (attempt %d/%d). Retrying...", operation_name, attempt, attempts)
+            time.sleep(delay_sec * attempt)
+
+    if last_error:
+        raise last_error
+    raise RuntimeError(f"{operation_name} failed")
+
+
+def _auth_api_key() -> str:
+    return (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
+
+
+def _auth_http_configured() -> bool:
+    return bool((supabase_url or '').strip() and _auth_api_key())
+
+
+def _auth_base_urls() -> list:
+    urls = []
+    primary = (supabase_url or '').strip()
+    if primary:
+        urls.append(primary.rstrip('/'))
+
+    fallback_raw = (os.getenv('SUPABASE_AUTH_FALLBACK_URLS') or '').strip()
+    if fallback_raw:
+        for candidate in fallback_raw.split(','):
+            value = candidate.strip().rstrip('/')
+            if value and value not in urls:
+                urls.append(value)
+    return urls
+
+
+def _auth_prefer_http() -> bool:
+    raw = (os.getenv('AUTH_PREFER_HTTP') or 'true').strip().lower()
+    return raw in {'1', 'true', 'yes', 'on'}
+
+
+def _auth_headers() -> Dict[str, str]:
+    api_key = _auth_api_key()
+    return {
+        'apikey': api_key,
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'Connection': 'close'
+    }
+
+
+def _auth_http_connect_timeout() -> float:
+    raw = (os.getenv('AUTH_HTTP_CONNECT_TIMEOUT') or '10').strip()
+    try:
+        return max(2.0, float(raw))
+    except Exception:
+        return 10.0
+
+
+def _auth_http_read_timeout() -> float:
+    raw = (os.getenv('AUTH_HTTP_READ_TIMEOUT') or '75').strip()
+    try:
+        return max(5.0, float(raw))
+    except Exception:
+        return 75.0
+
+
+def _auth_http_timeout(multiplier: float = 1.0):
+    connect_timeout = _auth_http_connect_timeout()
+    read_timeout = min(180.0, _auth_http_read_timeout() * max(1.0, multiplier))
+    return (connect_timeout, read_timeout)
+
+
+def _auth_warmup_attempts() -> int:
+    raw = (os.getenv('AUTH_WARMUP_ATTEMPTS') or '2').strip()
+    try:
+        return max(1, int(raw))
+    except Exception:
+        return 2
+
+
+def _auth_warmup_delay_sec() -> float:
+    raw = (os.getenv('AUTH_WARMUP_DELAY_SEC') or '1.5').strip()
+    try:
+        return max(0.2, float(raw))
+    except Exception:
+        return 1.5
+
+
+def auth_healthcheck() -> Tuple[bool, str]:
+    if not _auth_http_configured():
+        return False, 'Auth HTTP path not configured'
+
+    urls = _auth_base_urls()
+    if not urls:
+        return False, 'No auth base URL configured'
+
+    attempts = _auth_warmup_attempts()
+    delay_sec = _auth_warmup_delay_sec()
+    last_error = ''
+
+    for base_url in urls:
+        endpoint = f"{base_url}/auth/v1/settings"
+        for attempt in range(1, attempts + 1):
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers={
+                        'apikey': _auth_api_key(),
+                        'Authorization': f"Bearer {_auth_api_key()}",
+                        'Connection': 'close'
+                    },
+                    timeout=_auth_http_timeout(multiplier=1.0)
+                )
+                if response.status_code < 500:
+                    return True, f"auth settings reachable via {base_url} ({response.status_code})"
+                last_error = f"{base_url} status {response.status_code}"
+            except Exception as exc:
+                last_error = f"{base_url}: {exc}"
+
+            if attempt < attempts:
+                time.sleep(delay_sec * attempt)
+
+    return False, f"auth settings unreachable: {last_error or 'unknown error'}"
+
+
+def _warm_auth_service(operation_name: str = 'Auth') -> bool:
+    ok, detail = auth_healthcheck()
+    if ok:
+        logger.info("%s pre-warm succeeded: %s", operation_name, detail)
+        return True
+    logger.warning("%s pre-warm failed: %s", operation_name, detail)
+    return False
+
+
+def _post_json_with_retries(url: str, payload: Dict[str, Any], operation_name: str) -> Optional[requests.Response]:
+    attempts_raw = (os.getenv('AUTH_HTTP_RETRIES') or '3').strip()
+    delay_raw = (os.getenv('AUTH_HTTP_RETRY_DELAY_SEC') or '1.0').strip()
+    try:
+        attempts = max(1, int(attempts_raw))
+    except Exception:
+        attempts = 3
+    try:
+        delay_sec = max(0.2, float(delay_raw))
+    except Exception:
+        delay_sec = 1.0
+
+    last_error: Optional[Exception] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.post(
+                url,
+                headers=_auth_headers(),
+                json=payload,
+                timeout=_auth_http_timeout(multiplier=float(attempt))
+            )
+            return response
+        except Exception as exc:
+            last_error = exc
+            if not _is_timeout_error(exc) or attempt == attempts:
+                break
+            if attempt == 1:
+                _warm_auth_service(f"{operation_name} HTTP fallback")
+            logger.warning("%s HTTP fallback timed out (attempt %d/%d). Retrying...", operation_name, attempt, attempts)
+            time.sleep(delay_sec * attempt)
+
+    if last_error:
+        logger.error("%s HTTP fallback failed: %s", operation_name, last_error)
+    return None
+
+
+def _fallback_signup(email: str, password: str, metadata: Dict, redirect_to: str) -> Optional[Dict[str, Any]]:
+    base_urls = _auth_base_urls()
+    if not base_urls:
+        return None
+    try:
+        payload = {
+            'email': email,
+            'password': password,
+            'data': metadata,
+            'email_redirect_to': redirect_to
+        }
+        for base_url in base_urls:
+            response = _post_json_with_retries(
+                f"{base_url}/auth/v1/signup",
+                payload,
+                f'Signup ({base_url})'
+            )
+            if response is None:
+                continue
+            if response.status_code >= 400:
+                logger.error("HTTP fallback signup failed (%s): %s", base_url, response.text)
+                continue
+            return response.json() if response.content else None
+        return None
+    except Exception as exc:
+        logger.error("HTTP fallback signup exception: %s", exc)
+        return None
+
+
+def _fallback_login(email: str, password: str) -> Optional[Dict[str, Any]]:
+    base_urls = _auth_base_urls()
+    if not base_urls:
+        return None
+    try:
+        payload = {
+            'email': email,
+            'password': password
+        }
+        for base_url in base_urls:
+            response = _post_json_with_retries(
+                f"{base_url}/auth/v1/token?grant_type=password",
+                payload,
+                f'Login ({base_url})'
+            )
+            if response is None:
+                continue
+            if response.status_code >= 400:
+                logger.error("HTTP fallback login failed (%s): %s", base_url, response.text)
+                continue
+            return response.json() if response.content else None
+        return None
+    except Exception as exc:
+        logger.error("HTTP fallback login exception: %s", exc)
+        return None
+
+
+def _fallback_login_response(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], Optional[int], str]:
+    base_urls = _auth_base_urls()
+    if not base_urls:
+        return None, None, 'Supabase URL missing'
+    payload = {
+        'email': email,
+        'password': password
+    }
+    last_raw = 'timeout'
+
+    for base_url in base_urls:
+        response = _post_json_with_retries(
+            f"{base_url}/auth/v1/token?grant_type=password",
+            payload,
+            f'Login ({base_url})'
+        )
+        if response is None:
+            last_raw = f"timeout ({base_url})"
+            continue
+
+        body: Optional[Dict[str, Any]] = None
+        try:
+            body = response.json() if response.content else {}
+        except Exception:
+            body = {}
+
+        response_text = ''
+        try:
+            response_text = response.text or ''
+        except Exception:
+            response_text = ''
+
+        return body, response.status_code, response_text
+
+    return None, None, last_raw
+
+
+def require_auth(f):
+    """
+    Decorator to protect routes that require authentication
+    Extracts user_id from JWT token and sets g.user_id
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Get token from Authorization header
+        auth_header = request.headers.get('Authorization')
+
+        # In TEST_MODE, allow fallback user only when no token was provided.
+        if os.getenv('TEST_MODE') == 'true' and not auth_header:
+            g.user_id = os.getenv('TEST_USER_ID', '00000000-0000-0000-0000-000000000000')
+            g.user_email = 'test@example.com'
+            g.user = {
+                'id': g.user_id,
+                'email': g.user_email,
+                'first_name': 'Test',
+                'last_name': 'User',
+                'country': ''
+            }
+            return f(*args, **kwargs)
+        
+        if not auth_header:
+            return jsonify({'error': 'Missing authorization header'}), 401
+        
+        try:
+            # Extract token (format: "Bearer <token>")
+            scheme, token = auth_header.split()
+            
+            if scheme.lower() != 'bearer':
+                return jsonify({'error': 'Invalid authorization scheme'}), 401
+            
+            # Verify token with Supabase
+            user = verify_token(token)
+            
+            if not user:
+                return jsonify({'error': 'Invalid or expired token'}), 401
+            
+            # Set user context
+            g.user_id = user['id']
+            g.user_email = user.get('email')
+            g.user = user
+            
+            return f(*args, **kwargs)
+            
+        except ValueError:
+            return jsonify({'error': 'Invalid authorization header format'}), 401
+        except Exception as e:
+            logger.error(f"Auth error: {e}")
+            return jsonify({'error': 'Authentication failed'}), 401
+    
+    return decorated_function
+
+
+def verify_token(token: str) -> Optional[Dict]:
+    """
+    Verify JWT token with Supabase
+    
+    Returns:
+        User dict if valid, None otherwise
+    """
+    try:
+        if not _get_supabase_client():
+            logger.error("Supabase client not initialized")
+            return None
+        
+        # Get user from Supabase using the token
+        user = _run_supabase_with_recovery(lambda client: client.auth.get_user(token), 'Token verification')
+        
+        if user and user.user:
+            metadata = getattr(user.user, 'user_metadata', {}) or {}
+            return {
+                'id': user.user.id,
+                'email': user.user.email,
+                'first_name': metadata.get('first_name', ''),
+                'last_name': metadata.get('last_name', ''),
+                'country': metadata.get('country', ''),
+                'email_confirmed_at': user.user.email_confirmed_at,
+                'created_at': user.user.created_at,
+                'updated_at': user.user.updated_at
+            }
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Token verification failed: {e}")
+        if _is_timeout_error(e) and _auth_http_configured():
+            base_urls = _auth_base_urls()
+            for base_url in base_urls:
+                try:
+                    response = requests.get(
+                        f"{base_url}/auth/v1/user",
+                        headers={
+                            'apikey': _auth_api_key(),
+                            'Authorization': f'Bearer {token}',
+                            'Connection': 'close'
+                        },
+                        timeout=_auth_http_timeout(multiplier=1.0)
+                    )
+                    if response.status_code >= 400:
+                        continue
+                    payload = response.json() if response.content else {}
+                    metadata = payload.get('user_metadata') or {}
+                    return {
+                        'id': payload.get('id', ''),
+                        'email': payload.get('email', ''),
+                        'first_name': metadata.get('first_name', ''),
+                        'last_name': metadata.get('last_name', ''),
+                        'country': metadata.get('country', ''),
+                        'email_confirmed_at': payload.get('email_confirmed_at'),
+                        'created_at': payload.get('created_at'),
+                        'updated_at': payload.get('updated_at')
+                    }
+                except Exception as http_exc:
+                    logger.warning("Token verification HTTP fallback failed via %s: %s", base_url, http_exc)
+        return None
+
+
+def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> Tuple[bool, str, Optional[Dict]]:
+    """
+    Sign up a new user
+    
+    Returns:
+        (success, message, user_data)
+    """
+    try:
+        if not _get_supabase_client() and not _auth_http_configured():
+            return False, "Authentication service not configured", None
+        
+        redirect_to = _build_email_redirect_url()
+
+        # Sign up with Supabase
+        user_metadata = metadata or {}
+        response = _run_supabase_with_recovery(lambda client: client.auth.sign_up({
+            'email': email,
+            'password': password,
+            'options': {
+                'data': user_metadata,
+                'email_redirect_to': redirect_to
+            }
+        }), 'Signup')
+        
+        if response.user:
+            logger.info(f"User signed up: {email}")
+            return True, "Signup successful. Please verify your email to continue.", {
+                'id': response.user.id,
+                'email': response.user.email,
+                'first_name': user_metadata.get('first_name', ''),
+                'last_name': user_metadata.get('last_name', ''),
+                'country': user_metadata.get('country', '')
+            }
+        else:
+            return False, "Signup failed", None
+            
+    except Exception as e:
+        logger.error(f"Signup error: {e}")
+        error_msg = str(e)
+
+        if _is_timeout_error(e):
+            fallback_data = _fallback_signup(email, password, metadata or {}, _build_email_redirect_url())
+            if fallback_data and fallback_data.get('user'):
+                user_obj = fallback_data.get('user') or {}
+                md = metadata or {}
+                return True, "Signup successful. Please verify your email to continue.", {
+                    'id': user_obj.get('id', ''),
+                    'email': user_obj.get('email', email),
+                    'first_name': md.get('first_name', ''),
+                    'last_name': md.get('last_name', ''),
+                    'country': md.get('country', '')
+                }
+            return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
+        
+        if 'already registered' in error_msg.lower():
+            return False, "Email already registered", None
+        elif 'password' in error_msg.lower():
+            return False, "Password does not meet requirements", None
+        else:
+            return False, f"Signup failed: {error_msg}", None
+
+
+def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
+    """
+    Log in a user
+    
+    Returns:
+        (success, message, auth_data)
+        auth_data contains: access_token, refresh_token, user
+    """
+    try:
+        has_http = _auth_http_configured()
+        has_sdk = _get_supabase_client() is not None
+
+        if not has_sdk and not has_http:
+            return False, "Authentication service not configured", None
+
+        prewarm_enabled = (os.getenv('AUTH_PREWARM_ON_LOGIN') or 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
+        if has_http and prewarm_enabled:
+            _warm_auth_service('Login')
+
+        def _build_success_from_payload(payload: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+            user_obj = payload.get('user') or {}
+            user_metadata = user_obj.get('user_metadata') or {}
+            return True, "Login successful", {
+                'access_token': payload.get('access_token'),
+                'refresh_token': payload.get('refresh_token'),
+                'expires_in': payload.get('expires_in'),
+                'user': {
+                    'id': user_obj.get('id', ''),
+                    'email': user_obj.get('email', email),
+                    'first_name': user_metadata.get('first_name', ''),
+                    'last_name': user_metadata.get('last_name', ''),
+                    'country': user_metadata.get('country', '')
+                }
+            }
+
+        def _try_http_login() -> Tuple[bool, str, Optional[Dict], Optional[int], str]:
+            body, status_code, raw_text = _fallback_login_response(email, password)
+            if status_code and status_code < 400 and body and body.get('access_token'):
+                logger.info(f"User logged in (HTTP): {email}")
+                ok, msg, data = _build_success_from_payload(body)
+                return ok, msg, data, status_code, raw_text
+
+            if status_code in {400, 401, 403}:
+                lowered = str((body or {}).get('error_description') or (body or {}).get('msg') or (body or {}).get('error') or '').lower()
+                if 'invalid' in lowered or 'credentials' in lowered or 'grant' in lowered:
+                    return False, "Invalid email or password", None, status_code, raw_text
+                if 'not confirmed' in lowered or 'email not confirmed' in lowered:
+                    return False, "Please verify your email before logging in", None, status_code, raw_text
+                return False, (body or {}).get('error_description') or (body or {}).get('msg') or "Login failed", None, status_code, raw_text
+
+            return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None, status_code, raw_text
+
+        if _auth_prefer_http() and has_http:
+            success, message, auth_data, status_code, raw_text = _try_http_login()
+            if success:
+                return success, message, auth_data
+
+            if status_code in {400, 401, 403}:
+                return False, message, None
+
+            logger.warning("HTTP login path failed (status=%s). Attempting SDK fallback.", status_code)
+            if has_sdk:
+                try:
+                    response = _run_supabase_with_recovery(lambda client: client.auth.sign_in_with_password({
+                        'email': email,
+                        'password': password
+                    }), 'Login SDK fallback')
+                    if response.user and response.session:
+                        logger.info(f"User logged in (SDK fallback): {email}")
+                        return True, "Login successful", {
+                            'access_token': response.session.access_token,
+                            'refresh_token': response.session.refresh_token,
+                            'expires_in': response.session.expires_in,
+                            'user': {
+                                'id': response.user.id,
+                                'email': response.user.email,
+                                'first_name': (getattr(response.user, 'user_metadata', {}) or {}).get('first_name', ''),
+                                'last_name': (getattr(response.user, 'user_metadata', {}) or {}).get('last_name', ''),
+                                'country': (getattr(response.user, 'user_metadata', {}) or {}).get('country', '')
+                            }
+                        }
+                except Exception as sdk_exc:
+                    logger.error("SDK fallback login failed after HTTP path failure: %s", sdk_exc)
+
+            logger.error("Login HTTP path failed without successful SDK fallback. Raw: %s", raw_text[:300] if raw_text else 'N/A')
+            return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
+
+        if not _get_supabase_client():
+            return False, "Authentication service temporarily unavailable", None
+        
+        # Sign in with Supabase SDK first (default path)
+        response = _run_supabase_with_recovery(lambda client: client.auth.sign_in_with_password({
+            'email': email,
+            'password': password
+        }), 'Login')
+        
+        if response.user and response.session:
+            user_metadata = getattr(response.user, 'user_metadata', {}) or {}
+            logger.info(f"User logged in: {email}")
+            return True, "Login successful", {
+                'access_token': response.session.access_token,
+                'refresh_token': response.session.refresh_token,
+                'expires_in': response.session.expires_in,
+                'user': {
+                    'id': response.user.id,
+                    'email': response.user.email,
+                    'first_name': user_metadata.get('first_name', ''),
+                    'last_name': user_metadata.get('last_name', ''),
+                    'country': user_metadata.get('country', '')
+                }
+            }
+        else:
+            return False, "Login failed", None
+            
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        error_msg = str(e)
+
+        if _is_timeout_error(e):
+            if _auth_http_configured():
+                _warm_auth_service('Login timeout recovery')
+                fallback_data = _fallback_login(email, password)
+                if fallback_data and fallback_data.get('access_token'):
+                    user_obj = fallback_data.get('user') or {}
+                    user_metadata = user_obj.get('user_metadata') or {}
+                    return True, "Login successful", {
+                        'access_token': fallback_data.get('access_token'),
+                        'refresh_token': fallback_data.get('refresh_token'),
+                        'expires_in': fallback_data.get('expires_in'),
+                        'user': {
+                            'id': user_obj.get('id', ''),
+                            'email': user_obj.get('email', email),
+                            'first_name': user_metadata.get('first_name', ''),
+                            'last_name': user_metadata.get('last_name', ''),
+                            'country': user_metadata.get('country', '')
+                        }
+                    }
+            return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
+        
+        if 'invalid' in error_msg.lower() or 'credentials' in error_msg.lower():
+            return False, "Invalid email or password", None
+        elif 'not confirmed' in error_msg.lower():
+            return False, "Please verify your email before logging in", None
+        else:
+            return False, f"Login failed: {error_msg}", None
+
+
+def logout_user(token: str) -> Tuple[bool, str]:
+    """
+    Log out a user (invalidate token)
+    
+    Returns:
+        (success, message)
+    """
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return False, "Authentication service not configured"
+        
+        client.auth.sign_out()
+        return True, "Logout successful"
+        
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        return False, f"Logout failed: {str(e)}"
+
+
+def request_password_reset(email: str) -> Tuple[bool, str]:
+    """
+    Send password reset email
+    
+    Returns:
+        (success, message)
+    """
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return False, "Authentication service not configured"
+        
+        client.auth.reset_password_email(email)
+        return True, "Password reset email sent. Please check your inbox."
+        
+    except Exception as e:
+        logger.error(f"Password reset error: {e}")
+        return False, f"Failed to send reset email: {str(e)}"
+
+
+def update_password(token: str, new_password: str) -> Tuple[bool, str]:
+    """
+    Update user password
+    
+    Returns:
+        (success, message)
+    """
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return False, "Authentication service not configured"
+        
+        # Verify token first
+        user = verify_token(token)
+        if not user:
+            return False, "Invalid or expired token"
+        
+        # Update password
+        client.auth.update_user({
+            'password': new_password
+        })
+        
+        return True, "Password updated successfully"
+        
+    except Exception as e:
+        logger.error(f"Password update error: {e}")
+        return False, f"Failed to update password: {str(e)}"
+
+
+def resend_verification_email(email: str) -> Tuple[bool, str]:
+    """
+    Resend email verification
+    
+    Returns:
+        (success, message)
+    """
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return False, "Authentication service not configured"
+        
+        # Supabase automatically resends verification when user signs up again
+        # Or you can use the resend API
+        client.auth.resend({
+            'type': 'signup',
+            'email': email
+        })
+        
+        return True, "Verification email sent"
+        
+    except Exception as e:
+        logger.error(f"Resend verification error: {e}")
+        return False, f"Failed to resend verification: {str(e)}"
+
+
+def get_current_user(token: str) -> Optional[Dict]:
+    """
+    Get current user info from token
+    
+    Returns:
+        User dict or None
+    """
+    return verify_token(token)
+
+
+def refresh_access_token(refresh_token: str) -> Tuple[bool, str, Optional[Dict]]:
+    """
+    Refresh access token using refresh token
+    
+    Returns:
+        (success, message, auth_data)
+    """
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return False, "Authentication service not configured", None
+        
+        response = _run_supabase_with_recovery(
+            lambda active_client: active_client.auth.refresh_session(refresh_token),
+            'Refresh token'
+        )
+        
+        if response.session:
+            return True, "Token refreshed", {
+                'access_token': response.session.access_token,
+                'refresh_token': response.session.refresh_token,
+                'expires_in': response.session.expires_in
+            }
+        else:
+            return False, "Failed to refresh token", None
+            
+    except Exception as e:
+        logger.error(f"Token refresh error: {e}")
+        return False, f"Failed to refresh token: {str(e)}", None
+
+
+# Optional: Admin check decorator
+def require_admin(f):
+    """
+    Decorator to protect admin-only routes
+    Requires user to be authenticated AND have admin role
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # First check authentication
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header:
+            return jsonify({'error': 'Missing authorization header'}), 401
+        
+        try:
+            scheme, token = auth_header.split()
+            
+            if scheme.lower() != 'bearer':
+                return jsonify({'error': 'Invalid authorization scheme'}), 401
+            
+            user = verify_token(token)
+            
+            if not user:
+                return jsonify({'error': 'Invalid or expired token'}), 401
+            
+            # Check if user is admin (you can customize this logic)
+            # For now, check if email matches admin email from env
+            admin_email = os.getenv('ADMIN_EMAIL', 'admin@yourdomain.com')
+            
+            if user.get('email') != admin_email:
+                return jsonify({'error': 'Admin access required'}), 403
+            
+            g.user_id = user['id']
+            g.user_email = user['email']
+            g.user = user
+            g.is_admin = True
+            
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"Admin auth error: {e}")
+            return jsonify({'error': 'Authentication failed'}), 401
+    
+    return decorated_function

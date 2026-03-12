@@ -1,13 +1,14 @@
 """Generate BTC cycle educational drafts using RAG and AI provider."""
 import os
 import dotenv
-from rag_system import RAGStore
+from rag_system_pgvector import RAGStore
 from ai_provider import AIProvider
 
 dotenv.load_dotenv()
 
 def main():
-    rag = RAGStore(persist_dir="data/chroma_db")
+    user_id = os.getenv("TEST_USER_ID", "00000000-0000-0000-0000-000000000000")
+    rag = RAGStore(user_id=user_id)
     ai = AIProvider()
 
     # query the corpus for BTC-related context

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifying Account...</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f6f8fb;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            width: 92%;
+            max-width: 520px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 28px;
+            text-align: center;
+        }
+        h1 {
+            margin: 0 0 10px;
+            font-size: 22px;
+        }
+        p {
+            margin: 0;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .ok {
+            color: #166534;
+        }
+        .err {
+            color: #991b1b;
+        }
+        .hint {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 id="title">Verifying your account...</h1>
+        <p id="message">Please wait while we finish your sign-in.</p>
+        <p class="hint">If this takes too long, <a href="/login">go to login</a>.</p>
+    </div>
+
+    <script>
+        (function () {
+            const titleEl = document.getElementById('title');
+            const messageEl = document.getElementById('message');
+
+            const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            const queryParams = new URLSearchParams(window.location.search || '');
+
+            const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+            const tokenType = hashParams.get('token_type') || queryParams.get('token_type');
+            const actionType = hashParams.get('type') || queryParams.get('type');
+
+            if (accessToken) {
+                localStorage.setItem('access_token', accessToken);
+                if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                if (tokenType) localStorage.setItem('token_type', tokenType);
+
+                titleEl.className = 'ok';
+                titleEl.textContent = 'Email verified successfully';
+                messageEl.textContent = 'Your account is ready. Redirecting to dashboard...';
+
+                setTimeout(function () {
+                    window.location.replace('/');
+                }, 900);
+                return;
+            }
+
+            titleEl.className = 'err';
+            titleEl.textContent = 'Verification link opened';
+            if (actionType === 'signup') {
+                messageEl.textContent = 'No session token was found in this link. Please go to login and sign in manually.';
+            } else {
+                messageEl.textContent = 'Could not capture session from URL. Please log in again.';
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ pip install --upgrade -r requirements.txt
 
 This installs:
 - `google-generativeai` (Gemini Flash)
-- `chromadb` & `sentence-transformers` (RAG/embeddings)
+- `supabase` & `sentence-transformers` (RAG/embeddings)
 - `python-docx` (DOCX support)
 - Other essentials
 
@@ -78,7 +78,7 @@ INFO:__main__:Building RAG embeddings...
 INFO:__main__:✓ RAG rebuilt successfully
 ```
 
-This creates `data/chroma_db/` directory with embeddings.
+This rebuilds user-scoped embeddings in Supabase pgvector.
 
 ## Step 5: Generate & Preview a Post
 

@@ -12,7 +12,7 @@ from datetime import datetime
 import pytz
 from utils import setup_logging, ensure_data_dirs
 from pdf_processor import load_pdfs, chunk_text
-from rag_system import RAGStore
+from rag_system_pgvector import RAGStore
 from ai_provider import AIProvider
 from content_generator import ContentGenerator
 from linkedin_poster import LinkedInPoster
@@ -21,11 +21,29 @@ import config
 logger = setup_logging()
 
 
+def resolve_user_id() -> str:
+    user_id = os.getenv("TEST_USER_ID", "00000000-0000-0000-0000-000000000000")
+    return user_id
+
+
 def build_knowledge_base():
     logger.info("Building knowledge base from PDFs")
     docs = load_pdfs("data/pdfs")
-    rag = RAGStore(persist_dir="data/chroma_db")
-    rag.build_from_documents(docs)
+    user_id = resolve_user_id()
+    rag = RAGStore(user_id=user_id)
+    docs_for_rag = []
+    for source, text in docs:
+        for idx, chunk in enumerate(chunk_text(text, chunk_size=1000, overlap=200)):
+            docs_for_rag.append((source, chunk, {'chunk_number': idx + 1}))
+    if docs_for_rag:
+        file_record = rag.db.create_kb_file(user_id, {
+            'filename': f'cli_build_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.pdf',
+            'file_size_bytes': sum(len(item[1]) for item in docs),
+            'file_type': 'pdf',
+            'storage_path': 'local/cli_build',
+            'upload_status': 'processing'
+        })
+        rag.build_from_documents(docs_for_rag, file_record['id'])
     rag.persist()
     return rag
 
@@ -66,7 +84,7 @@ def schedule_daily(rag: RAGStore, hour: int, minute: int, tz_name: str, live: bo
 
 def interactive():
     ensure_data_dirs()
-    rag = RAGStore(persist_dir="data/chroma_db")
+    rag = RAGStore(user_id=resolve_user_id())
     print("ValtriLabs LinkedIn Automation — Interactive Menu")
     while True:
         print("Options:\n1) Build knowledge base from PDFs\n2) Run now (preview)\n3) Enable live posting and run now\n4) Start scheduler\n5) Exit")

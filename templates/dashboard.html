@@ -1341,11 +1341,11 @@
                 <div class="analytics-grid">
                     <div class="analytics-card">
                         <div class="analytics-value" id="total-reach">0</div>
-                        <div class="analytics-label">Total Reach</div>
+                        <div class="analytics-label">Tracked Impressions</div>
                     </div>
                     <div class="analytics-card">
-                        <div class="analytics-value" id="avg-engagement">0%</div>
-                        <div class="analytics-label">Avg Engagement</div>
+                        <div class="analytics-value" id="avg-engagement">--</div>
+                        <div class="analytics-label">Avg Engagement (Tracked)</div>
                     </div>
                     <div class="analytics-card">
                         <div class="analytics-value" id="best-performing-day">-</div>
@@ -1363,7 +1363,7 @@
                             <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
                                 <i class="fas fa-chart-line"></i>
                             </div>
-                            <h2 class="card-title">Engagement Trends</h2>
+                            <h2 class="card-title">Posting Trends</h2>
                         </div>
                         <div id="engagement-chart" style="height: 200px; display: flex; align-items: center; justify-content: center; color: #6c757d;">
                             <div style="text-align: center;">
@@ -1390,7 +1390,7 @@
                             <div class="card-icon" style="background: linear-gradient(135deg, #fd7e14, #ffb142); color: white;">
                                 <i class="fas fa-hashtag"></i>
                             </div>
-                            <h2 class="card-title">Top Performing Hashtags</h2>
+                            <h2 class="card-title">Top Hashtags</h2>
                         </div>
                         <div id="top-hashtags" style="padding: 1rem;">
                             <p style="color: #6c757d; text-align: center;">Hashtag performance data</p>
@@ -1406,9 +1406,9 @@
                         </div>
                         <div id="content-insights" style="padding: 1rem;">
                             <div class="checklist">
-                                <div class="checklist-item" id="insight-1">📈 Post consistently for better reach</div>
-                                <div class="checklist-item" id="insight-2">🎯 Use relevant hashtags</div>
-                                <div class="checklist-item" id="insight-3">⏰ Optimal posting times identified</div>
+                                <div class="checklist-item" id="insight-1">📈 Post consistently to build trend data</div>
+                                <div class="checklist-item" id="insight-2">🎯 Keep hashtags focused per topic</div>
+                                <div class="checklist-item" id="insight-3">🔎 Add platform analytics sync for impressions/engagement</div>
                             </div>
                         </div>
                     </div>
@@ -2419,28 +2419,15 @@
                 return;
             }
 
-            // Add simulated analytics to posts
-            const postsWithAnalytics = result.posts.map(post => {
-                const daysSincePost = Math.floor((new Date() - new Date(post.created_at)) / (1000 * 60 * 60 * 24));
+            const html = result.posts.slice(0, 5).map(post => {
+                const impressions = Number.isFinite(Number(post.impressions)) ? Number(post.impressions) : null;
+                const engagementRate = Number.isFinite(Number(post.engagement_rate)) ? Number(post.engagement_rate) : null;
+                const metricsSummary = (impressions !== null || engagementRate !== null)
+                    ? `<span>📊 ${impressions !== null ? impressions.toLocaleString() + ' impressions' : 'No impressions yet'}</span>
+                       <span>💬 ${engagementRate !== null ? engagementRate.toFixed(2) + '% engagement' : 'No engagement rate yet'}</span>`
+                    : '<span>📊 No platform metrics tracked yet</span><span>💬 Publish history captured</span>';
 
-                // Simulate realistic engagement metrics
-                const baseReach = 500 + Math.random() * 1500;
-                const contentMultiplier = post.content.length > 200 ? 1.3 : 0.8;
-                const recencyMultiplier = Math.max(0.3, 1 - (daysSincePost * 0.1));
-                const reach = Math.floor(baseReach * contentMultiplier * recencyMultiplier);
-
-                const engagementRate = 2 + Math.random() * 8; // 2-10%
-                const engagements = Math.floor(reach * engagementRate / 100);
-
-                return {
-                    ...post,
-                    simulatedReach: reach,
-                    simulatedEngagements: engagements,
-                    engagementRate: Math.round(engagementRate * 10) / 10
-                };
-            });
-
-            const html = postsWithAnalytics.slice(0, 5).map(post => `
+                return `
                 <div class="post-item">
                     <div class="post-header">
                         <div class="post-time">${new Date(post.created_at).toLocaleString()}</div>
@@ -2449,11 +2436,11 @@
                     <div class="post-content">${post.content}</div>
                     <div class="post-hashtags">${post.hashtags.join(' ')}</div>
                     <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; font-size: 0.8rem; color: #6c757d;">
-                        <span>📊 ${post.simulatedReach.toLocaleString()} reach</span>
-                        <span>💬 ${post.engagementRate}% engagement</span>
+                        ${metricsSummary}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             document.getElementById('recent-activity').innerHTML = html;
         }
@@ -2465,25 +2452,21 @@
         }
 
         function loadAnalyticsData() {
-            fetch('/api/posts').then(response => response.json()).then(result => {
-                const posts = result.posts || [];
-                if (posts.length === 0) return;
+            fetch('/api/analytics').then(response => response.json()).then(result => {
+                const analytics = result.analytics || {};
 
-                // Calculate analytics
-                const analytics = calculateAnalytics(posts);
+                document.getElementById('total-reach').textContent = (analytics.total_tracked_impressions || 0).toLocaleString();
+                document.getElementById('avg-engagement').textContent = analytics.avg_engagement_rate != null
+                    ? `${analytics.avg_engagement_rate}%`
+                    : '--';
+                document.getElementById('best-performing-day').textContent = analytics.best_day || '-';
+                document.getElementById('posting-streak').textContent = analytics.posting_streak || 0;
 
-                // Update analytics cards
-                document.getElementById('total-reach').textContent = analytics.totalReach.toLocaleString();
-                document.getElementById('avg-engagement').textContent = analytics.avgEngagement + '%';
-                document.getElementById('best-performing-day').textContent = analytics.bestDay;
-                document.getElementById('posting-streak').textContent = analytics.streak;
-
-                // Update charts and insights
-                updateEngagementChart(analytics.engagementTrend);
-                updateHourlyPerformance(analytics.hourlyPerformance);
-                updateTopHashtags(analytics.topHashtags);
-                updatePerformanceHistory(posts.slice(0, 5));
-                updateContentInsights(analytics.insights);
+                updateEngagementChart(analytics.engagement_trend || []);
+                updateHourlyPerformance(analytics.hourly_performance || {});
+                updateTopHashtags(analytics.top_hashtags || []);
+                updatePerformanceHistory(analytics.performance_history || []);
+                updateContentInsights(analytics.insights || []);
             });
         }
 
@@ -2501,38 +2484,33 @@
 
             if (posts.length === 0) return analytics;
 
-            // Calculate simulated engagement metrics
-            posts.forEach((post, index) => {
-                const postDate = new Date(post.created_at);
-                const daysSincePost = Math.floor((new Date() - postDate) / (1000 * 60 * 60 * 24));
+            let weightedEngagement = 0;
+            let weightedDenominator = 0;
 
-                // Simulate reach based on content quality, timing, and recency
-                const baseReach = 500 + Math.random() * 1500;
-                const contentMultiplier = post.content.length > 200 ? 1.3 : 0.8;
-                const recencyMultiplier = Math.max(0.3, 1 - (daysSincePost * 0.1));
-                const reach = Math.floor(baseReach * contentMultiplier * recencyMultiplier);
+            posts.forEach(post => {
+                const impressions = Number(post.impressions);
+                const engagementRate = Number(post.engagement_rate);
 
-                // Simulate engagement rate
-                const engagementRate = 2 + Math.random() * 8; // 2-10%
-                const engagements = Math.floor(reach * engagementRate / 100);
+                if (Number.isFinite(impressions) && impressions >= 0) {
+                    analytics.totalReach += impressions;
+                }
 
-                post.simulatedReach = reach;
-                post.simulatedEngagements = engagements;
-                post.engagementRate = engagementRate;
-
-                analytics.totalReach += reach;
+                if (Number.isFinite(engagementRate)) {
+                    const weight = Number.isFinite(impressions) && impressions > 0 ? impressions : 1;
+                    weightedEngagement += engagementRate * weight;
+                    weightedDenominator += weight;
+                }
             });
 
-            // Calculate average engagement
-            analytics.avgEngagement = Math.round(
-                posts.reduce((sum, post) => sum + post.engagementRate, 0) / posts.length
-            );
+            analytics.avgEngagement = weightedDenominator > 0
+                ? Math.round((weightedEngagement / weightedDenominator) * 100) / 100
+                : 0;
 
             // Find best performing day
             const dayPerformance = {};
             posts.forEach(post => {
                 const day = new Date(post.created_at).toLocaleDateString('en-US', { weekday: 'short' });
-                dayPerformance[day] = (dayPerformance[day] || 0) + post.simulatedReach;
+                dayPerformance[day] = (dayPerformance[day] || 0) + 1;
             });
 
             const bestDay = Object.entries(dayPerformance).reduce((a, b) =>
@@ -2562,8 +2540,8 @@
             // Engagement trend (last 7 posts)
             analytics.engagementTrend = posts.slice(0, 7).reverse().map(post => ({
                 date: new Date(post.created_at).toLocaleDateString(),
-                reach: post.simulatedReach,
-                engagement: post.engagementRate
+                reach: Number.isFinite(Number(post.impressions)) ? Number(post.impressions) : 0,
+                engagement: Number.isFinite(Number(post.engagement_rate)) ? Number(post.engagement_rate) : 0
             }));
 
             // Hourly performance
@@ -2573,7 +2551,7 @@
                     analytics.hourlyPerformance[hour] = { posts: 0, totalReach: 0 };
                 }
                 analytics.hourlyPerformance[hour].posts++;
-                analytics.hourlyPerformance[hour].totalReach += post.simulatedReach;
+                analytics.hourlyPerformance[hour].totalReach += Number.isFinite(Number(post.impressions)) ? Number(post.impressions) : 0;
             });
 
             // Top hashtags
@@ -2624,12 +2602,16 @@
 
             let chartHTML = '<div style="display: flex; align-items: end; height: 150px; gap: 8px; padding: 1rem 0;">';
 
+            const maxValue = Math.max(...trend.map(item => item.impressions || item.posts || 0), 1);
+
             trend.forEach(item => {
-                const height = Math.max(20, (item.engagement / 10) * 130); // Scale to 0-130px
+                const value = item.impressions || item.posts || 0;
+                const height = Math.max(20, Math.round((value / maxValue) * 130));
+                const date = new Date(item.date).toLocaleDateString();
                 chartHTML += `
                     <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                        <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 100%; height: ${height}px; border-radius: 4px 4px 0 0; margin-bottom: 4px;" title="${item.date}: ${item.reach.toLocaleString()} reach, ${item.engagement}% engagement"></div>
-                        <div style="font-size: 0.7rem; color: #6c757d; transform: rotate(-45deg); white-space: nowrap;">${item.date.split('/')[1]}</div>
+                        <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 100%; height: ${height}px; border-radius: 4px 4px 0 0; margin-bottom: 4px;" title="${date}: ${item.posts || 0} post(s), ${item.impressions || 0} impressions"></div>
+                        <div style="font-size: 0.7rem; color: #6c757d; transform: rotate(-45deg); white-space: nowrap;">${date.split('/')[1]}</div>
                     </div>
                 `;
             });
@@ -2650,14 +2632,16 @@
 
             hours.forEach(hour => {
                 const data = hourlyData[hour];
-                const avgReach = Math.round(data.totalReach / data.posts);
+                const avgImpressions = data.tracked_posts > 0
+                    ? Math.round(data.tracked_impressions / data.tracked_posts)
+                    : 0;
                 const hour12 = hour == 0 ? 12 : hour > 12 ? hour - 12 : hour;
                 const ampm = hour < 12 ? 'AM' : 'PM';
 
                 html += `
                     <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;">
                         <div style="font-weight: 600; color: #667eea;">${hour12}${ampm}</div>
-                        <div style="font-size: 0.8rem; color: #6c757d;">${avgReach.toLocaleString()}</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">${avgImpressions > 0 ? avgImpressions.toLocaleString() + ' imp' : 'no imp'}</div>
                         <div style="font-size: 0.7rem; color: #28a745;">${data.posts} posts</div>
                     </div>
                 `;
@@ -2669,9 +2653,7 @@
 
         function updateTopHashtags(hashtagData) {
             const container = document.getElementById('top-hashtags');
-            const hashtags = Object.entries(hashtagData)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 5);
+            const hashtags = Array.isArray(hashtagData) ? hashtagData.slice(0, 5) : [];
 
             if (hashtags.length === 0) {
                 container.innerHTML = '<p style="color: #6c757d; text-align: center;">No hashtag data available</p>';
@@ -2679,8 +2661,8 @@
             }
 
             let html = '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">';
-            hashtags.forEach(([hashtag, count]) => {
-                html += `<span class="hashtag">${hashtag} (${count})</span>`;
+            hashtags.forEach(item => {
+                html += `<span class="hashtag">${item.hashtag} (${item.count})</span>`;
             });
             html += '</div>';
             container.innerHTML = html;
@@ -2695,8 +2677,8 @@
 
             let html = '';
             recentPosts.forEach(post => {
-                const reach = post.simulatedReach || Math.floor(500 + Math.random() * 1500);
-                const engagement = post.engagementRate || (2 + Math.random() * 8);
+                const impressions = Number.isFinite(Number(post.impressions)) ? Number(post.impressions) : null;
+                const engagement = Number.isFinite(Number(post.engagement_rate)) ? Number(post.engagement_rate) : null;
 
                 html += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e9ecef;">
@@ -2709,8 +2691,8 @@
                             </div>
                         </div>
                         <div style="text-align: right; margin-left: 1rem;">
-                            <div style="font-weight: 600; color: #667eea;">${reach.toLocaleString()}</div>
-                            <div style="font-size: 0.8rem; color: #28a745;">${engagement.toFixed(1)}%</div>
+                            <div style="font-weight: 600; color: #667eea;">${impressions !== null ? impressions.toLocaleString() + ' imp' : '--'}</div>
+                            <div style="font-size: 0.8rem; color: #28a745;">${engagement !== null ? engagement.toFixed(2) + '%' : '--'}</div>
                         </div>
                     </div>
                 `;
@@ -2752,7 +2734,12 @@
                 document.getElementById('total-posts').textContent = totalPosts;
                 document.getElementById('live-posts').textContent = livePosts;
                 document.getElementById('test-posts').textContent = testPosts;
-                document.getElementById('engagement-rate').textContent = totalPosts > 0 ? '87%' : '0%';
+                fetch('/api/analytics').then(r => r.json()).then(analyticsResult => {
+                    const avg = analyticsResult?.analytics?.avg_engagement_rate;
+                    document.getElementById('engagement-rate').textContent = avg != null ? `${avg}%` : '--';
+                }).catch(() => {
+                    document.getElementById('engagement-rate').textContent = '--';
+                });
             });
         }
 

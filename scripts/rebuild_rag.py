@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from pdf_processor import load_pdfs, chunk_text
-    from rag_system import RAGStore
+    from rag_system_pgvector import RAGStore
     
     logger.info("Loading PDFs/DOCX from data/pdfs...")
     docs = load_pdfs("data/pdfs")
@@ -24,18 +24,28 @@ try:
         sys.exit(0)
     
     logger.info(f"Loaded {len(docs)} documents")
-    
-    # Delete old chroma db to force rebuild
-    import shutil
-    db_path = "data/chroma_db"
-    if os.path.exists(db_path):
-        logger.info(f"Removing old {db_path}...")
-        shutil.rmtree(db_path)
-    
-    # Build new RAG
+
+    user_id = os.getenv("TEST_USER_ID", "00000000-0000-0000-0000-000000000000")
+    rag = RAGStore(user_id=user_id)
+
+    # Delete old KB rows for this user, then rebuild
+    for existing in rag.db.list_kb_files(user_id):
+        rag.db.delete_kb_file(existing['id'])
+
+    docs_for_rag = []
+    for source, text in docs:
+        for idx, chunk in enumerate(chunk_text(text, chunk_size=1000, overlap=200)):
+            docs_for_rag.append((source, chunk, {'chunk_number': idx + 1}))
+
     logger.info("Building RAG embeddings...")
-    rag = RAGStore(persist_dir=db_path)
-    rag.build_from_documents(docs)
+    file_record = rag.db.create_kb_file(user_id, {
+        'filename': f'rebuild_{len(docs)}_docs.pdf',
+        'file_size_bytes': sum(len(item[1]) for item in docs),
+        'file_type': 'pdf',
+        'storage_path': 'local/rebuild_rag',
+        'upload_status': 'processing'
+    })
+    rag.build_from_documents(docs_for_rag, file_record['id'])
     rag.persist()
     
     logger.info("✓ RAG rebuilt successfully")

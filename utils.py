@@ -23,4 +23,3 @@ def setup_logging(log_path: str = "valtrilabs.log") -> logging.Logger:
 def ensure_data_dirs(base: str = "data") -> None:
     Path(base).mkdir(exist_ok=True)
     Path(f"{base}/pdfs").mkdir(parents=True, exist_ok=True)
-    Path(f"{base}/chroma_db").mkdir(parents=True, exist_ok=True)

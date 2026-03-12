@@ -8,11 +8,29 @@ logger = logging.getLogger("valtrilabs.ai_provider")
 
 
 class AIProvider:
-    def __init__(self, provider: Optional[str] = None):
-        self.provider = (provider or os.getenv("AI_PROVIDER", "google")).lower()
-        logger.info("AI provider set to: %s (env=%s, param=%s)", self.provider, os.getenv("AI_PROVIDER", "NOT_SET"), provider)
+    def __init__(self, provider: Optional[str] = None, api_keys: Optional[Dict[str, str]] = None):
+        raw_provider = (provider or os.getenv("AI_PROVIDER", "google")).lower().strip()
+        provider_aliases = {
+            "anthropic": "claude",
+            "claude": "claude",
+            "openai": "openai",
+            "google": "google",
+            "gemini": "google",
+        }
+        self.provider = provider_aliases.get(raw_provider, raw_provider)
+        self.api_keys = api_keys or {}
+        logger.info(
+            "AI provider set to: %s (raw=%s, env=%s, param=%s)",
+            self.provider,
+            raw_provider,
+            os.getenv("AI_PROVIDER", "NOT_SET"),
+            provider,
+        )
         # lazy imports
         self._client = None
+
+    def _get_api_key(self, key_name: str) -> str:
+        return (self.api_keys.get(key_name) or os.getenv(key_name) or '').strip()
 
     def _init_anthropic(self):
         try:
@@ -20,7 +38,7 @@ class AIProvider:
         except Exception:
             logger.exception("anthropic SDK not installed")
             raise
-        key = os.getenv("ANTHROPIC_API_KEY")
+        key = self._get_api_key("ANTHROPIC_API_KEY")
         if not key:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
         self._client = Anthropic(api_key=key)
@@ -31,7 +49,7 @@ class AIProvider:
         except Exception:
             logger.exception("openai SDK not installed")
             raise
-        key = os.getenv("OPENAI_API_KEY")
+        key = self._get_api_key("OPENAI_API_KEY")
         if not key:
             raise RuntimeError("OPENAI_API_KEY not set")
         self._client = OpenAI(api_key=key)
@@ -42,7 +60,7 @@ class AIProvider:
         except Exception:
             logger.exception("google generative SDK not installed")
             raise
-        key = os.getenv("GOOGLE_API_KEY")
+        key = self._get_api_key("GOOGLE_API_KEY")
         if not key:
             raise RuntimeError("GOOGLE_API_KEY not set")
         gai.configure(api_key=key)

@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 COPY . .
 
 # Create data directory
-RUN mkdir -p data/chroma_db data/posts data/pdfs
+RUN mkdir -p data/posts data/pdfs
 
 # Expose port
 EXPOSE 5000

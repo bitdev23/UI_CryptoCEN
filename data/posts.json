@@ -566,5 +566,67 @@
     "posted": true,
     "test_mode": false,
     "scheduled": true
+  },
+  {
+    "content": "**Myth: DEX/CEX arbitrage is dead money in 2024**\n\nReality check: The fragmentation between decentralized and centralized exchanges is creating MORE opportunities, not fewer.\n\nWhile working with institutional clients using Fireblocks custody, I've noticed something counterintuitive. Despite improved cross-chain bridges and MEV bots, price discrepancies between major CEXs and DEXs like Uniswap still regularly hit 0.5-2% on mid-cap tokens.\n\nWhy? CEXs have deeper institutional liquidity but slower listing processes. DEXs move faster but lack the sophisticated market makers that smooth out volatility.\n\nTwo actionable insights:\n\u2192 Focus on newly listed tokens in their first 48 hours - that's where the biggest gaps appear\n\u2192 Layer 2 DEXs (Arbitrum, Polygon) often show the widest spreads due to lower retail participation\n\nThe key isn't speed anymore - it's understanding liquidity flow patterns across different venue types.",
+    "hashtags": [
+      "#LinkedIn",
+      "#Business",
+      "#Innovation"
+    ],
+    "theme": "User Preview",
+    "created_at": "2026-02-25T01:15:03.818422",
+    "posted": false,
+    "test_mode": true
+  },
+  {
+    "content": "Ever wondered what makes your trades execute so swiftly on a centralized exchange (CEX)? It's often thanks to a highly sophisticated internal order matching engine working tirelessly behind the scenes. \u26a1\ufe0f These engines are the core of any CEX, responsible for pairing buyers and sellers, discovering fair prices, and ensuring deep liquidity. They process countless orders per second, minimizing slippage and enabling a seamless trading experience for millions. Think of it as the ultimate puzzle solver, instantly connecting compatible requests. For us in the crypto space, understanding this mechanism is key. A robust, efficient matching engine isn't just a technical detail; it directly translates to better price execution and overall reliability. It\u2019s what differentiates a smooth trading platform from a clunky one. **Practical Insight**: Next time you're evaluating an exchange, remember that the speed and sophistication of its order matching engine are critical indicators of its performance and user satisfaction. It's a testament to the engineering that keeps the crypto market flowing! \ud83d\udcc8 What are your thoughts on this foundational tech?\n\n#CentralizedExchange #CryptoInfrastructure #OrderMatching",
+    "hashtags": [
+      "#CentralizedExchange",
+      "#CryptoInfrastructure",
+      "#OrderMatching"
+    ],
+    "theme": "scheduled",
+    "created_at": "2026-03-03T17:15:15.672394",
+    "posted": true,
+    "test_mode": false,
+    "scheduled": true,
+    "provider": "linkedin",
+    "linkedin_urn": "urn:li:share:7434564545991393284",
+    "publish_result": "posted",
+    "publish_response": {
+      "id": "urn:li:share:7434564545991393284"
+    },
+    "user_id": "e33a5bd4-5178-40d1-9151-7e8c1dc1b583",
+    "audience_industry": "crypto",
+    "professional_role": "everyone",
+    "target_audience": "",
+    "knowledge_base_used": "General context",
+    "kb_mode": "no_kb",
+    "workspace_id": "ws_ef76468bedb4"
+  },
+  {
+    "content": "local schedule smoke",
+    "hashtags": [
+      "#smoke"
+    ],
+    "theme": "scheduled",
+    "created_at": "2026-03-06T16:13:20.895486",
+    "posted": true,
+    "test_mode": false,
+    "scheduled": true,
+    "provider": "linkedin",
+    "linkedin_urn": "urn:li:share:7435636129116192768",
+    "publish_result": "posted",
+    "publish_response": {
+      "id": "urn:li:share:7435636129116192768"
+    },
+    "user_id": "e33a5bd4-5178-40d1-9151-7e8c1dc1b583",
+    "audience_industry": "",
+    "professional_role": "",
+    "target_audience": "",
+    "knowledge_base_used": "All KB files",
+    "kb_mode": "use_kb",
+    "workspace_id": ""
   }
 ]

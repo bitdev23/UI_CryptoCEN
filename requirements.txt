@@ -1,16 +1,51 @@
+# AI/LLM Providers
 anthropic>=0.41.0
 openai>=1.59.5
 google-generativeai==0.8.3
-langchain==0.3.13
-langchain-community==0.3.13
-langchain-chroma==0.1.4
-chromadb==0.5.23
+
+# Supabase (Database + Auth + Storage)
+supabase==2.3.4
+postgrest==0.15.1
+httpx==0.25.2
+gotrue==2.4.4
+
+# Vector embeddings
 sentence-transformers==3.3.1
+
+# PDF/Document processing
 pymupdf==1.25.2
+python-docx==0.8.11
+
+# Web framework
+flask==3.0.0
+flask-cors==4.0.0
+flask-limiter==3.5.0
+
+# Authentication
+pyjwt==2.8.0
+cryptography==42.0.2  # For API key encryption
+
+# Task queue (for background jobs)
+celery==5.3.6
+redis==5.0.1
+rq==1.16.2
+
+# HTTP requests
 requests==2.32.3
+
+# Utilities
 schedule==1.2.2
 python-dotenv==1.0.1
 pytz==2024.2
-python-docx==0.8.11
-flask==3.0.0
+
+# Production server
 gunicorn==21.2.0
+
+# Monitoring (optional, for production)
+sentry-sdk[flask]==1.40.0
+
+# Email (for verification/notifications)
+sendgrid==6.11.0
+
+# Payment processing
+razorpay==1.4.2

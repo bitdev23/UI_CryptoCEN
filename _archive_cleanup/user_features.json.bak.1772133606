@@ -1,0 +1,226 @@
+{
+  "942d8fb5-252a-4e72-a577-d0149cdb68ba": {
+    "kb_workspaces": [
+      {
+        "id": "ws_all_files",
+        "name": "All Files",
+        "use_all_files": true,
+        "file_ids": [],
+        "updated_at": 1772042930
+      }
+    ],
+    "generation_presets": [
+      {
+        "id": "preset_thought_leadership",
+        "name": "Thought leadership",
+        "settings": {
+          "hashtags": 4,
+          "emojis": "minimal",
+          "topics": [
+            "trends",
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 140,
+          "max_words": 190,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_technical_deep_dive",
+        "name": "Technical deep dive",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "none",
+          "topics": [
+            "tips",
+            "product"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 180,
+          "max_words": 260,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_short_punchy",
+        "name": "Short punchy",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "minimal",
+          "topics": [
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 70,
+          "max_words": 120,
+          "kb_mode": "no_kb"
+        }
+      }
+    ],
+    "updated_at": 1772042930
+  },
+  "e33a5bd4-5178-40d1-9151-7e8c1dc1b583": {
+    "kb_workspaces": [
+      {
+        "id": "ws_all_files",
+        "name": "All Files",
+        "use_all_files": true,
+        "file_ids": [],
+        "updated_at": 1772042964
+      },
+      {
+        "id": "ws_ceae66f22fee",
+        "name": "Blockchain",
+        "use_all_files": false,
+        "file_ids": [
+          "4000629a-601a-49ba-99a1-30ed23582ba2"
+        ],
+        "updated_at": 1772117873
+      },
+      {
+        "id": "ws_ef76468bedb4",
+        "name": "Virtual Assistant",
+        "use_all_files": false,
+        "file_ids": [
+          "df08badf-2a08-4ea6-a4b9-aa74a2539fef",
+          "4040f9c6-f251-4093-95bb-78446d774326"
+        ],
+        "updated_at": 1772117906
+      }
+    ],
+    "generation_presets": [
+      {
+        "id": "preset_thought_leadership",
+        "name": "Thought leadership",
+        "settings": {
+          "hashtags": 4,
+          "emojis": "minimal",
+          "topics": [
+            "trends",
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 140,
+          "max_words": 190,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_technical_deep_dive",
+        "name": "Technical deep dive",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "none",
+          "topics": [
+            "tips",
+            "product"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 180,
+          "max_words": 260,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_short_punchy",
+        "name": "Short punchy",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "minimal",
+          "topics": [
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 70,
+          "max_words": 120,
+          "kb_mode": "no_kb"
+        }
+      },
+      {
+        "id": "preset_d03de280e47e",
+        "name": "VA",
+        "settings": {
+          "industry": "saas",
+          "role": "ops",
+          "hashtags": 3,
+          "emojis": "minimal",
+          "topics": [
+            "d18d40af-53a0-4391-bf0b-74320505ac34"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 100,
+          "max_words": 200,
+          "kb_mode": "specific_files",
+          "workspace_id": "ws_4fdfeb80837a",
+          "specific_file_ids": [
+            "d18d40af-53a0-4391-bf0b-74320505ac34"
+          ]
+        },
+        "updated_at": 1772043618
+      }
+    ],
+    "updated_at": 1772133177
+  },
+  "8a3d1e1f-c428-455b-939e-86131202d239": {
+    "kb_workspaces": [
+      {
+        "id": "ws_all_files",
+        "name": "All Files",
+        "use_all_files": true,
+        "file_ids": [],
+        "updated_at": 1772122801
+      }
+    ],
+    "generation_presets": [
+      {
+        "id": "preset_thought_leadership",
+        "name": "Thought leadership",
+        "settings": {
+          "hashtags": 4,
+          "emojis": "minimal",
+          "topics": [
+            "trends",
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 140,
+          "max_words": 190,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_technical_deep_dive",
+        "name": "Technical deep dive",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "none",
+          "topics": [
+            "tips",
+            "product"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 180,
+          "max_words": 260,
+          "kb_mode": "use_kb"
+        }
+      },
+      {
+        "id": "preset_short_punchy",
+        "name": "Short punchy",
+        "settings": {
+          "hashtags": 3,
+          "emojis": "minimal",
+          "topics": [
+            "questions"
+          ],
+          "word_count_mode": "custom_range",
+          "min_words": 70,
+          "max_words": 120,
+          "kb_mode": "no_kb"
+        }
+      }
+    ],
+    "updated_at": 1772133079
+  }
+}

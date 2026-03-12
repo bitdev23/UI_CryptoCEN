@@ -33,6 +33,33 @@ def extract_text_from_pdf(path: str) -> str:
     return "\n".join(text_chunks)
 
 
+def extract_text_from_docx(path: str) -> str:
+    """Extract text from one DOCX file; returns empty string on error."""
+    if not _HAS_DOCX:
+        logger.warning("python-docx not installed; cannot parse DOCX: %s", path)
+        return ""
+    try:
+        doc = Document(path)
+        paragraphs = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
+        return "\n".join(paragraphs)
+    except Exception:
+        logger.exception("Failed to extract DOCX: %s", path)
+        return ""
+
+
+def load_document(path: str) -> Tuple[str, str]:
+    """Load one PDF/DOCX file and return (source, text)."""
+    ext = Path(path).suffix.lower()
+    if ext == ".pdf":
+        text = extract_text_from_pdf(path)
+    elif ext == ".docx":
+        text = extract_text_from_docx(path)
+    else:
+        logger.warning("Unsupported document type: %s", path)
+        return (path, "")
+    return (path, text)
+
+
 def load_pdfs(folder: str = "data/pdfs") -> List[Tuple[str, str]]:
     """Load all PDFs in folder and return list of (filename, text)."""
     results = []
@@ -67,15 +94,19 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
     """Chunk text with overlap for RAG retrieval."""
     if chunk_size <= overlap:
         raise ValueError("chunk_size must be larger than overlap")
+    if not text:
+        return []
+
     out = []
+    step = chunk_size - overlap
     start = 0
     L = len(text)
     while start < L:
         end = min(start + chunk_size, L)
         out.append(text[start:end])
-        start = end - overlap
-        if start < 0:
-            start = 0
+        if end >= L:
+            break
+        start += step
     return out
 
 
