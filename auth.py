@@ -1,5 +1,5 @@
 """
-Authentication system for ContentAI Pro
+Authentication system for Velank AI
 Handles user registration, login, JWT validation
 """
 

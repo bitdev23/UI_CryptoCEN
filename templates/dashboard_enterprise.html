@@ -6785,7 +6785,7 @@
     <aside class="sidebar">
         <div class="sidebar-logo">
             <i class="fas fa-brain"></i>
-            <span>Fyrano AI</span>
+            <span>Velank AI</span>
         </div>
         <nav class="sidebar-nav">
             <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
@@ -8037,7 +8037,7 @@
                         <section id="settings-pane-notifications" class="settings-v2-pane">
                             <div class="settings-v2-header">
                                 <h2>🔔 Notifications</h2>
-                                <p>Choose what alerts and emails you receive from Fyrano AI.</p>
+                                <p>Choose what alerts and emails you receive from Velank AI.</p>
                             </div>
                             <div class="card settings-v2-card">
                                 <div class="settings-v2-card-head">
@@ -11554,7 +11554,7 @@
                 key: orderData.razorpay_key_id,
                 amount: order.amount,
                 currency: order.currency || 'INR',
-                name: 'Fyrano AI',
+                name: 'Velank AI',
                 description: `${planDisplayName(selectedPlan)} subscription`,
                 order_id: order.id,
                 handler: async function (response) {
@@ -13869,7 +13869,7 @@
     function getPostHistoryAuthorName() {
         const firstName = (localStorage.getItem('first_name') || '').trim();
         const lastName = (localStorage.getItem('last_name') || '').trim();
-        return `${firstName} ${lastName}`.trim() || 'Fyrano User';
+        return `${firstName} ${lastName}`.trim() || 'Velank User';
     }
 
     function getNormalizedPostHistoryItems() {
@@ -14828,7 +14828,7 @@
 
         loadCurrentUserProfile();
 
-        showToast('success', 'Welcome to Fyrano AI!', 'fas fa-check');
+        showToast('success', 'Welcome to Velank AI!', 'fas fa-check');
     });
 
     document.addEventListener('input', function(event) {

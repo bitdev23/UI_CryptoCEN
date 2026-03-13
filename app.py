@@ -62,6 +62,11 @@ app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
 
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 PDF_DIR = os.path.join(DATA_DIR, 'pdfs')

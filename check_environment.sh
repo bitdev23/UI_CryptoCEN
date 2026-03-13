@@ -1,8 +1,8 @@
 #!/bin/bash
-# Quick Start Script for ContentAI Pro
+# Quick Start Script for Velank AI
 # Run this to check if your environment is ready for deployment
 
-echo "🚀 ContentAI Pro - Environment Check"
+echo "🚀 Velank AI - Environment Check"
 echo "===================================="
 echo ""
 

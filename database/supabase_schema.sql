@@ -1,4 +1,4 @@
--- Supabase Schema for ContentAI Pro Multi-Tenant SaaS
+-- Supabase Schema for Velank AI Multi-Tenant SaaS
 -- Run this in Supabase SQL Editor after project creation
 
 -- Enable required extensions
