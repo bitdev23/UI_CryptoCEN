@@ -831,25 +831,73 @@ def refresh_access_token(refresh_token: str) -> Tuple[bool, str, Optional[Dict]]
     Returns:
         (success, message, auth_data)
     """
-    try:
-        client = _get_supabase_client()
-        if not client:
-            return False, "Authentication service not configured", None
-        
-        response = _run_supabase_with_recovery(
-            lambda active_client: active_client.auth.refresh_session(refresh_token),
-            'Refresh token'
-        )
-        
-        if response.session:
-            return True, "Token refreshed", {
-                'access_token': response.session.access_token,
-                'refresh_token': response.session.refresh_token,
-                'expires_in': response.session.expires_in
-            }
-        else:
+    def _from_payload(payload: Dict[str, Any]) -> Tuple[bool, str, Optional[Dict]]:
+        if not payload or not payload.get('access_token'):
             return False, "Failed to refresh token", None
-            
+        return True, "Token refreshed", {
+            'access_token': payload.get('access_token'),
+            'refresh_token': payload.get('refresh_token') or refresh_token,
+            'expires_in': payload.get('expires_in')
+        }
+
+    def _http_refresh() -> Tuple[bool, str, Optional[Dict]]:
+        base_urls = _auth_base_urls()
+        if not base_urls:
+            return False, "Authentication service not configured", None
+
+        payload = {'refresh_token': refresh_token}
+        last_message = 'Failed to refresh token'
+        for base_url in base_urls:
+            response = _post_json_with_retries(
+                f"{base_url}/auth/v1/token?grant_type=refresh_token",
+                payload,
+                f"Refresh token ({base_url})"
+            )
+            if response is None:
+                continue
+
+            body = {}
+            try:
+                body = response.json() if response.content else {}
+            except Exception:
+                body = {}
+
+            if response.status_code < 400:
+                return _from_payload(body)
+
+            last_message = (
+                str(body.get('error_description') or body.get('msg') or body.get('error') or '').strip()
+                or f"Refresh failed ({response.status_code})"
+            )
+
+        return False, last_message, None
+
+    try:
+        if _auth_prefer_http() and _auth_http_configured():
+            ok, msg, data = _http_refresh()
+            if ok:
+                return ok, msg, data
+
+        client = _get_supabase_client()
+        if client:
+            try:
+                response = _run_supabase_with_recovery(
+                    lambda active_client: active_client.auth.refresh_session(refresh_token),
+                    'Refresh token'
+                )
+                if response and response.session:
+                    return True, "Token refreshed", {
+                        'access_token': response.session.access_token,
+                        'refresh_token': response.session.refresh_token or refresh_token,
+                        'expires_in': response.session.expires_in
+                    }
+            except Exception as sdk_error:
+                logger.warning("SDK refresh failed, trying HTTP refresh fallback: %s", sdk_error)
+
+        if _auth_http_configured():
+            return _http_refresh()
+
+        return False, "Authentication service not configured", None
     except Exception as e:
         logger.error(f"Token refresh error: {e}")
         return False, f"Failed to refresh token: {str(e)}", None

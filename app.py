@@ -952,7 +952,7 @@ def _enqueue_or_start_kb_training(user_id: str, mode: str, filepaths: list = Non
             'success': True,
             'via_queue': False,
             'training_job_id': None,
-            'message': 'Queue unavailable; training started in local background mode'
+            'message': 'Auto-indexing started in background mode'
         }
 
     return {
@@ -4217,7 +4217,7 @@ def upload_knowledge_base():
             'skipped': skipped_count,
             'skipped_reasons': skipped_reasons,
             'training_job_id': training_job_id,
-            'training_queued': bool(training_result.get('via_queue')),
+            'training_queued': bool(training_result.get('success')),
             'training_mode': 'queue' if training_result.get('via_queue') else 'local_background'
         })
     except Exception as e:
