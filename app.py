@@ -1941,7 +1941,7 @@ def auth_google_start():
         query = urlencode({
             'provider': 'google',
             'redirect_to': redirect_to,
-            'response_type': 'token'
+            'scopes': 'openid email profile'
         })
         auth_url = f"{supabase_url}/auth/v1/authorize?{query}"
         return jsonify({'success': True, 'auth_url': auth_url})
