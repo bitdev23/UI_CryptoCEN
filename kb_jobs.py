@@ -15,7 +15,14 @@ load_dotenv()
 logger = logging.getLogger("contentai.kb_jobs")
 
 QUEUE_NAME = os.getenv("KB_QUEUE_NAME", "kb_training")
-DEFAULT_REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+_redis_url_raw = str(os.getenv("REDIS_URL") or "").strip()
+if _redis_url_raw:
+    DEFAULT_REDIS_URL = _redis_url_raw
+else:
+    _redis_host = str(os.getenv("REDIS_HOST") or "127.0.0.1").strip() or "127.0.0.1"
+    _redis_port = str(os.getenv("REDIS_PORT") or "6379").strip() or "6379"
+    _redis_db = str(os.getenv("REDIS_DB") or "0").strip() or "0"
+    DEFAULT_REDIS_URL = f"redis://{_redis_host}:{_redis_port}/{_redis_db}"
 DEFAULT_JOB_TIMEOUT = int(os.getenv("KB_JOB_TIMEOUT", "1800"))
 KB_CHUNK_SIZE = int(os.getenv("KB_CHUNK_SIZE", "1800"))
 KB_CHUNK_OVERLAP = int(os.getenv("KB_CHUNK_OVERLAP", "200"))

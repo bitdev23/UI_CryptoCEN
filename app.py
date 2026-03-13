@@ -864,6 +864,103 @@ def start_kb_training_job(user_id: str, target, *args, **kwargs) -> bool:
     threading.Thread(target=runner, daemon=True).start()
     return True
 
+
+def _run_local_kb_training(user_id: str, mode: str = 'full', filepaths: list = None) -> None:
+    from rag_system_pgvector import RAGStore
+    from pdf_processor import load_document, chunk_text
+
+    rag = RAGStore(user_id=user_id)
+    mode_value = str(mode or 'full').strip().lower()
+
+    if mode_value == 'full':
+        existing_records = rag.db.list_kb_files(user_id)
+        paths_to_process = []
+        for record in existing_records:
+            filepath = resolve_local_kb_path(
+                record.get('storage_path') or '',
+                record.get('filename') or '',
+                user_id,
+            )
+            if filepath and os.path.isfile(filepath):
+                paths_to_process.append(filepath)
+
+        for existing in existing_records:
+            rag.db.delete_kb_file(existing['id'])
+    else:
+        paths_to_process = [p for p in (filepaths or []) if p and os.path.isfile(p)]
+
+    for filepath in paths_to_process:
+        filename = os.path.basename(filepath)
+        file_size = os.path.getsize(filepath)
+        file_type = 'docx' if filename.lower().endswith('.docx') else 'pdf'
+
+        if mode_value == 'incremental':
+            existing_records = [
+                row for row in rag.db.list_kb_files(user_id)
+                if row.get('filename') == filename
+            ]
+            for record in existing_records:
+                rag.db.delete_kb_file(record['id'])
+
+        file_record = rag.db.create_kb_file(user_id, {
+            'filename': filename,
+            'file_size_bytes': file_size,
+            'file_type': file_type,
+            'storage_path': f'local/pdfs/{user_id}/{filename}',
+            'upload_status': 'processing',
+        })
+
+        source, text = load_document(filepath)
+        if not text or not text.strip():
+            rag.db.update_kb_file(file_record['id'], {
+                'upload_status': 'failed',
+                'error_message': 'No text could be extracted from document',
+            })
+            continue
+
+        chunks = chunk_text(text, chunk_size=KB_CHUNK_SIZE, overlap=KB_CHUNK_OVERLAP)
+        if len(chunks) > KB_MAX_CHUNKS_PER_FILE:
+            chunks = chunks[:KB_MAX_CHUNKS_PER_FILE]
+
+        docs_for_rag = [
+            (source, chunk, {'filename': filename, 'chunk_number': idx + 1})
+            for idx, chunk in enumerate(chunks)
+        ]
+        rag.build_from_documents(docs_for_rag, file_record['id'])
+
+
+def _enqueue_or_start_kb_training(user_id: str, mode: str, filepaths: list = None) -> dict:
+    queue_result = enqueue_kb_training_job(user_id, mode=mode, filepaths=filepaths or [])
+    if queue_result.get('success'):
+        return {
+            'success': True,
+            'via_queue': True,
+            'training_job_id': queue_result.get('job_id'),
+            'message': 'Training queued in worker'
+        }
+
+    if queue_result.get('already_running'):
+        return {
+            'success': False,
+            'already_running': True,
+            'message': queue_result.get('message', 'Training is already in progress. Please wait and refresh status.')
+        }
+
+    started = start_kb_training_job(user_id, _run_local_kb_training, user_id, mode, filepaths or [])
+    if started:
+        return {
+            'success': True,
+            'via_queue': False,
+            'training_job_id': None,
+            'message': 'Queue unavailable; training started in local background mode'
+        }
+
+    return {
+        'success': False,
+        'already_running': True,
+        'message': 'Training is already running in local background mode. Please wait and refresh status.'
+    }
+
 # ============= CONFIGURATION HELPERS =============
 
 CONFIG_DEFAULTS = {
@@ -1944,7 +2041,6 @@ def auth_google_start():
             'scopes': 'openid email profile',
             'flow_type': 'implicit',
             'response_type': 'token',
-            'access_type': 'offline',
             'prompt': 'consent'
         })
         auth_url = f"{supabase_url}/auth/v1/authorize?{query}"
@@ -4099,11 +4195,11 @@ def upload_knowledge_base():
             api_calls=1
         )
         
-        queue_result = enqueue_kb_training_job(user_id, mode='incremental', filepaths=saved_filepaths)
+        training_result = _enqueue_or_start_kb_training(user_id, mode='incremental', filepaths=saved_filepaths)
         rag_error = None
-        training_job_id = queue_result.get('job_id')
-        if not queue_result.get('success'):
-            rag_error = queue_result.get('message', 'Failed to queue training')
+        training_job_id = training_result.get('training_job_id')
+        if not training_result.get('success'):
+            rag_error = training_result.get('message', 'Failed to start training')
         
         # Build response message
         response_msg = f'Successfully uploaded {uploaded_count} file(s)'
@@ -4112,7 +4208,7 @@ def upload_knowledge_base():
         if rag_error:
             response_msg += f' (RAG training note: {rag_error})'
         else:
-            response_msg += ' (Training queued in worker)'
+            response_msg += f" ({training_result.get('message') or 'Training started'})"
         
         return jsonify({
             'success': True,
@@ -4121,7 +4217,8 @@ def upload_knowledge_base():
             'skipped': skipped_count,
             'skipped_reasons': skipped_reasons,
             'training_job_id': training_job_id,
-            'training_queued': training_job_id is not None
+            'training_queued': bool(training_result.get('via_queue')),
+            'training_mode': 'queue' if training_result.get('via_queue') else 'local_background'
         })
     except Exception as e:
         logger.exception("Knowledge base upload failed")
@@ -4234,22 +4331,23 @@ def train_model():
                 'message': 'No user-specific documents found. Upload files first.'
             }), 400
 
-        queue_result = enqueue_kb_training_job(user_id, mode='full')
-        if not queue_result.get('success'):
-            if queue_result.get('already_running'):
+        training_result = _enqueue_or_start_kb_training(user_id, mode='full')
+        if not training_result.get('success'):
+            if training_result.get('already_running'):
                 return jsonify({
                     'success': False,
-                    'message': queue_result.get('message', 'Training is already in progress. Please wait and refresh status.')
+                    'message': training_result.get('message', 'Training is already in progress. Please wait and refresh status.')
                 }), 409
             return jsonify({
                 'success': False,
-                'message': queue_result.get('message', 'Failed to queue training job')
-            }), 503
+                'message': training_result.get('message', 'Failed to start training job')
+            }), 500
 
         return jsonify({
             'success': True,
-            'message': f'✅ Training queued for {len(user_files)} file(s). Refresh status in a few moments.',
-            'training_job_id': queue_result.get('job_id')
+            'message': f"✅ {training_result.get('message')}. Refresh status in a few moments.",
+            'training_job_id': training_result.get('training_job_id'),
+            'training_mode': 'queue' if training_result.get('via_queue') else 'local_background'
         })
     except Exception as e:
         logger.exception("Model training failed")
@@ -4307,23 +4405,24 @@ def train_last_kb_file():
                 'message': 'Latest uploaded file is not available locally. Use Rebuild All Files instead.'
             }), 400
 
-        queue_result = enqueue_kb_training_job(user_id, mode='incremental', filepaths=[local_path])
-        if not queue_result.get('success'):
-            if queue_result.get('already_running'):
+        training_result = _enqueue_or_start_kb_training(user_id, mode='incremental', filepaths=[local_path])
+        if not training_result.get('success'):
+            if training_result.get('already_running'):
                 return jsonify({
                     'success': False,
-                    'message': queue_result.get('message', 'Training is already in progress. Please wait and retry.')
+                    'message': training_result.get('message', 'Training is already in progress. Please wait and retry.')
                 }), 409
             return jsonify({
                 'success': False,
-                'message': queue_result.get('message', 'Failed to queue training job')
-            }), 503
+                'message': training_result.get('message', 'Failed to start training job')
+            }), 500
 
         return jsonify({
             'success': True,
-            'message': f'Indexing queued for latest file: {latest_filename}',
+            'message': f"{training_result.get('message')} for latest file: {latest_filename}",
             'filename': latest_filename,
-            'training_job_id': queue_result.get('job_id')
+            'training_job_id': training_result.get('training_job_id'),
+            'training_mode': 'queue' if training_result.get('via_queue') else 'local_background'
         })
     except Exception as e:
         logger.exception('Latest-file training failed')
@@ -4367,15 +4466,32 @@ def knowledge_base_status():
             logger.warning("KB status fallback mode (pgvector unavailable): %s", e)
 
         training_state = get_kb_training_status(user_id)
+        local_training_state = get_kb_training_state(user_id)
+
+        queue_in_progress = bool(training_state.get('in_progress', False))
+        local_in_progress = bool(local_training_state.get('in_progress', False))
+        merged_training_in_progress = queue_in_progress or local_in_progress
+
+        merged_training_status = training_state.get('status', 'idle')
+        if local_in_progress:
+            merged_training_status = local_training_state.get('status') or 'running'
+        elif str(merged_training_status).strip().lower() in {'idle', 'queue_unavailable'}:
+            local_status = str(local_training_state.get('status') or '').strip().lower()
+            if local_status and local_status not in {'idle'}:
+                merged_training_status = local_status
+
+        merged_training_error = training_state.get('error')
+        if local_training_state.get('error'):
+            merged_training_error = local_training_state.get('error')
 
         response = {
             'success': True,
             'trained': is_trained,
             'rag_ready': is_trained,
             'knowledge_base_trained': is_trained,
-            'training_in_progress': training_state.get('in_progress', False),
-            'training_status': training_state.get('status', 'idle'),
-            'training_error': training_state.get('error'),
+            'training_in_progress': merged_training_in_progress,
+            'training_status': merged_training_status,
+            'training_error': merged_training_error,
             'training_job_id': training_state.get('job_id'),
             'total_uploaded_files': file_count,
             'pdf_count': pdf_count,
@@ -4390,7 +4506,7 @@ def knowledge_base_status():
         if is_trained and file_count > 0 and indexed_file_count == 0:
             response['trained_file_count'] = file_count
             response['indexed_file_count'] = file_count
-        if not training_state.get('queue_available', True):
+        if not training_state.get('queue_available', True) and not local_in_progress:
             response['queue_warning'] = f"KB queue unavailable: {training_state.get('error')}"
         if rag_error:
             response['rag_warning'] = f'Vector status unavailable: {rag_error}'
