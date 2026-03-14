@@ -258,7 +258,9 @@ def _calculate_real_analytics(posts: list, scheduled_posts: list = None) -> dict
             'insights': ['No posts yet — generate and publish content to unlock analytics.']
         }
 
-    sorted_posts = sorted(normalized_posts, key=lambda p: _parse_post_datetime(p.get('created_at')), reverse=True)
+    # sorted_posts = sorted(normalized_posts, key=lambda p: _parse_post_datetime(p.get('created_at')), reverse=True)
+
+    sorted_posts = sorted(normalized_posts, key=lambda p: _parse_post_datetime(p.get('created_at')) or datetime.min, reverse=True)
 
     day_counter = Counter()
     unique_days = set()

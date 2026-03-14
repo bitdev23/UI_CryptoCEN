@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Verifying Account...</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
     <style>
         body {
             margin: 0;
@@ -23,6 +24,13 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             padding: 28px;
             text-align: center;
+        }
+        .brand-logo {
+            width: 160px;
+            height: 34px;
+            display: block;
+            margin: 0 auto 14px;
+            object-fit: contain;
         }
         h1 {
             margin: 0 0 10px;
@@ -52,6 +60,7 @@
 </head>
 <body>
     <div class="card">
+        <img class="brand-logo" src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank logo">
         <h1 id="title">Verifying your account...</h1>
         <p id="message">Please wait while we finish your sign-in.</p>
         <p class="hint">If this takes too long, <a href="/login">go to login</a>.</p>

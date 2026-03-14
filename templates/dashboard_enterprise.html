@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium LinkedIn Automation Platform</title>
+    <title>Velank AI</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
     <style>
@@ -56,16 +57,29 @@
             transition: padding 0.3s ease;
         }
         .sidebar-logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 2rem;
+            margin-bottom: 1.9rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
+            width: 100%;
+            min-height: 42px;
+            padding: 0 0.75rem;
         }
-        .sidebar-logo span {
-            transition: opacity 0.2s ease;
-            white-space: nowrap;
+        .sidebar-logo img {
+            width: auto;
+            display: block;
+        }
+        .sidebar-logo .sidebar-logo-full {
+            height: 42px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        .sidebar-logo .sidebar-logo-icon {
+            display: none;
+            width: 36px;
+            height: 36px;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         .sidebar-nav {
             display: flex;
@@ -181,14 +195,22 @@
         }
         .app-container.sidebar-collapsed .sidebar-logo {
             justify-content: center;
+            padding: 0;
         }
-        .app-container.sidebar-collapsed .sidebar-logo span,
+        .app-container.sidebar-collapsed .sidebar-logo .sidebar-logo-full,
         .app-container.sidebar-collapsed .nav-item span,
         .app-container.sidebar-collapsed .sidebar-toggle .toggle-label {
             opacity: 0;
             width: 0;
             overflow: hidden;
             pointer-events: none;
+        }
+        .app-container.sidebar-collapsed .sidebar-logo .sidebar-logo-icon {
+            display: block;
+            opacity: 1;
+            width: 36px;
+            overflow: visible;
+            pointer-events: auto;
         }
         .app-container.sidebar-collapsed .sidebar-user-card {
             grid-template-columns: 1fr;
@@ -6784,8 +6806,8 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <i class="fas fa-brain"></i>
-            <span>Velank AI</span>
+            <img class="sidebar-logo-full" src="{{ url_for('static', filename='branding/velank-logo-light.svg') }}" alt="Velank logo">
+            <img class="sidebar-logo-icon" src="{{ url_for('static', filename='branding/velank-icon.svg') }}" alt="Velank icon">
         </div>
         <nav class="sidebar-nav">
             <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
