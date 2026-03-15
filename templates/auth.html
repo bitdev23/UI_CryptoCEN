@@ -349,42 +349,64 @@
             }
         }
 
-        async function continueWithGoogle() {
+        function showOAuthError(text) {
             const loginMsg = document.getElementById('login-message');
             const signupMsg = document.getElementById('signup-message');
+            if (loginMsg) {
+                loginMsg.className = 'message error';
+                loginMsg.textContent = text;
+            }
+            if (signupMsg) {
+                signupMsg.className = 'message error';
+                signupMsg.textContent = text;
+            }
+        }
+
+        function consumeOAuthErrorFromUrl() {
+            try {
+                const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                const queryParams = new URLSearchParams(window.location.search || '');
+                const errorDescription = hashParams.get('error_description') || queryParams.get('error_description') || hashParams.get('oauth_error');
+                const errorCode = hashParams.get('error_code') || queryParams.get('error_code') || queryParams.get('error');
+                if (!errorDescription && !errorCode) {
+                    return;
+                }
+
+                const rawText = errorDescription || errorCode || 'Google sign-in failed';
+                const cleaned = String(rawText)
+                    .replace(/\+/g, ' ')
+                    .replace(/%20/g, ' ')
+                    .trim();
+                showOAuthError('✗ ' + cleaned);
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, '/login');
+                }
+            } catch (_) {}
+        }
+
+        async function continueWithGoogle() {
+            const redirectTo = `${window.location.origin}/auth/callback`;
             try {
                 const response = await fetch('/api/auth/google/start', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({ redirect_to: redirectTo })
                 });
                 const data = await response.json();
                 if (!data.success || !data.auth_url) {
-                    const text = '✗ ' + (data.message || 'Google sign-in unavailable');
-                    if (loginMsg) {
-                        loginMsg.className = 'message error';
-                        loginMsg.textContent = text;
-                    }
-                    if (signupMsg) {
-                        signupMsg.className = 'message error';
-                        signupMsg.textContent = text;
-                    }
+                    showOAuthError('✗ ' + (data.message || 'Google sign-in unavailable'));
                     return;
                 }
                 window.location.href = data.auth_url;
             } catch (error) {
-                const text = '✗ Failed to start Google sign-in: ' + error.message;
-                if (loginMsg) {
-                    loginMsg.className = 'message error';
-                    loginMsg.textContent = text;
-                }
-                if (signupMsg) {
-                    signupMsg.className = 'message error';
-                    signupMsg.textContent = text;
-                }
+                showOAuthError('✗ Failed to start Google sign-in: ' + error.message);
             }
         }
+
+        consumeOAuthErrorFromUrl();
 
         async function handleLogin(event) {
             event.preventDefault();

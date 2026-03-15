@@ -152,6 +152,19 @@
             const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
             const tokenType = hashParams.get('token_type') || queryParams.get('token_type');
             const actionType = hashParams.get('type') || queryParams.get('type');
+            const oauthError = hashParams.get('error_description') || queryParams.get('error_description') || hashParams.get('error') || queryParams.get('error');
+
+            if (oauthError) {
+                ['access_token', 'refresh_token', 'user_id', 'user_email', 'first_name', 'last_name', 'country', 'auth_just_signed_in_at']
+                    .forEach(function (key) { localStorage.removeItem(key); });
+                titleEl.className = 'err';
+                titleEl.textContent = 'Google sign-in failed';
+                messageEl.textContent = String(oauthError).replace(/\+/g, ' ').trim();
+                setTimeout(function () {
+                    window.location.replace('/login#oauth_error=' + encodeURIComponent(String(oauthError)));
+                }, 1400);
+                return;
+            }
 
             if (accessToken) {
                 localStorage.setItem('access_token', accessToken);
