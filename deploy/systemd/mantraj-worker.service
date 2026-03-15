@@ -1,0 +1,16 @@
+[Unit]
+Description=Mantraj RQ Worker
+After=network.target
+
+[Service]
+User=mantraj
+WorkingDirectory=/home/mantraj/mantraj
+ExecStart=/home/mantraj/mantraj/venv/bin/python worker.py
+Restart=always
+RestartSec=3
+EnvironmentFile=/home/mantraj/mantraj/.env
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Mantraj API Server
+After=network.target
+
+[Service]
+User=mantraj
+WorkingDirectory=/home/mantraj/mantraj
+ExecStart=/home/mantraj/mantraj/venv/bin/gunicorn app:app -w 2 -b 0.0.0.0:5050
+Restart=always
+RestartSec=3
+EnvironmentFile=/home/mantraj/mantraj/.env
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -9390,6 +9390,25 @@
         return authRefreshPromise;
     }
 
+    async function verifyCurrentAccessToken() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            return false;
+        }
+
+        try {
+            const response = await fetch('/api/auth/verify-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+            const data = await parseJsonResponse(response);
+            return Boolean(response.ok && data && data.success);
+        } catch (_) {
+            return false;
+        }
+    }
+
     function handleSessionExpired() {
         if (authExpiryHandled) {
             return;
@@ -9404,6 +9423,7 @@
             localStorage.removeItem('first_name');
             localStorage.removeItem('last_name');
             localStorage.removeItem('country');
+            localStorage.removeItem('auth_just_signed_in_at');
             window.location.href = '/login';
         }, 1200);
     }
@@ -9430,9 +9450,27 @@
             return response;
         }
 
+        // Some routes can transiently return 401 immediately after OAuth sign-in even
+        // though the access token itself is already valid. Re-verify the token before
+        // assuming the whole browser session is expired.
+        const tokenStillValid = await verifyCurrentAccessToken();
+        if (tokenStillValid) {
+            await new Promise(resolve => setTimeout(resolve, 350));
+            response = await fetch(url, {
+                ...opts,
+                headers: { ...providedHeaders, ...buildAuthHeaders() }
+            });
+            if (response.status !== 401) {
+                return response;
+            }
+        }
+
         const refreshed = await refreshAccessTokenIfNeeded();
         if (!refreshed) {
-            handleSessionExpired();
+            const stillValidAfterRefreshFailure = await verifyCurrentAccessToken();
+            if (!stillValidAfterRefreshFailure) {
+                handleSessionExpired();
+            }
             return response;
         }
 
@@ -9442,7 +9480,10 @@
         });
 
         if (response.status === 401) {
-            handleSessionExpired();
+            const refreshedTokenStillValid = await verifyCurrentAccessToken();
+            if (!refreshedTokenStillValid) {
+                handleSessionExpired();
+            }
         }
 
         return response;
@@ -14585,11 +14626,9 @@
         }
 
         try {
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const response = await fetch('/api/auth/me', { headers });
+            const response = await authFetch('/api/auth/me', {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             const data = await response.json();
             if (!data.success || !data.user) {
                 return;
@@ -14726,7 +14765,7 @@
                     // Genuinely expired — clear and redirect silently (no toast)
                     authExpiryHandled = true;
                     ['access_token', 'refresh_token', 'user_id', 'user_email',
-                     'first_name', 'last_name', 'country'].forEach(function (k) {
+                     'first_name', 'last_name', 'country', 'auth_just_signed_in_at'].forEach(function (k) {
                         localStorage.removeItem(k);
                     });
                     window.location.replace('/login');

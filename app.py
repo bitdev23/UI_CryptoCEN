@@ -9,6 +9,7 @@ import json
 import logging
 import threading
 import time
+import sys
 import hmac
 import hashlib
 import schedule
@@ -25,6 +26,11 @@ from functools import wraps
 from uuid import UUID, uuid4
 from pathlib import Path
 from dotenv import load_dotenv, dotenv_values
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows local dev only
+    fcntl = None
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -74,6 +80,9 @@ FEATURE_STORE_PATH = os.path.join(DATA_DIR, 'user_features.json')
 POSTS_PATH = os.path.join(DATA_DIR, 'posts.json')
 SCHEDULED_POSTS_PATH = os.path.join(DATA_DIR, 'scheduled_posts.json')
 FEATURE_STORE_LOCK = threading.Lock()
+BACKGROUND_SERVICES_LOCK = threading.Lock()
+_BACKGROUND_SERVICES_STARTED = False
+_BACKGROUND_SERVICES_LOCK_FD = None
 
 
 def get_user_pdf_dir(user_id: str) -> str:
@@ -1353,6 +1362,56 @@ def start_auth_keepalive():
     thread = threading.Thread(target=keepalive_loop, daemon=True)
     thread.start()
     logger.info("Auth keepalive thread started (interval=%ss)", interval_sec)
+
+
+def _should_auto_start_background_services() -> bool:
+    """Detect gunicorn/systemd execution without affecting normal imports or tests."""
+    argv0 = os.path.basename((sys.argv or [''])[0] or '').lower()
+    server_software = (os.getenv('SERVER_SOFTWARE') or '').strip().lower()
+    return 'gunicorn' in argv0 or 'gunicorn' in server_software
+
+
+def ensure_background_services_started() -> bool:
+    """
+    Start scheduler/keepalive once per host process group.
+
+    Production runs gunicorn with 2 workers under systemd. If every worker starts
+    its own scheduler thread, scheduled posts and keepalive checks run multiple
+    times. Use a non-blocking file lock so exactly one gunicorn worker owns the
+    background threads, while plain `python app.py` keeps working as before.
+    """
+    global _BACKGROUND_SERVICES_STARTED, _BACKGROUND_SERVICES_LOCK_FD
+
+    with BACKGROUND_SERVICES_LOCK:
+        if _BACKGROUND_SERVICES_STARTED:
+            return True
+
+        lock_fd = None
+        if fcntl is not None:
+            lock_path = os.getenv('BACKGROUND_SERVICES_LOCK_PATH', '/tmp/mantraj-background-services.lock')
+            try:
+                lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                if lock_fd is not None:
+                    try:
+                        os.close(lock_fd)
+                    except OSError:
+                        pass
+                logger.info("Background services already owned by another process; skipping startup in pid=%s", os.getpid())
+                return False
+
+        start_scheduler()
+        start_auth_keepalive()
+
+        _BACKGROUND_SERVICES_STARTED = True
+        _BACKGROUND_SERVICES_LOCK_FD = lock_fd
+        logger.info("Background services started in pid=%s", os.getpid())
+        return True
+
+
+if _should_auto_start_background_services():
+    ensure_background_services_started()
 
 
 def get_current_user_id():
@@ -5066,9 +5125,8 @@ if __name__ == '__main__':
     if missing_auth:
         logger.error("Auth misconfigured. Missing: %s", ', '.join(missing_auth))
 
-    # Start the scheduler in background
-    start_scheduler()
-    start_auth_keepalive()
+    # Start background services once for local/direct runs.
+    ensure_background_services_started()
     
     # Disable debug mode in production
     debug_mode = os.getenv('FLASK_ENV') != 'production'
