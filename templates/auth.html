@@ -399,10 +399,10 @@
 
                 const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
                     auth: {
-                        persistSession: true,
-                        autoRefreshToken: true,
-                        detectSessionInUrl: true,
-                        flowType: 'pkce'
+                        persistSession: false,
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false,
+                        flowType: 'implicit'
                     }
                 });
 
@@ -412,7 +412,8 @@
                         redirectTo: redirectTo,
                         queryParams: {
                             prompt: 'consent'
-                        }
+                        },
+                        skipBrowserRedirect: false
                     }
                 });
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Verifying Account...</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- No SDK needed: implicit flow delivers tokens directly in URL hash -->
     <style>
         body {
             margin: 0;
@@ -69,14 +69,8 @@
 
     <script>
         (function () {
-            // ── Supabase JS SDK handles PKCE code exchange AND implicit token
-            // extraction from the URL hash, covering all Supabase auth flows. ──
-
-            const titleEl = document.getElementById('title');
-            const messageEl = document.getElementById('message');
-
-            const SUPABASE_URL  = '{{ supabase_url }}';
-            const SUPABASE_ANON = '{{ supabase_anon_key }}';
+            var titleEl = document.getElementById('title');
+            var messageEl = document.getElementById('message');
 
             function showError(title, msg) {
                 titleEl.className = 'err';
@@ -91,11 +85,15 @@
                     .forEach(function (k) { localStorage.removeItem(k); });
             }
 
-            // ── 1. Check for Supabase-level OAuth errors in the URL ──────────
-            const hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-            const queryParams = new URLSearchParams(window.location.search || '');
-            const oauthError  = hashParams.get('error_description') || queryParams.get('error_description')
-                             || hashParams.get('error') || queryParams.get('error');
+            // ── Parse URL hash and query ──────────────────────────────────────
+            var rawHash = window.location.hash || '';
+            var hashStr = rawHash.replace(/^#/, '');
+            var hashParams  = new URLSearchParams(hashStr);
+            var queryParams = new URLSearchParams(window.location.search || '');
+
+            // ── 1. Check for OAuth errors ────────────────────────────────────
+            var oauthError = hashParams.get('error_description') || queryParams.get('error_description')
+                          || hashParams.get('error') || queryParams.get('error');
             if (oauthError) {
                 clearAuthStorage();
                 showError('Google sign-in failed', String(oauthError).replace(/\+/g, ' ').trim());
@@ -105,100 +103,79 @@
                 return;
             }
 
-            // ── 2. Use Supabase SDK to get/exchange the session ──────────────
-            if (!SUPABASE_URL || !SUPABASE_ANON || SUPABASE_URL === 'None' || SUPABASE_ANON === 'None') {
-                showError('Configuration error', 'Server is missing Supabase credentials. Contact support.');
+            // ── 2. Extract access_token from hash (implicit flow) ────────────
+            var accessToken  = hashParams.get('access_token')  || queryParams.get('access_token')  || '';
+            var refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token') || '';
+
+            if (!accessToken) {
+                clearAuthStorage();
+                showError('Sign-in could not be completed',
+                    'No access token found in the callback URL. Please try Google sign-in again.');
                 return;
             }
 
-            (async function () {
-                try {
-                    // createClient with detectSessionInUrl:true (default) makes
-                    // getSession() automatically exchange a PKCE ?code= or read
-                    // an implicit #access_token= from the current URL.
-                    const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-                        auth: {
-                            persistSession: false,   // we manage our own storage
-                            detectSessionInUrl: true,
-                            autoRefreshToken: false
-                        }
-                    });
+            // ── 3. Verify the token with our backend then redirect ────────────
+            titleEl.className = 'ok';
+            titleEl.textContent = 'Completing sign-in...';
+            messageEl.textContent = 'Validating your session. Please wait.';
 
-                    titleEl.className = 'ok';
-                    titleEl.textContent = 'Completing sign-in...';
-                    messageEl.textContent = 'Exchanging credentials. Please wait.';
+            fetch('/api/auth/verify-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: accessToken })
+            })
+            .then(function (resp) {
+                return resp.json().then(function (body) {
+                    return { ok: resp.ok, body: body };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.body || !result.body.success) {
+                    clearAuthStorage();
+                    showError('Sign-in could not be completed',
+                        'Session validation failed. Please try Google sign-in again.');
+                    return;
+                }
 
-                    const { data, error } = await sbClient.auth.getSession();
+                // ── 4. Store tokens + user info ──────────────────────────────
+                localStorage.setItem('access_token', accessToken);
+                if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
 
-                    let session = (data && data.session) ? data.session : null;
+                var user = result.body.user || {};
+                if (user.id)    localStorage.setItem('user_id',    user.id);
+                if (user.email) localStorage.setItem('user_email', user.email);
+                localStorage.setItem('first_name', user.first_name || '');
+                localStorage.setItem('last_name',  user.last_name  || '');
+                localStorage.setItem('country',    user.country    || '');
+                localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
 
-                    if ((!session || !session.access_token) && !error) {
-                        // Fallback for direct implicit callback URLs where token is in hash/query.
-                        const fallbackAccessToken = hashParams.get('access_token') || queryParams.get('access_token');
-                        const fallbackRefreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
-                        const fallbackTokenType = hashParams.get('token_type') || queryParams.get('token_type') || 'bearer';
-                        if (fallbackAccessToken) {
-                            session = {
-                                access_token: fallbackAccessToken,
-                                refresh_token: fallbackRefreshToken || '',
-                                token_type: fallbackTokenType,
-                                user: {}
-                            };
-                        }
+                // ── 5. Hydrate profile from /api/auth/me then redirect ───────
+                fetch('/api/auth/me', {
+                    headers: { 'Authorization': 'Bearer ' + accessToken }
+                })
+                .then(function (r) { return r.json().catch(function () { return {}; }); })
+                .then(function (meData) {
+                    if (meData && meData.success && meData.user) {
+                        var u = meData.user;
+                        if (u.id)    localStorage.setItem('user_id',    u.id);
+                        if (u.email) localStorage.setItem('user_email', u.email);
+                        if (u.first_name) localStorage.setItem('first_name', u.first_name);
+                        if (u.last_name)  localStorage.setItem('last_name',  u.last_name);
+                        if (u.country)    localStorage.setItem('country',    u.country);
                     }
-
-                    if (error || !session || !session.access_token) {
-                        clearAuthStorage();
-                        const errMsg = (error && error.message) ? error.message : 'No session was returned.';
-                        showError('Sign-in could not be completed', errMsg + ' Please try again.');
-                        return;
-                    }
-
-                    const accessToken  = session.access_token;
-                    const refreshToken = session.refresh_token;
-                    const user         = session.user || {};
-
-                    // ── 3. Verify the token with our backend ─────────────────
-                    const verifyResp = await fetch('/api/auth/verify-token', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: accessToken })
-                    });
-                    const verifyData = await verifyResp.json().catch(function () { return {}; });
-
-                    if (!verifyResp.ok || !verifyData.success) {
-                        clearAuthStorage();
-                        showError('Sign-in could not be completed',
-                            'Your session was issued but could not be validated by the server. Please retry.');
-                        return;
-                    }
-
-                    // ── 4. Persist session for our app ───────────────────────
-                    localStorage.setItem('access_token',  accessToken);
-                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-
-                    const backendUser = verifyData.user || {};
-                    const userId    = backendUser.id    || user.id    || '';
-                    const userEmail = backendUser.email || user.email || '';
-                    const meta      = user.user_metadata || {};
-                    if (userId)    localStorage.setItem('user_id',    userId);
-                    if (userEmail) localStorage.setItem('user_email', userEmail);
-                    localStorage.setItem('first_name', backendUser.first_name || meta.first_name || meta.full_name || '');
-                    localStorage.setItem('last_name',  backendUser.last_name  || meta.last_name  || '');
-                    localStorage.setItem('country',    backendUser.country    || meta.country    || '');
-                    localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
-
+                })
+                .catch(function () {})
+                .finally(function () {
                     titleEl.className = 'ok';
                     titleEl.textContent = 'Sign-in successful';
                     messageEl.textContent = 'Redirecting to dashboard...';
-
-                    setTimeout(function () { window.location.replace('/'); }, 450);
-
-                } catch (err) {
-                    clearAuthStorage();
-                    showError('Sign-in error', String(err && err.message ? err.message : err));
-                }
-            }());
+                    setTimeout(function () { window.location.replace('/'); }, 400);
+                });
+            })
+            .catch(function (err) {
+                clearAuthStorage();
+                showError('Sign-in error', String(err && err.message ? err.message : err));
+            });
         })();
     </script>
 </body>
