@@ -448,19 +448,83 @@ def require_auth(f):
 
 def verify_token(token: str) -> Optional[Dict]:
     """
-    Verify JWT token with Supabase
-    
+    Verify JWT token with Supabase.
+
+    Always uses a direct stateless HTTP call to /auth/v1/user.  The Supabase
+    Python SDK is intentionally avoided here: it holds mutable internal session
+    state that becomes corrupted when verify_token is called concurrently from
+    multiple threads (which happens every time the dashboard loads).
+
     Returns:
         User dict if valid, None otherwise
     """
+
+    def _http_verify() -> Optional[Dict]:
+        """Call /auth/v1/user directly via requests — stateless and thread-safe."""
+        base_urls = _auth_base_urls()
+        for base_url in base_urls:
+            try:
+                response = requests.get(
+                    f"{base_url}/auth/v1/user",
+                    headers={
+                        'apikey': _auth_api_key(),
+                        'Authorization': f'Bearer {token}',
+                        'Content-Type': 'application/json',
+                        'Connection': 'close'
+                    },
+                    timeout=_auth_http_timeout(multiplier=1.0)
+                )
+                if response.status_code >= 400:
+                    # 401 means the token itself is invalid — log at debug level only
+                    if response.status_code == 401:
+                        logger.debug("Token verification: Supabase returned 401 (invalid/expired token)")
+                    else:
+                        logger.warning(
+                            "Token verification HTTP returned %d via %s",
+                            response.status_code, base_url
+                        )
+                    # Don't try the next URL for auth errors — token is the same everywhere
+                    if response.status_code in (400, 401, 403):
+                        return None
+                    continue
+                payload = response.json() if response.content else {}
+                user_id = payload.get('id', '')
+                if not user_id:
+                    logger.warning("Token verification: Supabase returned 200 but no user id")
+                    continue
+                metadata = payload.get('user_metadata') or {}
+                return {
+                    'id': user_id,
+                    'email': payload.get('email', ''),
+                    'first_name': metadata.get('first_name', ''),
+                    'last_name': metadata.get('last_name', ''),
+                    'country': metadata.get('country', ''),
+                    'email_confirmed_at': payload.get('email_confirmed_at'),
+                    'created_at': payload.get('created_at'),
+                    'updated_at': payload.get('updated_at')
+                }
+            except Exception as http_exc:
+                logger.warning("Token verification HTTP failed via %s: %s", base_url, http_exc)
+        return None
+
+    # ── When HTTP is configured use only the stateless HTTP path ──────────────
+    # Never invoke the Supabase SDK here: it maintains shared session state that
+    # gets corrupted when called concurrently from multiple request threads.
+    if _auth_http_configured():
+        return _http_verify()
+
+    # ── SDK fallback — only reached when SUPABASE_URL / ANON_KEY are missing ──
+    logger.warning("verify_token: HTTP path not available, falling back to SDK")
     try:
-        if not _get_supabase_client():
-            logger.error("Supabase client not initialized")
+        client = _get_supabase_client()
+        if not client:
+            logger.error("Supabase client not initialized and HTTP not configured")
             return None
-        
-        # Get user from Supabase using the token
-        user = _run_supabase_with_recovery(lambda client: client.auth.get_user(token), 'Token verification')
-        
+
+        user = _run_supabase_with_recovery(
+            lambda c: c.auth.get_user(token), 'Token verification (SDK)'
+        )
+
         if user and user.user:
             metadata = getattr(user.user, 'user_metadata', {}) or {}
             return {
@@ -473,40 +537,10 @@ def verify_token(token: str) -> Optional[Dict]:
                 'created_at': user.user.created_at,
                 'updated_at': user.user.updated_at
             }
-        
         return None
-        
+
     except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        if _is_timeout_error(e) and _auth_http_configured():
-            base_urls = _auth_base_urls()
-            for base_url in base_urls:
-                try:
-                    response = requests.get(
-                        f"{base_url}/auth/v1/user",
-                        headers={
-                            'apikey': _auth_api_key(),
-                            'Authorization': f'Bearer {token}',
-                            'Connection': 'close'
-                        },
-                        timeout=_auth_http_timeout(multiplier=1.0)
-                    )
-                    if response.status_code >= 400:
-                        continue
-                    payload = response.json() if response.content else {}
-                    metadata = payload.get('user_metadata') or {}
-                    return {
-                        'id': payload.get('id', ''),
-                        'email': payload.get('email', ''),
-                        'first_name': metadata.get('first_name', ''),
-                        'last_name': metadata.get('last_name', ''),
-                        'country': metadata.get('country', ''),
-                        'email_confirmed_at': payload.get('email_confirmed_at'),
-                        'created_at': payload.get('created_at'),
-                        'updated_at': payload.get('updated_at')
-                    }
-                except Exception as http_exc:
-                    logger.warning("Token verification HTTP fallback failed via %s: %s", base_url, http_exc)
+        logger.error("Token verification (SDK) failed: %s", e)
         return None
 
 

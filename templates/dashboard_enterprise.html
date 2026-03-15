@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Velank AI</title>
+    <!-- ═══ Immediate auth gate: redirect before any HTML renders ═══ -->
+    <script>
+        (function () {
+            try {
+                if (!localStorage.getItem('access_token')) {
+                    window.location.replace('/login');
+                }
+            } catch (_) {}
+        }());
+    </script>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
@@ -14676,7 +14686,59 @@
     }
 
     // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+        // ══ Auth pre-check: verify (or refresh) the token BEFORE firing any API calls.
+        //    This prevents the "flash of dashboard → session expired" for stale/missing tokens.
+        const _preToken = localStorage.getItem('access_token');
+        if (!_preToken) {
+            window.location.replace('/login');
+            return;
+        }
+        try {
+            const _vRes = await fetch('/api/auth/verify-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: _preToken })
+            });
+            const _vData = await _vRes.json().catch(function () { return {}; });
+            if (!_vData.success) {
+                // Token invalid — attempt a silent refresh before giving up
+                const _rToken = localStorage.getItem('refresh_token');
+                let _refreshed = false;
+                if (_rToken) {
+                    try {
+                        const _rRes = await fetch('/api/auth/refresh', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refresh_token: _rToken })
+                        });
+                        const _rData = await _rRes.json().catch(function () { return {}; });
+                        if (_rData.success && _rData.access_token) {
+                            localStorage.setItem('access_token', _rData.access_token);
+                            if (_rData.refresh_token) {
+                                localStorage.setItem('refresh_token', _rData.refresh_token);
+                            }
+                            _refreshed = true;
+                        }
+                    } catch (_) {}
+                }
+                if (!_refreshed) {
+                    // Genuinely expired — clear and redirect silently (no toast)
+                    authExpiryHandled = true;
+                    ['access_token', 'refresh_token', 'user_id', 'user_email',
+                     'first_name', 'last_name', 'country'].forEach(function (k) {
+                        localStorage.removeItem(k);
+                    });
+                    window.location.replace('/login');
+                    return;
+                }
+            }
+        } catch (_authNetErr) {
+            // Network error during pre-check — proceed; individual API calls will enforce auth
+            console.warn('[Velank] Auth pre-check network error, proceeding:', _authNetErr);
+        }
+        // ══ End auth pre-check ══
+
         const validTabs = new Set(['dashboard', 'content-creator', 'scheduler', 'knowledge-base', 'settings', 'post-history', 'help']);
         const savedTabRaw = localStorage.getItem('activeTab') || '';
         const savedTab = savedTabRaw.trim();

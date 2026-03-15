@@ -301,6 +301,26 @@
     </div>
 
     <script>
+        // ═══ Already-logged-in gate: redirect to dashboard if session is valid ═══
+        (function () {
+            var token = localStorage.getItem('access_token');
+            if (!token) return;
+            fetch('/api/auth/verify-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            }).then(function (r) {
+                return r.json();
+            }).then(function (data) {
+                if (data && data.success) {
+                    window.location.replace('/');
+                }
+            }).catch(function () {
+                // Network failure — stay on login page
+            });
+        }());
+        // ═══════════════════════════════════════════════════════════
+
         function toggleForm() {
             const loginForm = document.getElementById('login-form');
             const signupForm = document.getElementById('signup-form');
