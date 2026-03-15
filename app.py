@@ -2634,13 +2634,38 @@ def admin_delete_user(user_id):
     if not auth_supabase:
         return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
 
+    if not is_valid_uuid(user_id):
+        return jsonify({'success': False, 'message': 'Invalid user ID format'}), 400
+
+    cleanup_errors = []
+
+    # --- clean up user-owned rows that may have FK constraints ----------
+    for table_name in ('posts', 'subscriptions', 'usage_monthly'):
+        try:
+            auth_supabase.table(table_name).delete().eq('user_id', user_id).execute()
+        except Exception as table_err:
+            msg = f'{table_name}: {table_err}'
+            logger.warning("Admin delete – cleanup %s for %s: %s", table_name, user_id, table_err)
+            cleanup_errors.append(msg)
+
+    # --- delete the auth user -------------------------------------------
     try:
         auth_supabase.auth.admin.delete_user(user_id)
-        _admin_log_action('delete_user', user_id, {})
-        return jsonify({'success': True, 'message': 'User deleted successfully'})
     except Exception as e:
-        logger.error("Admin delete user failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to delete user: {str(e)}'}), 500
+        err_str = str(e).lower()
+        # User already removed from auth – treat as success
+        if 'not found' in err_str or 'user not found' in err_str:
+            logger.info("Admin delete – user %s already removed from auth", user_id)
+        else:
+            logger.error("Admin delete user failed: %s", e)
+            return jsonify({'success': False, 'message': f'Failed to delete user: {str(e)}'}), 500
+
+    _admin_log_action('delete_user', user_id, {'cleanup_errors': cleanup_errors})
+
+    message = 'User deleted successfully'
+    if cleanup_errors:
+        message += f' (some data cleanup warnings: {"; ".join(cleanup_errors)})'
+    return jsonify({'success': True, 'message': message})
 
 
 @app.route('/api/admin/users/<user_id>/posts', methods=['GET'])

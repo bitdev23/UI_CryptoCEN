@@ -626,18 +626,70 @@
             color: #fff;
             font-size: 12px;
             border-radius: 9px;
-            padding: 10px 12px;
+            padding: 10px 14px;
             box-shadow: 0 12px 30px rgba(2, 6, 23, 0.3);
             opacity: 0;
             transform: translateY(8px);
             transition: 0.18s ease;
             pointer-events: none;
             z-index: 120;
+            max-width: 420px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .toast.show {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        .toast.toast-success { background: #166534; }
+        .toast.toast-error { background: #991b1b; }
+        .toast.toast-info { background: #1e40af; }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .loading-box {
+            background: #fff;
+            border-radius: 14px;
+            padding: 28px 36px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #e2e8f0;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        /* Disabled action button */
+        .btn-sm:disabled, .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         @media (max-width: 1280px) {
@@ -938,12 +990,28 @@
             subtitleEl.style.color = isWarning ? '#b45309' : '';
         }
 
-        function showToast(message) {
+        function showToast(message, variant = 'success', duration = 3500) {
             const el = document.getElementById('admin-toast');
             if (!el) return;
             el.textContent = message;
+            el.className = 'toast';
+            if (variant) el.classList.add(`toast-${variant}`);
             el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 2200);
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), duration);
+        }
+
+        let _loadingEl = null;
+        function showLoading(text = 'Processing...') {
+            hideLoading();
+            const el = document.createElement('div');
+            el.className = 'loading-overlay';
+            el.innerHTML = `<div class="loading-box"><div class="loading-spinner"></div><div class="loading-text">${esc(text)}</div></div>`;
+            document.body.appendChild(el);
+            _loadingEl = el;
+        }
+        function hideLoading() {
+            if (_loadingEl) { _loadingEl.remove(); _loadingEl = null; }
         }
 
         function setCards(cards) {
@@ -1189,19 +1257,26 @@
             const lastName = prompt('Last name (optional):') || '';
             const country = prompt('Country (optional):') || '';
 
-            await api('/api/admin/users/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    first_name: firstName,
-                    last_name: lastName,
-                    country
-                })
-            });
-            showToast('User created successfully');
-            await loadAll();
+            showLoading('Creating user account...');
+            try {
+                await api('/api/admin/users/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        first_name: firstName,
+                        last_name: lastName,
+                        country
+                    })
+                });
+                showToast('User created successfully', 'success');
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Failed to create user', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         function onSortChange() {
@@ -1229,9 +1304,16 @@
         }
 
         async function quickSendReset(userId) {
-            const data = await api(`/api/admin/users/${userId}/password/send-reset`, { method: 'POST' });
-            showToast(data.message || 'Password reset email sent');
-            await loadAuditLogs();
+            showLoading('Sending password reset email...');
+            try {
+                const data = await api(`/api/admin/users/${userId}/password/send-reset`, { method: 'POST' });
+                showToast(data.message || 'Password reset email sent', 'success');
+                await loadAuditLogs();
+            } catch (err) {
+                showToast(err.message || 'Failed to send reset email', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         function setChartRange(range) {
@@ -1257,49 +1339,73 @@
         async function toggleUser(userId, active) {
             const action = active ? 'activate' : 'deactivate';
             if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-            await api(`/api/admin/users/${userId}/status`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ active })
-            });
-            showToast(`User ${active ? 'activated' : 'deactivated'}`);
-            await loadAll();
+            showLoading(`${active ? 'Activating' : 'Deactivating'} user...`);
+            try {
+                await api(`/api/admin/users/${userId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active })
+                });
+                showToast(`User ${active ? 'activated' : 'deactivated'}`, 'success');
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || `Failed to ${action} user`, 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function deleteUser(userId) {
-            if (!confirm('Delete this user permanently? This cannot be undone.')) return;
-            await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
-            showToast('User deleted');
-            await loadAll();
+            const user = currentUsers.find(u => u.id === userId);
+            const displayName = user ? `${userFullName(user)} (${user.email || userId})` : userId;
+            if (!confirm(`Permanently delete user:\n\n${displayName}\n\nThis will remove the user account and all associated data. This cannot be undone.`)) return;
+
+            showLoading('Deleting user and cleaning up data...');
+            try {
+                const data = await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
+                showToast(data.message || 'User deleted successfully', 'success');
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Failed to delete user', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function viewDetails(userId) {
-            const data = await api(`/api/admin/users/${userId}`);
-            selectedAdminUserId = userId;
+            showLoading('Loading user details...');
+            try {
+                const data = await api(`/api/admin/users/${userId}`);
+                selectedAdminUserId = userId;
 
-            document.getElementById('details-title').textContent = `${userFullName(data.user)} · ${data.user.email || '-'}`;
-            document.getElementById('details-meta').textContent = `Country: ${data.user.country || '-'} | Plan: ${data.user.plan || 'Free'} | Sub: ${data.user.subscription_status || '-'} | Ends: ${fmtDate(data.user.subscription_period_end)} | Signup: ${fmtDate(data.user.signup_date)}`;
-            document.getElementById('new-login-email').value = data.user.email || '';
-            document.getElementById('temp-password').value = '';
+                document.getElementById('details-title').textContent = `${userFullName(data.user)} · ${data.user.email || '-'}`;
+                document.getElementById('details-meta').textContent = `Country: ${data.user.country || '-'} | Plan: ${data.user.plan || 'Free'} | Sub: ${data.user.subscription_status || '-'} | Ends: ${fmtDate(data.user.subscription_period_end)} | Signup: ${fmtDate(data.user.signup_date)}`;
+                document.getElementById('new-login-email').value = data.user.email || '';
+                document.getElementById('temp-password').value = '';
 
-            const postsEl = document.getElementById('details-posts');
-            postsEl.innerHTML = '';
-            if (!Array.isArray(data.posts) || !data.posts.length) {
-                postsEl.innerHTML = '<p class="empty-state">No posts found for this user.</p>';
-            } else {
-                data.posts.forEach(post => {
-                    const div = document.createElement('div');
-                    div.className = 'post';
-                    div.innerHTML = `
-                        <small>Status: <strong>${esc(post.status || '-')}</strong> | Created: ${esc(fmtDate(post.created_at))} | Scheduled: ${esc(fmtDate(post.scheduled_for))} | Posted: ${esc(fmtDate(post.posted_at))}</small>
-                        <div class="post-content">${esc(post.content_preview || '')}</div>
-                        ${post.error_message ? `<div style="margin-top:6px;color:#b91c1c;"><strong>Failure:</strong> ${esc(post.error_message)}</div>` : ''}
-                    `;
-                    postsEl.appendChild(div);
-                });
+                const postsEl = document.getElementById('details-posts');
+                postsEl.innerHTML = '';
+                if (!Array.isArray(data.posts) || !data.posts.length) {
+                    postsEl.innerHTML = '<p class="empty-state">No posts found for this user.</p>';
+                } else {
+                    data.posts.forEach(post => {
+                        const div = document.createElement('div');
+                        div.className = 'post';
+                        div.innerHTML = `
+                            <small>Status: <strong>${esc(post.status || '-')}</strong> | Created: ${esc(fmtDate(post.created_at))} | Scheduled: ${esc(fmtDate(post.scheduled_for))} | Posted: ${esc(fmtDate(post.posted_at))}</small>
+                            <div class="post-content">${esc(post.content_preview || '')}</div>
+                            ${post.error_message ? `<div style="margin-top:6px;color:#b91c1c;"><strong>Failure:</strong> ${esc(post.error_message)}</div>` : ''}
+                        `;
+                        postsEl.appendChild(div);
+                    });
+                }
+
+                document.getElementById('details-modal').classList.add('open');
+            } catch (err) {
+                showToast(err.message || 'Failed to load user details', 'error', 5000);
+            } finally {
+                hideLoading();
             }
-
-            document.getElementById('details-modal').classList.add('open');
         }
 
         function closeDetails() {
@@ -1309,62 +1415,97 @@
 
         async function setSubscriptionPlan(plan) {
             if (!selectedAdminUserId) return;
-            await api(`/api/admin/users/${selectedAdminUserId}/subscription/set-plan`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan })
-            });
-            showToast('Subscription updated');
-            await loadAll();
-            await viewDetails(selectedAdminUserId);
+            showLoading('Updating subscription...');
+            try {
+                await api(`/api/admin/users/${selectedAdminUserId}/subscription/set-plan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan })
+                });
+                showToast('Subscription updated', 'success');
+                await loadAll();
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to update subscription', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function cancelSubscription() {
             if (!selectedAdminUserId) return;
             if (!confirm('Cancel this user subscription at period end?')) return;
-            await api(`/api/admin/users/${selectedAdminUserId}/subscription/cancel`, { method: 'POST' });
-            showToast('Subscription marked for cancellation');
-            await loadAll();
-            await viewDetails(selectedAdminUserId);
+            showLoading('Cancelling subscription...');
+            try {
+                await api(`/api/admin/users/${selectedAdminUserId}/subscription/cancel`, { method: 'POST' });
+                showToast('Subscription marked for cancellation', 'success');
+                await loadAll();
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to cancel subscription', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function sendPasswordReset() {
             if (!selectedAdminUserId) return;
-            const data = await api(`/api/admin/users/${selectedAdminUserId}/password/send-reset`, { method: 'POST' });
-            showToast(data.message || 'Password reset email sent');
+            showLoading('Sending password reset email...');
+            try {
+                const data = await api(`/api/admin/users/${selectedAdminUserId}/password/send-reset`, { method: 'POST' });
+                showToast(data.message || 'Password reset email sent', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to send reset email', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function setTemporaryPassword() {
             if (!selectedAdminUserId) return;
             const temporaryPassword = (document.getElementById('temp-password').value || '').trim();
             if (temporaryPassword.length < 8) {
-                alert('Temporary password must be at least 8 characters.');
+                showToast('Temporary password must be at least 8 characters', 'error');
                 return;
             }
-            await api(`/api/admin/users/${selectedAdminUserId}/password/set-temp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ temporary_password: temporaryPassword })
-            });
-            document.getElementById('temp-password').value = '';
-            showToast('Temporary password updated');
+            showLoading('Setting temporary password...');
+            try {
+                await api(`/api/admin/users/${selectedAdminUserId}/password/set-temp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ temporary_password: temporaryPassword })
+                });
+                document.getElementById('temp-password').value = '';
+                showToast('Temporary password updated', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to set temporary password', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         async function updateUserLoginEmail() {
             if (!selectedAdminUserId) return;
             const newEmail = (document.getElementById('new-login-email').value || '').trim().toLowerCase();
             if (!newEmail || !newEmail.includes('@')) {
-                alert('Please enter a valid email.');
+                showToast('Please enter a valid email address', 'error');
                 return;
             }
-            await api(`/api/admin/users/${selectedAdminUserId}/email/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_email: newEmail })
-            });
-            showToast('Login email updated');
-            await loadAll();
-            await viewDetails(selectedAdminUserId);
+            showLoading('Updating login email...');
+            try {
+                await api(`/api/admin/users/${selectedAdminUserId}/email/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_email: newEmail })
+                });
+                showToast('Login email updated', 'success');
+                await loadAll();
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to update email', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
         }
 
         function exportUsersCsv() {
@@ -1437,13 +1578,30 @@
         }
 
         async function loadAll() {
+            const tbody = document.getElementById('users-body');
+            if (tbody && !currentUsers.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading users...</td></tr>';
+            }
             await loadOverview(currentChartRange);
             await loadUsers();
             await loadAuditLogs();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadAll().catch(err => alert(err.message || 'Failed to load dashboard'));
+            loadAll().catch(err => showToast(err.message || 'Failed to load dashboard', 'error', 5000));
+
+            // Close modal on backdrop click
+            const modal = document.getElementById('details-modal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeDetails();
+                });
+            }
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeDetails();
+            });
         });
     </script>
 </body>
