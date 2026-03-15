@@ -2344,7 +2344,9 @@ def auth_password_update():
 @app.route('/login')
 def login_page():
     """Serve login/signup page"""
-    return render_template('auth.html')
+    supabase_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
+    anon_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
+    return render_template('auth.html', supabase_url=supabase_url, supabase_anon_key=anon_key)
 
 
 @app.route('/auth/callback')

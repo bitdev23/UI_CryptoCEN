@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Velank AI - Authentication</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -321,6 +322,9 @@
         }());
         // ═══════════════════════════════════════════════════════════
 
+        const SUPABASE_URL = '{{ supabase_url }}';
+        const SUPABASE_ANON = '{{ supabase_anon_key }}';
+
         function toggleForm() {
             const loginForm = document.getElementById('login-form');
             const signupForm = document.getElementById('signup-form');
@@ -388,19 +392,33 @@
         async function continueWithGoogle() {
             const redirectTo = `${window.location.origin}/auth/callback`;
             try {
-                const response = await fetch('/api/auth/google/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ redirect_to: redirectTo })
-                });
-                const data = await response.json();
-                if (!data.success || !data.auth_url) {
-                    showOAuthError('✗ ' + (data.message || 'Google sign-in unavailable'));
+                if (!SUPABASE_URL || !SUPABASE_ANON || SUPABASE_URL === 'None' || SUPABASE_ANON === 'None' || typeof supabase === 'undefined') {
+                    showOAuthError('✗ Google sign-in is not configured correctly on this page');
                     return;
                 }
-                window.location.href = data.auth_url;
+
+                const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: true,
+                        flowType: 'pkce'
+                    }
+                });
+
+                const result = await sbClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: redirectTo,
+                        queryParams: {
+                            prompt: 'consent'
+                        }
+                    }
+                });
+
+                if (result && result.error) {
+                    showOAuthError('✗ ' + (result.error.message || 'Google sign-in unavailable'));
+                }
             } catch (error) {
                 showOAuthError('✗ Failed to start Google sign-in: ' + error.message);
             }

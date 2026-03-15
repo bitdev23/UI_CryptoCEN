@@ -130,14 +130,30 @@
 
                     const { data, error } = await sbClient.auth.getSession();
 
-                    if (error || !data || !data.session) {
+                    let session = (data && data.session) ? data.session : null;
+
+                    if ((!session || !session.access_token) && !error) {
+                        // Fallback for direct implicit callback URLs where token is in hash/query.
+                        const fallbackAccessToken = hashParams.get('access_token') || queryParams.get('access_token');
+                        const fallbackRefreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+                        const fallbackTokenType = hashParams.get('token_type') || queryParams.get('token_type') || 'bearer';
+                        if (fallbackAccessToken) {
+                            session = {
+                                access_token: fallbackAccessToken,
+                                refresh_token: fallbackRefreshToken || '',
+                                token_type: fallbackTokenType,
+                                user: {}
+                            };
+                        }
+                    }
+
+                    if (error || !session || !session.access_token) {
                         clearAuthStorage();
                         const errMsg = (error && error.message) ? error.message : 'No session was returned.';
                         showError('Sign-in could not be completed', errMsg + ' Please try again.');
                         return;
                     }
 
-                    const session = data.session;
                     const accessToken  = session.access_token;
                     const refreshToken = session.refresh_token;
                     const user         = session.user || {};
