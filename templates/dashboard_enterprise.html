@@ -8,6 +8,14 @@
     <script>
         (function () {
             try {
+                // If Supabase redirected to / with #access_token= in the hash
+                // (happens when redirect_to URL isn't in Supabase allowlist),
+                // forward to /auth/callback so the token handler can process it.
+                var hash = window.location.hash || '';
+                if (hash.indexOf('access_token=') !== -1) {
+                    window.location.replace('/auth/callback' + hash);
+                    return;
+                }
                 if (!localStorage.getItem('access_token')) {
                     window.location.replace('/login');
                 }
