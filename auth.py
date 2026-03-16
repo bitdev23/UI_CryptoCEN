@@ -493,6 +493,19 @@ def verify_token(token: str) -> Optional[Dict]:
                     logger.warning("Token verification: Supabase returned 200 but no user id")
                     continue
                 metadata = payload.get('user_metadata') or {}
+                # Try to infer auth provider from identities or app_metadata
+                provider = ''
+                try:
+                    identities = payload.get('identities') or []
+                    if isinstance(identities, list) and len(identities) > 0:
+                        first = identities[0] or {}
+                        provider = first.get('provider') or ''
+                except Exception:
+                    provider = ''
+
+                if not provider:
+                    provider = (payload.get('app_metadata') or {}).get('provider') or metadata.get('auth_provider') or ''
+
                 return {
                     'id': user_id,
                     'email': payload.get('email', ''),
@@ -501,7 +514,8 @@ def verify_token(token: str) -> Optional[Dict]:
                     'country': metadata.get('country', ''),
                     'email_confirmed_at': payload.get('email_confirmed_at'),
                     'created_at': payload.get('created_at'),
-                    'updated_at': payload.get('updated_at')
+                    'updated_at': payload.get('updated_at'),
+                    'auth_provider': provider or metadata.get('auth_provider', '')
                 }
             except Exception as http_exc:
                 logger.warning("Token verification HTTP failed via %s: %s", base_url, http_exc)
@@ -559,6 +573,12 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
 
         # Sign up with Supabase
         user_metadata = metadata or {}
+        # Record that this account was created with email/password
+        try:
+            if isinstance(user_metadata, dict):
+                user_metadata['auth_provider'] = user_metadata.get('auth_provider') or 'email'
+        except Exception:
+            pass
         response = _run_supabase_with_recovery(lambda client: client.auth.sign_up({
             'email': email,
             'password': password,
@@ -570,12 +590,13 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
         
         if response.user:
             logger.info(f"User signed up: {email}")
-            return True, "Signup successful. Please verify your email to continue.", {
+                return True, "Signup successful. Please verify your email to continue.", {
                 'id': response.user.id,
                 'email': response.user.email,
                 'first_name': user_metadata.get('first_name', ''),
                 'last_name': user_metadata.get('last_name', ''),
-                'country': user_metadata.get('country', '')
+                    'country': user_metadata.get('country', ''),
+                    'auth_provider': user_metadata.get('auth_provider', 'email')
             }
         else:
             return False, "Signup failed", None
@@ -586,7 +607,7 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
 
         if _is_timeout_error(e):
             fallback_data = _fallback_signup(email, password, metadata or {}, _build_email_redirect_url())
-            if fallback_data and fallback_data.get('user'):
+                if fallback_data and fallback_data.get('user'):
                 user_obj = fallback_data.get('user') or {}
                 md = metadata or {}
                 return True, "Signup successful. Please verify your email to continue.", {
@@ -594,7 +615,8 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
                     'email': user_obj.get('email', email),
                     'first_name': md.get('first_name', ''),
                     'last_name': md.get('last_name', ''),
-                    'country': md.get('country', '')
+                        'country': md.get('country', ''),
+                        'auth_provider': md.get('auth_provider', 'email')
                 }
             return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
         

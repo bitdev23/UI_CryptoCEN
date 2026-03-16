@@ -137,11 +137,23 @@
                     return;
                 }
 
-                // ── 4. Store tokens + user info ──────────────────────────────
+                // ── 4. Decide whether to accept this OAuth sign-in or show conflict message ─
+                var user = result.body.user || {};
+                // If user's stored auth_provider is 'email', they originally signed up with email/password
+                if ((user.auth_provider || '').toLowerCase() === 'email') {
+                    // Don't persist this OAuth token: inform user to sign in with email/password or link accounts
+                    clearAuthStorage();
+                    showError('Account exists with email/password', 'This account was registered using email & password. Please sign in with your email and password, or link your Google account from your profile settings.');
+                    setTimeout(function () {
+                        window.location.replace('/login#oauth_conflict=1');
+                    }, 2000);
+                    return;
+                }
+
+                // Otherwise accept token and store user info
                 localStorage.setItem('access_token', accessToken);
                 if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
 
-                var user = result.body.user || {};
                 if (user.id)    localStorage.setItem('user_id',    user.id);
                 if (user.email) localStorage.setItem('user_email', user.email);
                 localStorage.setItem('first_name', user.first_name || '');

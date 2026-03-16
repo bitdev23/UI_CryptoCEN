@@ -2060,6 +2060,19 @@ def auth_login():
         success, message, auth_data = login_user(email, password)
 
         if success:
+            # Extra verification: ensure token is valid and user still exists
+            token = auth_data.get('access_token')
+            verified = None
+            try:
+                if token:
+                    verified = verify_token(token)
+            except Exception:
+                verified = None
+
+            if not verified:
+                # Treat as user not found or deleted
+                return jsonify({'success': False, 'message': 'User not found or account deleted'}), 404
+
             return jsonify({
                 'success': True,
                 'message': message,
@@ -2547,7 +2560,8 @@ def admin_create_user():
             'user_metadata': {
                 'first_name': first_name,
                 'last_name': last_name,
-                'country': country
+                'country': country,
+                'auth_provider': 'email'
             }
         })
         user_obj = getattr(response, 'user', None)
