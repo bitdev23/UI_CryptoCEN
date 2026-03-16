@@ -2022,11 +2022,16 @@ def auth_signup():
         if '@' not in email:
             return jsonify({'success': False, 'message': 'Invalid email format'}), 400
 
+        role = (data.get('role') or '').strip()
+        industry = (data.get('industry') or '').strip()
+
         metadata = {
             'email': email,
             'first_name': first_name,
             'last_name': last_name,
-            'country': country
+            'country': country,
+            'role': role,
+            'industry': industry
         }
 
         success, message, user_data = signup_user(email, password, metadata)
@@ -2097,9 +2102,9 @@ def auth_google_start():
     """Start Google OAuth sign-in via Supabase hosted auth."""
     try:
         supabase_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
-        anon_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
-        if not supabase_url or not anon_key:
-            return jsonify({'success': False, 'message': 'Google sign-in is not configured on server'}), 500
+        supabase_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
+        if not supabase_url or not supabase_key:
+            return jsonify({'success': False, 'message': 'Supabase is not configured on server'}), 500
 
         payload = request.get_json(silent=True) or {}
         requested_redirect = (payload.get('redirect_to') or request.args.get('redirect_to') or '').strip()
@@ -2109,13 +2114,13 @@ def auth_google_start():
             base_url = (os.getenv('APP_BASE_URL') or 'http://127.0.0.1:5050').strip().rstrip('/')
             redirect_to = f"{base_url}/auth/callback"
 
+        # Build OAuth URL for Supabase (Supabase handles Google OAuth internally)
+        # Supabase validates redirect_to against registered URIs in the console
         query = urlencode({
             'provider': 'google',
             'redirect_to': redirect_to,
-            'scopes': 'openid email profile',
-            'flow_type': 'implicit',
-            'response_type': 'token',
-            'prompt': 'consent'
+            'response_type': 'code',
+            'scope': 'openid email profile'
         })
         auth_url = f"{supabase_url}/auth/v1/authorize?{query}"
         return jsonify({'success': True, 'auth_url': auth_url})
@@ -2409,7 +2414,8 @@ def admin_logout_page():
 @app.route('/admin/dashboard')
 @require_admin_session
 def admin_dashboard_page():
-    return render_template('admin_dashboard.html', admin_email=session.get('admin_email', ''))
+    supabase_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
+    return render_template('admin_dashboard.html', admin_email=session.get('admin_email', ''), supabase_url=supabase_url)
 
 
 @app.route('/api/admin/overview', methods=['GET'])
@@ -2511,6 +2517,42 @@ def admin_overview():
 @require_admin_api
 def admin_users():
     users = list_auth_users()
+    # Filter out soft-deleted users so they don't appear in the main active user list.
+    filtered_users = []
+    for u in users:
+        # normalize: if this item is a dict use it, otherwise prefer `item.user` if present,
+        # else use the item itself (some SDKs return user objects directly)
+        if isinstance(u, dict):
+            u_obj = u
+        else:
+            u_obj = getattr(u, 'user', None) or u
+
+        md = (u_obj.get('user_metadata') if isinstance(u_obj, dict) else getattr(u_obj, 'user_metadata', {})) or {}
+
+        soft_flag = bool(md.get('soft_deleted'))
+        # If metadata is missing, try fetching the full user record as a fallback
+        if not soft_flag:
+            try:
+                if isinstance(u_obj, dict):
+                    uid = str(u_obj.get('id') or '')
+                else:
+                    uid = str(getattr(u_obj, 'id', '') or '')
+                if uid and auth_supabase:
+                    full_res = auth_supabase.auth.admin.get_user_by_id(uid)
+                    full_user = getattr(full_res, 'user', None)
+                    if full_user is None and isinstance(full_res, dict):
+                        full_user = full_res.get('user')
+                    if isinstance(full_user, dict):
+                        full_md = full_user.get('user_metadata') or {}
+                    else:
+                        full_md = getattr(full_user, 'user_metadata', {}) if full_user else {}
+                    full_md = full_md or {}
+                    soft_flag = bool(full_md.get('soft_deleted'))
+            except Exception:
+                pass
+
+        if not soft_flag:
+            filtered_users.append(u)
     cache_meta = _get_admin_users_cache_meta()
     auth_configured = bool(auth_supabase)
 
@@ -2522,7 +2564,7 @@ def admin_users():
     except Exception as e:
         logger.error("Admin users subscription lookup failed: %s", e)
 
-    rows = [user_to_admin_row(user, subscription_map) for user in users]
+    rows = [user_to_admin_row(user, subscription_map) for user in filtered_users]
     rows.sort(key=lambda item: item.get('signup_date') or '', reverse=True)
     return jsonify({
         'success': True,
@@ -2651,6 +2693,61 @@ def admin_delete_user(user_id):
     if not is_valid_uuid(user_id):
         return jsonify({'success': False, 'message': 'Invalid user ID format'}), 400
 
+    # Require explicit typed confirmation to avoid accidental deletes.
+    payload = request.get_json(silent=True) or {}
+    confirm_value = (payload.get('confirm') or '').strip()
+    force_delete = bool(payload.get('force'))
+
+    # Fetch user's email (best-effort) so admin can confirm by typing the email OR a DELETE token.
+    expected_email = ''
+    try:
+        user_res = auth_supabase.auth.admin.get_user_by_id(user_id)
+        user_obj = getattr(user_res, 'user', None)
+        if user_obj is None and isinstance(user_res, dict):
+            user_obj = user_res.get('user')
+        if isinstance(user_obj, dict):
+            expected_email = (user_obj.get('email') or '').strip()
+        else:
+            expected_email = getattr(user_obj, 'email', '') if user_obj else ''
+    except Exception:
+        expected_email = ''
+
+    # Soft-delete by default: mark user as soft_deleted in metadata and ban.
+    expected_token = f'DELETE {user_id}'
+    if not force_delete:
+        # Soft-delete requires typing the user's email as confirmation (safer than no check)
+        if not confirm_value or (expected_email and confirm_value != expected_email):
+            msg = 'Missing or incorrect confirmation for soft-delete. Send JSON {"confirm":"<user_email>"} to soft-delete.'
+            return jsonify({'success': False, 'message': msg}), 400
+
+        try:
+            # update user metadata to mark soft-deleted
+            try:
+                user_res = auth_supabase.auth.admin.get_user_by_id(user_id)
+            except Exception:
+                user_res = None
+            attrs = {'user_metadata': {}}
+            if user_res:
+                uobj = getattr(user_res, 'user', None) or (user_res if isinstance(user_res, dict) else {})
+                current_md = (uobj.get('user_metadata') if isinstance(uobj, dict) else getattr(uobj, 'user_metadata', {})) or {}
+            else:
+                current_md = {}
+            current_md['soft_deleted'] = True
+            current_md['deleted_at'] = datetime.utcnow().isoformat() + 'Z'
+            attrs['user_metadata'] = current_md
+            attrs['ban_duration'] = '876000h'
+            auth_supabase.auth.admin.update_user_by_id(user_id, attrs)
+            _admin_log_action('soft_delete_user', user_id, {'confirmed_by': session.get('admin_email', ''), 'confirmation': confirm_value})
+            return jsonify({'success': True, 'message': 'User soft-deleted. To permanently remove the user, call DELETE with {"force": true, "confirm": "DELETE <user_id>"}'} )
+        except Exception as e:
+            logger.error('Soft-delete failed for %s: %s', user_id, e)
+            return jsonify({'success': False, 'message': f'Failed to soft-delete user: {str(e)}'}), 500
+
+    # force_delete == True: require exact token or email match and proceed to hard delete
+    if not confirm_value or (confirm_value != expected_token and (expected_email and confirm_value != expected_email)):
+        msg = 'Missing or incorrect confirmation. To permanently delete, send JSON {"force": true, "confirm":"DELETE <user_id>"} or provide the user email.'
+        return jsonify({'success': False, 'message': msg}), 400
+
     cleanup_errors = []
 
     # --- clean up user-owned rows that may have FK constraints ----------
@@ -2674,12 +2771,355 @@ def admin_delete_user(user_id):
             logger.error("Admin delete user failed: %s", e)
             return jsonify({'success': False, 'message': f'Failed to delete user: {str(e)}'}), 500
 
-    _admin_log_action('delete_user', user_id, {'cleanup_errors': cleanup_errors})
+    log_details = {'cleanup_errors': cleanup_errors}
+    try:
+        if force_delete:
+            log_details['confirmation'] = confirm_value
+    except Exception:
+        pass
+    _admin_log_action('delete_user', user_id, log_details)
 
     message = 'User deleted successfully'
     if cleanup_errors:
         message += f' (some data cleanup warnings: {"; ".join(cleanup_errors)})'
     return jsonify({'success': True, 'message': message})
+
+
+@app.route('/api/admin/users/<user_id>/restore', methods=['POST'])
+@require_admin_api
+def admin_restore_user(user_id):
+    if not auth_supabase:
+        return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
+
+    if not is_valid_uuid(user_id):
+        return jsonify({'success': False, 'message': 'Invalid user ID format'}), 400
+
+    try:
+        # fetch current metadata
+        user_res = auth_supabase.auth.admin.get_user_by_id(user_id)
+        user_obj = getattr(user_res, 'user', None)
+        if user_obj is None and isinstance(user_res, dict):
+            user_obj = user_res.get('user')
+
+        if isinstance(user_obj, dict):
+            current_metadata = user_obj.get('user_metadata', {}) or {}
+        else:
+            current_metadata = getattr(user_obj, 'user_metadata', {}) if user_obj else {}
+        current_metadata = current_metadata or {}
+        # remove soft-delete metadata
+        current_metadata.pop('soft_deleted', None)
+        current_metadata.pop('deleted_at', None)
+
+        attributes = {
+            'user_metadata': current_metadata,
+            'ban_duration': 'none'
+        }
+        auth_supabase.auth.admin.update_user_by_id(user_id, attributes)
+        _admin_log_action('restore_user', user_id, {})
+        return jsonify({'success': True, 'message': 'User restored successfully'})
+    except Exception as e:
+        logger.error('Restore user failed: %s', e)
+        return jsonify({'success': False, 'message': f'Failed to restore user: {str(e)}'}), 500
+
+
+@app.route('/api/admin/users/soft_deleted', methods=['GET'])
+@require_admin_api
+def admin_list_soft_deleted_users():
+    try:
+        users = list_auth_users()
+        soft = []
+        for u in users:
+            # normalize: if this item is a dict use it, otherwise prefer `item.user` if present,
+            # else use the item itself (some SDKs return user objects directly)
+            if isinstance(u, dict):
+                u_obj = u
+            else:
+                u_obj = getattr(u, 'user', None) or u
+            md = (u_obj.get('user_metadata') if isinstance(u_obj, dict) else getattr(u_obj, 'user_metadata', {})) or {}
+
+            # If the list_users response doesn't include metadata, fetch the full user record
+            # via get_user_by_id as a fallback so we reliably detect soft-deleted users.
+            soft_flag = bool(md.get('soft_deleted'))
+            deleted_at = md.get('deleted_at')
+            if not soft_flag:
+                try:
+                    if isinstance(u_obj, dict):
+                        uid = str(u_obj.get('id') or '')
+                    else:
+                        uid = str(getattr(u_obj, 'id', '') or '')
+                    if uid and auth_supabase:
+                        full_res = auth_supabase.auth.admin.get_user_by_id(uid)
+                        full_user = getattr(full_res, 'user', None)
+                        if full_user is None and isinstance(full_res, dict):
+                            full_user = full_res.get('user')
+                        if isinstance(full_user, dict):
+                            full_md = full_user.get('user_metadata') or {}
+                        else:
+                            full_md = getattr(full_user, 'user_metadata', {}) if full_user else {}
+                        full_md = full_md or {}
+                        soft_flag = bool(full_md.get('soft_deleted'))
+                        deleted_at = deleted_at or full_md.get('deleted_at')
+                except Exception:
+                    # ignore per-user fetch errors and continue
+                    pass
+
+            if soft_flag:
+                if isinstance(u_obj, dict):
+                    uid_val = str(u_obj.get('id') or '')
+                    email_val = u_obj.get('email', '')
+                else:
+                    uid_val = str(getattr(u_obj, 'id', '') or '')
+                    email_val = getattr(u_obj, 'email', '')
+                soft.append({
+                    'id': uid_val,
+                    'email': email_val,
+                    'first_name': md.get('first_name', ''),
+                    'last_name': md.get('last_name', ''),
+                    'deleted_at': deleted_at
+                })
+        return jsonify({'success': True, 'users': soft})
+    except Exception as e:
+        logger.error('List soft-deleted users failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/bulk_restore', methods=['POST'])
+@require_admin_api
+def admin_bulk_restore():
+    try:
+        payload = request.get_json(silent=True) or {}
+        user_ids = payload.get('user_ids') or []
+        if not isinstance(user_ids, list) or not user_ids:
+            return jsonify({'success': False, 'message': 'user_ids must be a non-empty list'}), 400
+
+        results = []
+        for uid in user_ids:
+            try:
+                # reuse restore logic
+                user_res = auth_supabase.auth.admin.get_user_by_id(uid)
+                user_obj = getattr(user_res, 'user', None)
+                if user_obj is None and isinstance(user_res, dict):
+                    user_obj = user_res.get('user')
+
+                if isinstance(user_obj, dict):
+                    current_metadata = user_obj.get('user_metadata', {}) or {}
+                else:
+                    current_metadata = getattr(user_obj, 'user_metadata', {}) if user_obj else {}
+                current_metadata = current_metadata or {}
+                current_metadata.pop('soft_deleted', None)
+                current_metadata.pop('deleted_at', None)
+                attributes = {'user_metadata': current_metadata, 'ban_duration': 'none'}
+                auth_supabase.auth.admin.update_user_by_id(uid, attributes)
+                _admin_log_action('bulk_restore', uid, {'by': session.get('admin_email', '')})
+                results.append({'id': uid, 'success': True})
+            except Exception as e:
+                logger.error('Bulk restore failed for %s: %s', uid, e)
+                results.append({'id': uid, 'success': False, 'message': str(e)})
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        logger.error('Bulk restore operation failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/purge', methods=['POST'])
+@require_admin_api
+def admin_bulk_purge():
+    try:
+        payload = request.get_json(silent=True) or {}
+        user_ids = payload.get('user_ids') or []
+        confirm = (payload.get('confirm') or '').strip()
+        if not isinstance(user_ids, list) or not user_ids:
+            return jsonify({'success': False, 'message': 'user_ids must be a non-empty list'}), 400
+        if confirm != 'PURGE':
+            return jsonify({'success': False, 'message': 'Missing or incorrect confirmation. Set confirm="PURGE" to proceed.'}), 400
+
+        summary = []
+        for uid in user_ids:
+            item = {'id': uid, 'deleted': False, 'errors': []}
+            try:
+                # cleanup tables
+                for table_name in ('posts', 'subscriptions', 'usage_monthly'):
+                    try:
+                        auth_supabase.table(table_name).delete().eq('user_id', uid).execute()
+                    except Exception as table_err:
+                        item['errors'].append(f'{table_name}: {table_err}')
+                # delete auth user
+                try:
+                    auth_supabase.auth.admin.delete_user(uid)
+                    item['deleted'] = True
+                except Exception as e:
+                    err_str = str(e).lower()
+                    if 'not found' in err_str:
+                        item['deleted'] = True
+                    else:
+                        item['errors'].append(str(e))
+                _admin_log_action('bulk_purge_user', uid, {'by': session.get('admin_email', ''), 'errors': item['errors']})
+            except Exception as e:
+                logger.error('Bulk purge error for %s: %s', uid, e)
+                item['errors'].append(str(e))
+            summary.append(item)
+
+        return jsonify({'success': True, 'summary': summary})
+    except Exception as e:
+        logger.error('Bulk purge operation failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/purge_scheduled', methods=['POST'])
+@require_admin_api
+def admin_purge_scheduled():
+    try:
+        payload = request.get_json(silent=True) or {}
+        days = int(payload.get('days') or 30)
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        users = list_auth_users()
+        to_purge = []
+        for u in users:
+            u_obj = u if isinstance(u, dict) else getattr(u, 'user', {})
+            md = (u_obj.get('user_metadata') if isinstance(u_obj, dict) else getattr(u_obj, 'user_metadata', {})) or {}
+            deleted_at = md.get('deleted_at')
+            if md.get('soft_deleted') and deleted_at:
+                try:
+                    dt = datetime.fromisoformat(str(deleted_at).replace('Z', '+00:00')).replace(tzinfo=None)
+                    if dt <= cutoff:
+                        if isinstance(u_obj, dict):
+                            uid = str(u_obj.get('id') or '')
+                        else:
+                            uid = str(getattr(u_obj, 'id', '') or '')
+                        to_purge.append(uid)
+                except Exception:
+                    continue
+
+        # reuse bulk purge logic
+        if not to_purge:
+            return jsonify({'success': True, 'purged': 0, 'ids': []})
+
+        # perform purge quietly (no external confirm required for scheduled)
+        purged = []
+        for uid in to_purge:
+            try:
+                for table_name in ('posts', 'subscriptions', 'usage_monthly'):
+                    try:
+                        auth_supabase.table(table_name).delete().eq('user_id', uid).execute()
+                    except Exception:
+                        pass
+                try:
+                    auth_supabase.auth.admin.delete_user(uid)
+                except Exception:
+                    pass
+                _admin_log_action('scheduled_purge_user', uid, {'days': days})
+                purged.append(uid)
+            except Exception:
+                pass
+
+        return jsonify({'success': True, 'purged': len(purged), 'ids': purged})
+    except Exception as e:
+        logger.error('Scheduled purge failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/account/link_request', methods=['POST'])
+def account_link_request():
+    """Users can request account-linking (OAuth -> existing email account). This creates a system log entry for admins to act."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        email = (payload.get('email') or '').strip()
+        provider = (payload.get('provider') or '').strip()
+        provider_user_id = (payload.get('provider_user_id') or '').strip()
+        if not email or not provider or not provider_user_id:
+            return jsonify({'success': False, 'message': 'email, provider and provider_user_id are required'}), 400
+
+        # record a system_logs entry for admins to review
+        if auth_supabase:
+            try:
+                auth_supabase.table('system_logs').insert({
+                    'level': 'info',
+                    'message': 'account_link_request',
+                    'request_path': request.path,
+                    'request_method': request.method,
+                    'metadata': {
+                        'email': email,
+                        'provider': provider,
+                        'provider_user_id': provider_user_id,
+                        'remote_addr': request.remote_addr
+                    }
+                }).execute()
+            except Exception:
+                pass
+
+        logger.info('Account link request: %s %s', email, provider)
+        return jsonify({'success': True, 'message': 'Link request recorded. An admin will review and link accounts.'})
+    except Exception as e:
+        logger.error('Link request failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/attach_identity', methods=['POST'])
+@require_admin_api
+def admin_attach_identity(user_id):
+    try:
+        payload = request.get_json(silent=True) or {}
+        provider = (payload.get('provider') or '').strip()
+        provider_user_id = (payload.get('provider_user_id') or '').strip()
+        if not provider or not provider_user_id:
+            return jsonify({'success': False, 'message': 'provider and provider_user_id are required'}), 400
+
+        user_res = auth_supabase.auth.admin.get_user_by_id(user_id)
+        user_obj = getattr(user_res, 'user', None)
+        if user_obj is None and isinstance(user_res, dict):
+            user_obj = user_res.get('user')
+
+        if isinstance(user_obj, dict):
+            current_metadata = user_obj.get('user_metadata', {}) or {}
+        else:
+            current_metadata = getattr(user_obj, 'user_metadata', {}) if user_obj else {}
+        current_metadata = current_metadata or {}
+        linked = current_metadata.get('linked_identities') or []
+        if not isinstance(linked, list):
+            linked = []
+        linked.append({'provider': provider, 'provider_user_id': provider_user_id, 'attached_at': datetime.utcnow().isoformat() + 'Z', 'attached_by': session.get('admin_email', '')})
+        current_metadata['linked_identities'] = linked
+
+        auth_supabase.auth.admin.update_user_by_id(user_id, {'user_metadata': current_metadata})
+        _admin_log_action('attach_identity', user_id, {'provider': provider, 'provider_user_id': provider_user_id})
+        return jsonify({'success': True, 'message': 'Identity attached to user metadata'})
+    except Exception as e:
+        logger.error('Attach identity failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/users/<user_id>/detach_identity', methods=['POST'])
+@require_admin_api
+def admin_detach_identity(user_id):
+    try:
+        payload = request.get_json(silent=True) or {}
+        provider = (payload.get('provider') or '').strip()
+        provider_user_id = (payload.get('provider_user_id') or '').strip()
+        if not provider or not provider_user_id:
+            return jsonify({'success': False, 'message': 'provider and provider_user_id are required'}), 400
+
+        user_res = auth_supabase.auth.admin.get_user_by_id(user_id)
+        user_obj = getattr(user_res, 'user', None)
+        if user_obj is None and isinstance(user_res, dict):
+            user_obj = user_res.get('user')
+
+        if isinstance(user_obj, dict):
+            current_metadata = user_obj.get('user_metadata', {}) or {}
+        else:
+            current_metadata = getattr(user_obj, 'user_metadata', {}) if user_obj else {}
+        current_metadata = current_metadata or {}
+        linked = current_metadata.get('linked_identities') or []
+        if not isinstance(linked, list):
+            linked = []
+        new_linked = [l for l in linked if not (l.get('provider') == provider and l.get('provider_user_id') == provider_user_id)]
+        current_metadata['linked_identities'] = new_linked
+        auth_supabase.auth.admin.update_user_by_id(user_id, {'user_metadata': current_metadata})
+        _admin_log_action('detach_identity', user_id, {'provider': provider, 'provider_user_id': provider_user_id})
+        return jsonify({'success': True, 'message': 'Identity detached'})
+    except Exception as e:
+        logger.error('Detach identity failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/admin/users/<user_id>/posts', methods=['GET'])

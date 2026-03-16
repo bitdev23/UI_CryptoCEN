@@ -3021,5 +3021,34 @@
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
     </script>
+    <script>
+    // Dashboard bootstrap: auto-fill role/industry and welcome from signup flow
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const user = JSON.parse(localStorage.getItem('velank_user') || '{}');
+            if (!user || Object.keys(user).length === 0) return;
+
+            // Auto-populate Role
+            const roleEl = document.getElementById('dashboard-role-input') || document.querySelector('[name="role"]');
+            if (roleEl && user.role) roleEl.value = user.role;
+
+            // Auto-populate Industry
+            const industryEl = document.getElementById('dashboard-industry-input') || document.querySelector('[name="industry"]');
+            if (industryEl && user.industry) industryEl.value = user.industry;
+
+            // Welcome message
+            const welcomeEl = document.getElementById('dashboard-welcome');
+            if (welcomeEl && user.firstName) welcomeEl.textContent = 'Welcome, ' + user.firstName + '!';
+
+            // Expose AI context for post generation
+            window.AI_CONTEXT = window.AI_CONTEXT || {};
+            window.AI_CONTEXT.userRole = user.role || window.AI_CONTEXT.userRole || '';
+            window.AI_CONTEXT.userIndustry = user.industry || window.AI_CONTEXT.userIndustry || '';
+            window.AI_CONTEXT.userName = user.firstName || window.AI_CONTEXT.userName || '';
+        } catch (e) {
+            console.debug('Dashboard bootstrap: no velank_user in localStorage or parse error');
+        }
+    });
+    </script>
 </body>
 </html>

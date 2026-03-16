@@ -727,6 +727,14 @@
     </header>
 
     <main class="container">
+            <!-- Admin guardrail banner: shows active Supabase project to avoid mistaken destructive actions -->
+            {% if supabase_url %}
+            <div style="border:1px solid #fde68a;background:#fff7ed;padding:10px;border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <div style="font-weight:700;color:#92400e;">Warning: Admin actions will affect the active Supabase project:</div>
+                <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#92400e;">{{ supabase_url }}</div>
+                <div style="color:#92400e;font-size:13px;">Please ensure this is the intended environment before performing destructive operations.</div>
+            </div>
+            {% endif %}
         <section class="cards">
             <div class="card">
                 <div class="label">Total Users</div>
@@ -799,6 +807,27 @@
             </div>
         </section>
 
+        <!-- Confirm delete modal -->
+        <div id="confirm-delete-modal" class="modal" aria-hidden="true">
+            <div class="modal-card">
+                <div class="modal-top">
+                    <div>
+                        <h3 id="confirm-delete-title">Confirm permanent deletion</h3>
+                        <p class="mono" id="confirm-delete-instructions">Type <strong>DELETE &lt;user id&gt;</strong> or the user's email to confirm.</p>
+                    </div>
+                    <button class="modal-close" onclick="closeConfirmDelete()">Close</button>
+                </div>
+                <div style="margin-top:10px;">
+                    <input id="confirm-delete-input" placeholder="Type confirmation here" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;" />
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="btn btn-ghost" onclick="closeConfirmDelete()">Cancel</button>
+                    <button id="soft-delete-button" class="btn btn-ghost">Soft-delete</button>
+                    <button id="hard-delete-button" class="btn btn-primary">Delete permanently</button>
+                </div>
+            </div>
+        </div>
+
         <section class="management-panel">
             <div class="management-head">
                 <div>
@@ -808,6 +837,7 @@
                 <div class="top-actions">
                     <button class="btn btn-ghost" onclick="createUserPrompt()">Add User</button>
                     <button class="btn btn-primary" onclick="exportUsersCsv()">Export CSV</button>
+                    <button class="btn btn-ghost" onclick="openSoftDeletedModal()">Soft-deleted Users</button>
                 </div>
             </div>
 
@@ -910,10 +940,48 @@
                         <button class="btn-sm btn-view" onclick="updateUserLoginEmail()">Update Email</button>
                     </div>
                 </div>
+                <div class="control-group">
+                    <h4>Restore Control</h4>
+                    <div class="control-actions">
+                        <button id="restore-user-button" class="btn-sm btn-view">Restore User</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h4>Linked Identities</h4>
+                    <div id="linked-identities-list" style="margin-bottom:8px;color:#475569;font-size:13px;"></div>
+                    <div class="control-inline">
+                        <input id="link-provider" type="text" placeholder="provider (eg. google)" />
+                        <input id="link-provider-id" type="text" placeholder="provider_user_id (sub)" />
+                        <button class="btn-sm btn-view" onclick="attachIdentity()">Attach Identity</button>
+                    </div>
+                </div>
             </div>
 
             <h4 style="margin: 12px 0 0;">Posts (preview)</h4>
             <div id="details-posts"></div>
+        </div>
+    </div>
+
+    <!-- Soft-deleted users modal -->
+    <div class="modal" id="soft-deleted-modal">
+        <div class="modal-card">
+            <div class="modal-top">
+                <h3 style="margin:0;">Soft-deleted Users</h3>
+                <button class="modal-close" onclick="closeSoftDeletedModal()">Close</button>
+            </div>
+            <div style="margin-top:10px;">
+                <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-ghost" onclick="loadSoftDeletedUsers()">Refresh</button>
+                    <button class="btn btn-ghost" onclick="selectAllSoftDeleted(true)">Select All</button>
+                    <button class="btn btn-ghost" onclick="selectAllSoftDeleted(false)">Clear</button>
+                </div>
+                <div id="soft-deleted-list" style="max-height:360px;overflow:auto;border:1px solid #e6eef8;padding:8px;border-radius:8px;"></div>
+                <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+                    <input id="soft-purge-confirm" placeholder="Type PURGE to confirm permanent deletion" style="padding:8px;border:1px solid #e2e8f0;border-radius:8px;" />
+                    <button class="btn btn-ghost" onclick="bulkRestoreSelected()">Restore Selected</button>
+                    <button class="btn btn-primary" onclick="bulkPurgeSelected()">Permanently Delete Selected</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -946,6 +1014,110 @@
             const d = new Date(v);
             if (Number.isNaN(d.getTime())) return String(v);
             return d.toLocaleString();
+        }
+
+        // Soft-deleted users modal functions
+        function openSoftDeletedModal() {
+            document.getElementById('soft-deleted-modal').classList.add('open');
+            loadSoftDeletedUsers();
+        }
+
+        function closeSoftDeletedModal() {
+            document.getElementById('soft-deleted-modal').classList.remove('open');
+        }
+
+        async function loadSoftDeletedUsers() {
+            showLoading('Loading soft-deleted users...');
+            try {
+                const res = await api('/api/admin/users/soft_deleted');
+                const users = res.users || [];
+                const el = document.getElementById('soft-deleted-list');
+                el.innerHTML = '';
+                if (!users.length) {
+                    el.innerHTML = '<div class="empty-state">No soft-deleted users found.</div>';
+                    return;
+                }
+                users.forEach(u => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.style.justifyContent = 'space-between';
+                    row.style.padding = '6px 8px';
+                    row.style.borderBottom = '1px solid #eef2f7';
+                    row.innerHTML = `
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="checkbox" data-id="${esc(u.id)}" class="soft-deleted-checkbox" />
+                            <div>
+                                <div style="font-weight:700">${esc(u.email || '-')}</div>
+                                <div style="font-size:12px;color:#64748b">Deleted: ${esc(u.deleted_at || '-')}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn-sm btn-view" onclick="restoreSingle('${esc(u.id)}')">Restore</button>
+                        </div>
+                    `;
+                    el.appendChild(row);
+                });
+            } catch (err) {
+                showToast(err.message || 'Failed to load soft-deleted users', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function selectAllSoftDeleted(yes) {
+            document.querySelectorAll('.soft-deleted-checkbox').forEach(cb => cb.checked = !!yes);
+        }
+
+        function getSelectedSoftDeletedIds() {
+            const ids = [];
+            document.querySelectorAll('.soft-deleted-checkbox:checked').forEach(cb => ids.push(cb.getAttribute('data-id')));
+            return ids;
+        }
+
+        async function restoreSingle(id) {
+            showLoading('Restoring user...');
+            try {
+                await api(`/api/admin/users/${id}/restore`, { method: 'POST' });
+                showToast('User restored', 'success');
+                await loadSoftDeletedUsers();
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Failed to restore user', 'error');
+            } finally { hideLoading(); }
+        }
+
+        async function bulkRestoreSelected() {
+            const ids = getSelectedSoftDeletedIds();
+            if (!ids.length) return showToast('No users selected', 'error');
+            if (!confirm(`Restore ${ids.length} users?`)) return;
+            showLoading('Restoring users...');
+            try {
+                const res = await api('/api/admin/users/bulk_restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_ids: ids }) });
+                showToast('Restore completed', 'success');
+                await loadSoftDeletedUsers();
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Bulk restore failed', 'error');
+            } finally { hideLoading(); }
+        }
+
+        async function bulkPurgeSelected() {
+            const ids = getSelectedSoftDeletedIds();
+            if (!ids.length) return showToast('No users selected', 'error');
+            const confirmText = (document.getElementById('soft-purge-confirm').value || '').trim();
+            if (confirmText !== 'PURGE') return showToast('Type PURGE to confirm permanent deletion', 'error');
+            if (!confirm(`Permanently delete ${ids.length} users? This cannot be undone.`)) return;
+            showLoading('Permanently deleting users...');
+            try {
+                const res = await api('/api/admin/users/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_ids: ids, confirm: 'PURGE' }) });
+                showToast('Purge completed', 'success');
+                document.getElementById('soft-purge-confirm').value = '';
+                await loadSoftDeletedUsers();
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Bulk purge failed', 'error');
+            } finally { hideLoading(); }
         }
 
         async function api(url, opts = {}) {
@@ -1358,19 +1530,79 @@
         async function deleteUser(userId) {
             const user = currentUsers.find(u => u.id === userId);
             const displayName = user ? `${userFullName(user)} (${user.email || userId})` : userId;
-            if (!confirm(`Permanently delete user:\n\n${displayName}\n\nThis will remove the user account and all associated data. This cannot be undone.`)) return;
+            // Open typed-confirm modal instead of simple confirm
+            openConfirmDelete(userId, displayName, user ? (user.email || '') : '');
+        }
 
-            showLoading('Deleting user and cleaning up data...');
+        let _pendingDeleteUser = null;
+        function openConfirmDelete(userId, displayName, userEmail) {
+            _pendingDeleteUser = { id: userId, email: userEmail };
+            document.getElementById('confirm-delete-title').textContent = `Permanently delete ${displayName}`;
+            document.getElementById('confirm-delete-instructions').innerHTML = `Type <strong>DELETE ${userId}</strong> or the user's email (<em>${esc(userEmail) || '-'}</em>) to confirm.`;
+            document.getElementById('confirm-delete-input').value = '';
+            document.getElementById('confirm-delete-modal').classList.add('open');
+            document.getElementById('confirm-delete-input').focus();
+        }
+
+        function closeConfirmDelete() {
+            _pendingDeleteUser = null;
+            document.getElementById('confirm-delete-modal').classList.remove('open');
+        }
+
+        // Soft-delete handler (requires typing user's email)
+        document.getElementById('soft-delete-button').addEventListener('click', async function () {
+            const input = (document.getElementById('confirm-delete-input').value || '').trim();
+            if (!_pendingDeleteUser) return closeConfirmDelete();
+            const userId = _pendingDeleteUser.id;
+            if (!input || ( _pendingDeleteUser.email && input !== _pendingDeleteUser.email )) {
+                showToast('For soft-delete please type the user\'s email to confirm.', 'error');
+                return;
+            }
+
+            closeConfirmDelete();
+            showLoading('Soft-deleting user...');
             try {
-                const data = await api(`/api/admin/users/${userId}`, { method: 'DELETE' });
-                showToast(data.message || 'User deleted successfully', 'success');
+                const data = await api(`/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: input })
+                });
+                showToast(data.message || 'User soft-deleted', 'success');
                 await loadAll();
             } catch (err) {
-                showToast(err.message || 'Failed to delete user', 'error', 5000);
+                showToast(err.message || 'Failed to soft-delete user', 'error', 5000);
             } finally {
                 hideLoading();
             }
-        }
+        });
+
+        // Permanent delete handler (requires exact token)
+        document.getElementById('hard-delete-button').addEventListener('click', async function () {
+            const input = (document.getElementById('confirm-delete-input').value || '').trim();
+            if (!_pendingDeleteUser) return closeConfirmDelete();
+            const userId = _pendingDeleteUser.id;
+            const expectedToken = `DELETE ${userId}`;
+            if (!input || (input !== expectedToken && input !== _pendingDeleteUser.email)) {
+                showToast('Permanent delete requires typing the exact token or the user\'s email.', 'error');
+                return;
+            }
+
+            closeConfirmDelete();
+            showLoading('Permanently deleting user and cleaning up data...');
+            try {
+                const data = await api(`/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: input, force: true })
+                });
+                showToast(data.message || 'User permanently deleted', 'success');
+                await loadAll();
+            } catch (err) {
+                showToast(err.message || 'Failed to permanently delete user', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
+        });
 
         async function viewDetails(userId) {
             showLoading('Loading user details...');
@@ -1401,6 +1633,23 @@
                 }
 
                 document.getElementById('details-modal').classList.add('open');
+                // render linked identities
+                const linkedEl = document.getElementById('linked-identities-list');
+                linkedEl.innerHTML = '';
+                const linked = data.user?.user_metadata?.linked_identities || data.user?.linked_identities || [];
+                if (!linked || !linked.length) {
+                    linkedEl.innerHTML = '<div class="empty-state">No linked identities.</div>';
+                } else {
+                    linked.forEach(l => {
+                        const d = document.createElement('div');
+                        d.style.display = 'flex';
+                        d.style.justifyContent = 'space-between';
+                        d.style.alignItems = 'center';
+                        d.style.padding = '6px 0';
+                        d.innerHTML = `<div>${esc(l.provider)} · ${esc(l.provider_user_id)}</div><div><button class="btn-sm btn-ghost" onclick="detachIdentity('${esc(l.provider)}','${esc(l.provider_user_id)}')">Remove</button></div>`;
+                        linkedEl.appendChild(d);
+                    });
+                }
             } catch (err) {
                 showToast(err.message || 'Failed to load user details', 'error', 5000);
             } finally {
@@ -1411,6 +1660,51 @@
         function closeDetails() {
             selectedAdminUserId = '';
             document.getElementById('details-modal').classList.remove('open');
+        }
+
+        // Restore user button handler
+        document.getElementById('restore-user-button').addEventListener('click', async function () {
+            if (!selectedAdminUserId) return showToast('No user selected', 'error');
+            if (!confirm('Restore this soft-deleted user?')) return;
+            showLoading('Restoring user...');
+            try {
+                const res = await api(`/api/admin/users/${selectedAdminUserId}/restore`, { method: 'POST' });
+                showToast(res.message || 'User restored', 'success');
+                await loadAll();
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to restore user', 'error', 5000);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        async function attachIdentity() {
+            if (!selectedAdminUserId) return showToast('No user selected', 'error');
+            const provider = (document.getElementById('link-provider').value || '').trim();
+            const provider_id = (document.getElementById('link-provider-id').value || '').trim();
+            if (!provider || !provider_id) return showToast('provider and provider_user_id are required', 'error');
+            showLoading('Attaching identity...');
+            try {
+                const res = await api(`/api/admin/users/${selectedAdminUserId}/attach_identity`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, provider_user_id: provider_id }) });
+                showToast(res.message || 'Identity attached', 'success');
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to attach identity', 'error');
+            } finally { hideLoading(); }
+        }
+
+        async function detachIdentity(provider, provider_user_id) {
+            if (!selectedAdminUserId) return showToast('No user selected', 'error');
+            if (!confirm('Remove this linked identity?')) return;
+            showLoading('Detaching identity...');
+            try {
+                const res = await api(`/api/admin/users/${selectedAdminUserId}/detach_identity`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, provider_user_id }) });
+                showToast(res.message || 'Identity removed', 'success');
+                await viewDetails(selectedAdminUserId);
+            } catch (err) {
+                showToast(err.message || 'Failed to remove identity', 'error');
+            } finally { hideLoading(); }
         }
 
         async function setSubscriptionPlan(plan) {

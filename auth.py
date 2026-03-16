@@ -568,7 +568,7 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
     try:
         if not _get_supabase_client() and not _auth_http_configured():
             return False, "Authentication service not configured", None
-        
+
         redirect_to = _build_email_redirect_url()
 
         # Sign up with Supabase
@@ -579,6 +579,7 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
                 user_metadata['auth_provider'] = user_metadata.get('auth_provider') or 'email'
         except Exception:
             pass
+
         response = _run_supabase_with_recovery(lambda client: client.auth.sign_up({
             'email': email,
             'password': password,
@@ -587,27 +588,39 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
                 'email_redirect_to': redirect_to
             }
         }), 'Signup')
-        
-        if response.user:
+
+        # Normalize response to user object/dict
+        user_obj = None
+        if response is not None:
+            user_obj = getattr(response, 'user', None)
+            if user_obj is None and isinstance(response, dict):
+                user_obj = response.get('user')
+
+        if user_obj:
             logger.info(f"User signed up: {email}")
-                return True, "Signup successful. Please verify your email to continue.", {
-                'id': response.user.id,
-                'email': response.user.email,
+            # user_obj may be an SDK object or a dict
+            uid = getattr(user_obj, 'id', None) or (user_obj.get('id') if isinstance(user_obj, dict) else '')
+            uemail = getattr(user_obj, 'email', None) or (user_obj.get('email') if isinstance(user_obj, dict) else email)
+            return True, "Signup successful. Please verify your email to continue.", {
+                'id': uid,
+                'email': uemail,
                 'first_name': user_metadata.get('first_name', ''),
                 'last_name': user_metadata.get('last_name', ''),
-                    'country': user_metadata.get('country', ''),
-                    'auth_provider': user_metadata.get('auth_provider', 'email')
+                'country': user_metadata.get('country', ''),
+                'role': user_metadata.get('role', ''),
+                'industry': user_metadata.get('industry', ''),
+                'auth_provider': user_metadata.get('auth_provider', 'email')
             }
-        else:
-            return False, "Signup failed", None
-            
+
+        return False, "Signup failed", None
+
     except Exception as e:
         logger.error(f"Signup error: {e}")
         error_msg = str(e)
 
         if _is_timeout_error(e):
             fallback_data = _fallback_signup(email, password, metadata or {}, _build_email_redirect_url())
-                if fallback_data and fallback_data.get('user'):
+            if fallback_data and fallback_data.get('user'):
                 user_obj = fallback_data.get('user') or {}
                 md = metadata or {}
                 return True, "Signup successful. Please verify your email to continue.", {
@@ -615,11 +628,13 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
                     'email': user_obj.get('email', email),
                     'first_name': md.get('first_name', ''),
                     'last_name': md.get('last_name', ''),
-                        'country': md.get('country', ''),
-                        'auth_provider': md.get('auth_provider', 'email')
+                    'country': md.get('country', ''),
+                    'role': md.get('role', ''),
+                    'industry': md.get('industry', ''),
+                    'auth_provider': md.get('auth_provider', 'email')
                 }
             return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
-        
+
         if 'already registered' in error_msg.lower():
             return False, "Email already registered", None
         elif 'password' in error_msg.lower():
@@ -659,7 +674,9 @@ def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
                     'email': user_obj.get('email', email),
                     'first_name': user_metadata.get('first_name', ''),
                     'last_name': user_metadata.get('last_name', ''),
-                    'country': user_metadata.get('country', '')
+                    'country': user_metadata.get('country', ''),
+                    'role': user_metadata.get('role', ''),
+                    'industry': user_metadata.get('industry', '')
                 }
             }
 
@@ -706,7 +723,9 @@ def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
                                 'email': response.user.email,
                                 'first_name': (getattr(response.user, 'user_metadata', {}) or {}).get('first_name', ''),
                                 'last_name': (getattr(response.user, 'user_metadata', {}) or {}).get('last_name', ''),
-                                'country': (getattr(response.user, 'user_metadata', {}) or {}).get('country', '')
+                                'country': (getattr(response.user, 'user_metadata', {}) or {}).get('country', ''),
+                                'role': (getattr(response.user, 'user_metadata', {}) or {}).get('role', ''),
+                                'industry': (getattr(response.user, 'user_metadata', {}) or {}).get('industry', '')
                             }
                         }
                 except Exception as sdk_exc:

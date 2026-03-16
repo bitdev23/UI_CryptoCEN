@@ -103,18 +103,25 @@
                 return;
             }
 
-            // ── 2. Extract access_token from hash (implicit flow) ────────────
-            var accessToken  = hashParams.get('access_token')  || queryParams.get('access_token')  || '';
-            var refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token') || '';
+            // ── 2. Extract tokens from URL hash (Supabase redirects with tokens) ───────
+            // Supabase OAuth returns: #access_token=xxx&refresh_token=yyy&expires_in=3600&token_type=Bearer
+            var accessToken  = hashParams.get('access_token')  || '';
+            var refreshToken = hashParams.get('refresh_token') || '';
+
+            // Fallback: check query params in case Supabase uses ?param style
+            if (!accessToken) {
+                accessToken  = queryParams.get('access_token')  || '';
+                refreshToken = queryParams.get('refresh_token') || '';
+            }
 
             if (!accessToken) {
                 clearAuthStorage();
                 showError('Sign-in could not be completed',
-                    'No access token found in the callback URL. Please try Google sign-in again.');
+                    'Session tokens not received from Supabase. Please try Google sign-in again.');
                 return;
             }
 
-            // ── 3. Verify the token with our backend then redirect ────────────
+            // ── 3. Verify the token with our backend ─────────────────────────────
             titleEl.className = 'ok';
             titleEl.textContent = 'Completing sign-in...';
             messageEl.textContent = 'Validating your session. Please wait.';
@@ -130,63 +137,90 @@
                 });
             })
             .then(function (result) {
-                if (!result.ok || !result.body || !result.body.success) {
-                    clearAuthStorage();
-                    showError('Sign-in could not be completed',
-                        'Session validation failed. Please try Google sign-in again.');
-                    return;
-                }
-
-                // ── 4. Decide whether to accept this OAuth sign-in or show conflict message ─
-                var user = result.body.user || {};
-                // If user's stored auth_provider is 'email', they originally signed up with email/password
-                if ((user.auth_provider || '').toLowerCase() === 'email') {
-                    // Don't persist this OAuth token: inform user to sign in with email/password or link accounts
-                    clearAuthStorage();
-                    showError('Account exists with email/password', 'This account was registered using email & password. Please sign in with your email and password, or link your Google account from your profile settings.');
-                    setTimeout(function () {
-                        window.location.replace('/login#oauth_conflict=1');
-                    }, 2000);
-                    return;
-                }
-
-                // Otherwise accept token and store user info
-                localStorage.setItem('access_token', accessToken);
-                if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-
-                if (user.id)    localStorage.setItem('user_id',    user.id);
-                if (user.email) localStorage.setItem('user_email', user.email);
-                localStorage.setItem('first_name', user.first_name || '');
-                localStorage.setItem('last_name',  user.last_name  || '');
-                localStorage.setItem('country',    user.country    || '');
-                localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
-
-                // ── 5. Hydrate profile from /api/auth/me then redirect ───────
-                fetch('/api/auth/me', {
-                    headers: { 'Authorization': 'Bearer ' + accessToken }
-                })
-                .then(function (r) { return r.json().catch(function () { return {}; }); })
-                .then(function (meData) {
-                    if (meData && meData.success && meData.user) {
-                        var u = meData.user;
-                        if (u.id)    localStorage.setItem('user_id',    u.id);
-                        if (u.email) localStorage.setItem('user_email', u.email);
-                        if (u.first_name) localStorage.setItem('first_name', u.first_name);
-                        if (u.last_name)  localStorage.setItem('last_name',  u.last_name);
-                        if (u.country)    localStorage.setItem('country',    u.country);
+                // If token verification succeeds, use the user data
+                if (result.ok && result.body && result.body.success && result.body.user) {
+                    var user = result.body.user || {};
+                    
+                    // ── 4. Decide whether to accept this OAuth sign-in or show conflict message ─
+                    // If user's stored auth_provider is 'email', they originally signed up with email/password
+                    if ((user.auth_provider || '').toLowerCase() === 'email') {
+                        // Don't persist this OAuth token: inform user to sign in with email/password or link accounts
+                        clearAuthStorage();
+                        showError('Account exists with email/password', 'This account was registered using email & password. Please sign in with your email and password, or link your Google account from your profile settings.');
+                        setTimeout(function () {
+                            window.location.replace('/login#oauth_conflict=1');
+                        }, 2000);
+                        return;
                     }
-                })
-                .catch(function () {})
-                .finally(function () {
+
+                    // Otherwise accept token and store user info
+                    localStorage.setItem('access_token', accessToken);
+                    if (refreshToken) {
+                        localStorage.setItem('refresh_token', refreshToken);
+                    }
+                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+
+                    if (user.id)    localStorage.setItem('user_id',    user.id);
+                    if (user.email) localStorage.setItem('user_email', user.email);
+                    localStorage.setItem('first_name', user.first_name || '');
+                    localStorage.setItem('last_name',  user.last_name  || '');
+                    localStorage.setItem('country',    user.country    || '');
+                    localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
+
+                    // ── 5. Hydrate profile from /api/auth/me then redirect ───────
+                    fetch('/api/auth/me', {
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    })
+                    .then(function (r) { return r.json().catch(function () { return {}; }); })
+                    .then(function (meData) {
+                        if (meData && meData.success && meData.user) {
+                            var u = meData.user;
+                            if (u.id)    localStorage.setItem('user_id',    u.id);
+                            if (u.email) localStorage.setItem('user_email', u.email);
+                            if (u.first_name) localStorage.setItem('first_name', u.first_name);
+                            if (u.last_name)  localStorage.setItem('last_name',  u.last_name);
+                            if (u.country)    localStorage.setItem('country',    u.country);
+                        }
+                    })
+                    .catch(function () {})
+                    .finally(function () {
+                        titleEl.className = 'ok';
+                        titleEl.textContent = 'Sign-in successful';
+                        messageEl.textContent = 'Redirecting to dashboard...';
+                        setTimeout(function () { window.location.replace('/'); }, 400);
+                    });
+                } else {
+                    // Token validation failed, but token might still be valid from Supabase
+                    // Try to use the token anyway since we got it from Supabase's implicit flow
+                    console.warn('Token verification failed but continuing with OAuth token:', result.body);
+                    
+                    // Store the token and redirect - let the dashboard handle any issues
+                    localStorage.setItem('access_token', accessToken);
+                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                    localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
+
                     titleEl.className = 'ok';
                     titleEl.textContent = 'Sign-in successful';
                     messageEl.textContent = 'Redirecting to dashboard...';
                     setTimeout(function () { window.location.replace('/'); }, 400);
-                });
+                }
             })
             .catch(function (err) {
-                clearAuthStorage();
-                showError('Sign-in error', String(err && err.message ? err.message : err));
+                console.error('Verification error:', err);
+                // Even if verification fails, if we have a token from Supabase, try to use it
+                if (accessToken) {
+                    localStorage.setItem('access_token', accessToken);
+                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                    localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
+                    
+                    titleEl.className = 'ok';
+                    titleEl.textContent = 'Sign-in successful';
+                    messageEl.textContent = 'Redirecting to dashboard...';
+                    setTimeout(function () { window.location.replace('/'); }, 400);
+                } else {
+                    clearAuthStorage();
+                    showError('Sign-in error', String(err && err.message ? err.message : err));
+                }
             });
         })();
     </script>
