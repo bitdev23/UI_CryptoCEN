@@ -102,8 +102,27 @@
         .sidebar-nav {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.25rem;
             flex: 1;
+        }
+        .sidebar-nav-section-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.42);
+            padding: 0.85rem 1rem 0.2rem;
+            transition: opacity 0.2s ease, height 0.2s ease, padding 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            user-select: none;
+        }
+        .app-container.sidebar-collapsed .sidebar-nav-section-label {
+            opacity: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
         }
         .nav-item {
             padding: 0.75rem 1rem;
@@ -312,19 +331,6 @@
             gap: 0.56rem;
             align-items: center;
         }
-        .header-actions .btn {
-            min-height: 38px;
-            height: 38px;
-            padding: 0 0.88rem;
-            border-radius: 9px;
-            font-size: 0.84rem;
-            text-transform: none;
-            letter-spacing: 0;
-            box-shadow: none;
-        }
-        .header-actions .btn i {
-            font-size: 0.9rem;
-        }
         .header-icon-btn {
             width: 38px;
             height: 38px;
@@ -387,50 +393,96 @@
             line-height: 1.2;
         }
         .btn {
-            padding: 1rem 1.8rem;
-            border: none;
-            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            border: 1.5px solid transparent;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: all 0.18s ease;
             display: inline-flex;
             align-items: center;
-            gap: 0.6rem;
-            font-size: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            min-height: 50px;
+            gap: 0.5rem;
+            font-size: 0.86rem;
+            line-height: 1.4;
+            min-height: 36px;
+            white-space: nowrap;
+            text-decoration: none;
+            box-shadow: none;
         }
-        .btn:active {
-            transform: translateY(1px);
-        }
+        .btn:active { transform: translateY(1px) scale(0.99); }
         .btn-primary {
             background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            border-color: transparent;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.25);
         }
         .btn-primary:hover {
             background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
         }
         .btn-secondary {
-            background: linear-gradient(135deg, var(--primary) 0%, #5568d3 100%);
-            color: white;
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background: #fff;
+            color: #374151;
+            border-color: #d1d9f0;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.06);
         }
         .btn-secondary:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #4557c0 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background: #f5f7ff;
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102,126,234,0.12);
+        }
+        .btn-danger {
+            background: #fff;
+            color: #dc2626;
+            border-color: #fca5a5;
+        }
+        .btn-danger:hover {
+            background: #fef2f2;
+            border-color: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(220,38,38,0.12);
         }
         .btn-sm {
-            padding: 1rem 1.8rem;
-            font-size: 1rem;
-            min-height: 50px;
+            padding: 0.32rem 0.72rem;
+            font-size: 0.76rem;
+            min-height: 26px;
+            border-radius: 6px;
+            gap: 0.3rem;
         }
-        .btn i {
-            font-size: 1.05rem;
+        .btn-sm i { font-size: 0.74rem; }
+        .btn i { font-size: 0.86rem; }
+
+        /* ── Premium polish ───────────────────────────────── */
+        html { scroll-behavior: smooth; }
+
+        /* Custom scrollbar – only where it shows (webkit) */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(102,126,234,0.25); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(102,126,234,0.45); }
+
+        /* Smooth tab content entrance */
+        .tab-content.active {
+            animation: tabFadeUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
         }
+        @keyframes tabFadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Focus rings – accessible and on-brand */
+        :focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        button:focus:not(:focus-visible) { outline: none; }
+
+        /* Selection color */
+        ::selection { background: rgba(102,126,234,0.2); color: inherit; }
         .main-content {
             flex: 1;
             padding: 2rem;
@@ -681,23 +733,10 @@
             font-size: 0.86rem;
             color: #64748b;
         }
-        #dashboard .btn,
-        #dashboard .btn-sm,
-        #settings .btn,
-        #settings .btn-sm,
-        #post-history .btn,
-        #post-history .btn-sm {
-            min-height: 38px;
-            height: 38px;
-            padding: 0 0.88rem;
-            border-radius: 9px;
-            font-size: 0.84rem;
-            box-shadow: none;
-        }
         #dashboard .btn i,
         #settings .btn i,
         #post-history .btn i {
-            font-size: 0.9rem;
+            font-size: 0.86rem;
         }
         .dashboard-hero-actions {
             display: flex;
@@ -1937,84 +1976,67 @@
         /* TOAST STYLES */
         #toast-container {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
+            top: 16px;
+            right: 16px;
+            z-index: 99998;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.55rem;
+            pointer-events: none;
         }
         .toast {
-            background: white;
-            border-radius: 6px;
-            box-shadow: 0 6px 25px rgba(0,0,0,0.18);
-            padding: 1.2rem 1.5rem;
+            background: #0f172a;
+            border-radius: 10px;
+            box-shadow: 0 8px 28px rgba(10,14,40,0.22), 0 2px 8px rgba(0,0,0,0.12);
+            padding: 0.75rem 1rem;
             display: flex;
-            gap: 1rem;
+            gap: 0.7rem;
             align-items: center;
-            min-width: 340px;
-            animation: slideIn 0.3s ease;
-            color: #000000 !important;
-            font-weight: 700;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-        .toast span {
-            color: #000000 !important;
-            font-weight: 600;
-            flex: 1;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        .toast.success {
-            border-left: 5px solid var(--success);
-            background: #ffffff;
-            border: 2px solid #52c41a;
-        }
-        .toast.success i {
-            color: var(--success);
-            font-size: 1.2rem;
-        }
-        .toast.error {
-            border-left: 5px solid var(--error);
-            background: #ffffff;
-            border: 2px solid #f5222d;
-        }
-        .toast.error i {
-            color: var(--error);
-            font-size: 1.2rem;
-        }
-        .toast.info {
-            border-left: 5px solid var(--info);
-            background: #ffffff;
-            border: 2px solid #1890ff;
-        }
-        .toast.info i {
-            color: var(--info);
+            min-width: 300px;
+            max-width: 400px;
+            animation: toastSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: all;
+            border: 1px solid rgba(255,255,255,0.08);
         }
         .toast i {
-            font-size: 1.4rem;
-            min-width: 24px;
+            font-size: 0.88rem;
+            flex-shrink: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
+        .toast span {
+            color: rgba(255,255,255,0.92) !important;
+            font-weight: 500;
+            font-size: 0.85rem;
+            flex: 1;
+            line-height: 1.4;
+        }
+        @keyframes toastSlideIn {
+            from { transform: translateX(110%); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 1; }
+        }
+        .toast.success i { background: rgba(52,211,153,0.18); color: #34d399; }
+        .toast.error   i { background: rgba(248,113,113,0.18); color: #f87171; }
+        .toast.warning i { background: rgba(251,191,36,0.18);  color: #fbbf24; }
+        .toast.info    i { background: rgba(96,165,250,0.18);  color: #60a5fa; }
         .toast-close {
             cursor: pointer;
-            color: #999;
-            margin-left: auto;
+            color: rgba(255,255,255,0.35);
+            margin-left: 0.2rem;
             font-weight: bold;
             transition: color 0.2s ease;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            line-height: 1;
+            background: none;
+            border: none;
+            padding: 0;
+            flex-shrink: 0;
         }
-        .toast-close:hover {
-            color: #333;
-        }
+        .toast-close:hover { color: rgba(255,255,255,0.8); }
         /* MODAL */
         .modal {
             display: none;
@@ -6828,6 +6850,7 @@
             <img class="sidebar-logo-icon" src="{{ url_for('static', filename='branding/velank-icon.svg') }}" alt="Velank icon">
         </div>
         <nav class="sidebar-nav">
+            <div class="sidebar-nav-section-label">Main</div>
             <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard', this)">
                 <i class="fas fa-chart-line"></i>
                 <span>Dashboard</span>
@@ -6840,17 +6863,21 @@
                 <i class="fas fa-calendar-alt"></i>
                 <span>Scheduler</span>
             </div>
+
+            <div class="sidebar-nav-section-label">Content</div>
             <div class="nav-item" data-tab="knowledge-base" onclick="switchTab('knowledge-base', this)">
                 <i class="fas fa-book"></i>
                 <span>Database</span>
             </div>
-            <div class="nav-item" data-tab="settings" onclick="switchTab('settings', this)">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </div>
             <div class="nav-item" data-tab="post-history" onclick="switchTab('post-history', this)">
                 <i class="fas fa-clock"></i>
                 <span>History</span>
+            </div>
+
+            <div class="sidebar-nav-section-label">Account</div>
+            <div class="nav-item" data-tab="settings" onclick="switchTab('settings', this)">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
             </div>
             <div class="nav-item" data-tab="help" onclick="switchTab('help', this)">
                 <i class="fas fa-circle-question"></i>
@@ -6858,10 +6885,10 @@
             </div>
         </nav>
         <div id="sidebar-user-card" class="sidebar-user-card" title="Current user plan">
-            <div id="sidebar-user-avatar" class="sidebar-user-avatar">U</div>
+            <div id="sidebar-user-avatar" class="sidebar-user-avatar" title="Profile & Account" onclick="switchTab('settings', null, false); setTimeout(() => showSettingsSection('profile', null), 120);">U</div>
             <div class="sidebar-user-meta">
-                <div id="sidebar-user-name" class="sidebar-user-name">User</div>
-                <div id="sidebar-user-plan" class="sidebar-user-plan">Pro Plan</div>
+                <div id="sidebar-user-name" class="sidebar-user-name" title="Profile & Account" onclick="switchTab('settings', null, false); setTimeout(() => showSettingsSection('profile', null), 120);">User</div>
+                <div id="sidebar-user-plan" class="sidebar-user-plan" title="View plans & upgrade" onclick="openUpgradePlanFlow()">Free Plan</div>
             </div>
         </div>
         <div class="sidebar-toggle-wrap">
@@ -6898,8 +6925,13 @@
                     <i class="fas fa-pen-fancy"></i>
                     New Post
                 </button>
-                <button class="header-icon-btn" onclick="openNotificationsPanel()" aria-label="Notification settings" title="Open notification settings">
+                <button class="btn btn-secondary" onclick="openNotificationsPanel()" aria-label="Notification settings" title="Open notification settings">
                     <i class="fas fa-bell"></i>
+                </button>
+                <button class="header-cmd-btn" onclick="openCommandPalette()" title="Command palette" aria-label="Open command palette">
+                    <i class="fas fa-magnifying-glass" style="font-size:0.8rem; opacity:0.7;"></i>
+                    <span>Search</span>
+                    <kbd>⌘K</kbd>
                 </button>
                 <button class="btn btn-secondary" onclick="logout()">
                     <i class="fas fa-right-from-bracket"></i>
@@ -7092,9 +7124,9 @@
 
                             <div id="usage-free-plan-card" class="setup-kb-stat" style="display:none; margin-top:0.25rem;">
                                 <div class="setup-kb-label">Free Plan Limits</div>
-                                <div class="setup-kb-value" style="font-size:0.86rem; margin-top:0.35rem;">3 posts/month · 1 KB file (5 MB) · no scheduling automation</div>
-                                <div style="margin-top:0.45rem;">
-                                    <button class="btn btn-secondary btn-sm" type="button" onclick="openUpgradePlanFlow()">Upgrade to unlock automation</button>
+                                <div class="setup-kb-value" style="font-size:0.86rem; margin-top:0.35rem;">3 posts/month · 5 MB KB storage · no scheduling automation</div>
+                                <div style="margin-top:0.6rem;">
+                                    <button class="btn btn-sm btn-upgrade-gradient" type="button" onclick="openUpgradePlanFlow()">⚡ Upgrade Plan</button>
                                 </div>
                             </div>
 
@@ -7129,7 +7161,7 @@
                         <div class="creator-left-shell">
 
                         <div class="creator-section">
-                            <h4 class="ux-section-title"><span class="creator-step-badge">1</span> Audience &amp; Role</h4>
+                            <h4 class="ux-section-title"><span class="creator-step-badge">1</span> Industry &amp; Role</h4>
                             <div class="ux-section-subtitle">Tell the AI who's writing and who should read it.</div>
 
                             <div class="creator-mini-label">Industry</div>
@@ -7371,12 +7403,13 @@
                         <button class="btn btn-primary btn-generate" onclick="generatePost()">
                             <i class="fas fa-magic"></i> Generate LinkedIn Post
                         </button>
-                        <div id="creator-free-plan-hint" class="setup-kb-stat" style="display:none; margin-top:0.55rem;">
-                            <div class="setup-kb-label">Free Plan</div>
-                            <div class="setup-kb-value" style="font-size:0.84rem; margin-top:0.3rem;">3 posts/month · 1 KB file (5 MB) · scheduling automation locked</div>
-                            <div style="margin-top:0.45rem;">
-                                <button class="btn btn-secondary btn-sm" type="button" onclick="openUpgradePlanFlow()">Upgrade to unlock more</button>
+                        <div id="creator-free-plan-hint" style="display:none; margin-top:0.75rem; padding: 1rem 1.1rem; background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px;">
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+                                <span style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; font-size:0.68rem; font-weight:800; border-radius:100px; padding:0.15rem 0.55rem; text-transform:uppercase; letter-spacing:0.05em;">Free Plan</span>
+                                <span id="creator-free-posts-remaining" style="font-size:0.8rem; color:#6b7280; font-weight:500;">3 posts remaining this month</span>
                             </div>
+                            <div style="font-size:0.82rem; color:#4b5563; margin-bottom:0.7rem; line-height:1.45;">You're on the free plan. Upgrade to get <strong>100 posts/month</strong>, full scheduling automation, and advanced AI controls.</div>
+                            <button class="btn btn-sm btn-upgrade-gradient" type="button" onclick="openUpgradePlanFlow()">⚡ Unlock Full Access</button>
                         </div>
                         <div id="creator-quick-actions" class="creator-quick-actions" style="display:none;">
                             <button class="btn btn-secondary btn-sm" onclick="applyPostTransform('shorten')"><i class="fas fa-compress"></i> Shorten</button>
@@ -7404,7 +7437,7 @@
                                     <h5>Ready when you are</h5>
                                     <p>Follow this quick flow to generate a strong LinkedIn draft fast.</p>
                                     <div class="creator-empty-steps">
-                                        <div class="creator-empty-step"><span>1</span> Pick Audience &amp; Role</div>
+                                        <div class="creator-empty-step"><span>1</span> Pick Industry &amp; Role</div>
                                         <div class="creator-empty-step"><span>2</span> Set Tone</div>
                                         <div class="creator-empty-step"><span>3</span> Select Style</div>
                                         <div class="creator-empty-step"><span>4</span> Add Template</div>
@@ -7599,7 +7632,7 @@
                             <i class="fas fa-folder-open"></i>
                             <h4>Drop files here</h4>
                             <p>or browse your computer</p>
-                            <input type="file" accept=".pdf,.docx" id="kb-file" onclick="event.stopPropagation();" onchange="const n=this.files?.[0]?.name||'No file selected';const el=document.getElementById('kb-file-name-label');if(el){el.textContent=n;}">
+                            <input type="file" accept=".pdf,.docx,.txt,.md,.csv,.pptx" id="kb-file" onclick="event.stopPropagation();" onchange="const n=this.files?.[0]?.name||'No file selected';const el=document.getElementById('kb-file-name-label');if(el){el.textContent=n;}">
                             <div class="kb4-file-picker-row" onclick="event.stopPropagation();">
                                 <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('kb-file')?.click()"><i class="fas fa-folder-open"></i> Choose File</button>
                                 <span id="kb-file-name-label">No file selected</span>
@@ -8143,7 +8176,7 @@
                                 <h3 id="settings-current-plan-title">Pro Plan</h3>
                                 <p id="settings-current-plan-meta">₹999 / month · Next billing April 3, 2026</p>
                                 <div class="settings-v2-plan-actions">
-                                    <button class="btn btn-secondary btn-sm" type="button" onclick="openUpgradePlanFlow()">Upgrade Plan</button>
+                                    <button class="btn btn-sm btn-upgrade-gradient" type="button" onclick="openUpgradePlanFlow()">⚡ Upgrade Plan</button>
                                     <button class="btn btn-secondary btn-sm" type="button" onclick="showInvoiceInfo()">View Invoices</button>
                                     <button class="btn btn-secondary btn-sm" type="button" onclick="showPaymentUpdateInfo()">Update Payment</button>
                                 </div>
@@ -8346,7 +8379,7 @@
                             <div class="help-card">
                                 <h3>How to use Knowledge Base</h3>
                                 <ul class="help-list">
-                                    <li>Go to Knowledge Base tab and upload PDF/DOCX files.</li>
+                                    <li>Go to Knowledge Base tab and upload PDF, DOCX, TXT, MD, CSV, or PPTX files.</li>
                                     <li>After upload, files are indexed for retrieval during generation.</li>
                                     <li>In LinkedIn Post tab, select KB mode (all files, selected files, or no KB).</li>
                                 </ul>
@@ -11109,9 +11142,13 @@
             if (data.success && content) {
                 postText.classList.remove('skeleton');
                 postText.style.display = 'block';
-                postText.textContent = content;
-                postText.setAttribute('contenteditable', 'true');
-                postText.setAttribute('spellcheck', 'true');
+                postText.removeAttribute('contenteditable');
+                postText.textContent = '';
+                // Stream text in character by character
+                streamTextIntoElement(postText, content, function() {
+                    postText.setAttribute('contenteditable', 'true');
+                    postText.setAttribute('spellcheck', 'true');
+                });
                 lastGeneratedHashtags = data.hashtags || [];
                 const settingsApplied = (data.settings_applied && typeof data.settings_applied === 'object') ? data.settings_applied : {};
                 const effectiveKbMode = settingsApplied.kb_mode || kb_mode || 'use_kb';
@@ -11140,6 +11177,7 @@
                 toggleCreatorQuickActions(true);
                 saveCreatorDraftState();
                 showToast('success', 'Post generated!', 'fas fa-check');
+                refreshBillingStatus(false);
                 return;
             }
 
@@ -11162,7 +11200,12 @@
             }
             toggleCreatorQuickActions(false);
             hideVariantPanel();
-            showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
+            if (data.quota_exceeded) {
+                showToast('warning', data.message || 'Monthly post limit reached', 'fas fa-lock');
+                setTimeout(() => openUpgradeModal('quota_exceeded'), 400);
+            } else {
+                showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
+            }
         })
         .catch(e => {
             postText.classList.remove('skeleton');
@@ -11504,7 +11547,7 @@
         const last = (localStorage.getItem('last_name') || '').trim();
         const email = (localStorage.getItem('user_email') || '').trim();
         const name = `${first} ${last}`.trim() || (email ? email.split('@')[0] : 'User');
-        const plan = (localStorage.getItem('user_plan') || '').trim() || 'Pro Plan';
+        const plan = (localStorage.getItem('user_plan') || '').trim() || 'Free Plan';
 
         const nameEl = document.getElementById('sidebar-user-name');
         const planEl = document.getElementById('sidebar-user-plan');
@@ -11512,9 +11555,20 @@
         const cardEl = document.getElementById('sidebar-user-card');
 
         if (nameEl) nameEl.textContent = name;
-        if (planEl) planEl.textContent = plan;
         if (avatarEl) avatarEl.textContent = (name[0] || 'U').toUpperCase();
         if (cardEl) cardEl.title = `${name} · ${plan}`;
+
+        // Show remaining post count for free plan
+        if (planEl) {
+            if (plan === 'Free Plan' && latestBillingSnapshot) {
+                const used = getBillingUsage('posts_generated', 0);
+                const limit = getBillingLimit('posts_generated', 3);
+                const remaining = Math.max(0, limit - used);
+                planEl.textContent = `Free Plan · ${remaining} post${remaining !== 1 ? 's' : ''} left`;
+            } else {
+                planEl.textContent = plan;
+            }
+        }
     }
 
     function planDisplayName(plan) {
@@ -11564,8 +11618,14 @@
         }
         if (creatorFreePlanHint) {
             creatorFreePlanHint.style.display = effectivePlan === 'free' ? 'block' : 'none';
+            if (effectivePlan === 'free' && latestBillingSnapshot) {
+                const used = getBillingUsage('posts_generated', 0);
+                const limit = getBillingLimit('posts_generated', 3);
+                const remaining = Math.max(0, limit - used);
+                const remainingEl = document.getElementById('creator-free-posts-remaining');
+                if (remainingEl) remainingEl.textContent = `${remaining} post${remaining !== 1 ? 's' : ''} remaining this month`;
+            }
         }
-
         localStorage.setItem('user_plan', planLabel);
         syncSidebarUserCard();
         syncSettingsProfileSummary();
@@ -11681,17 +11741,111 @@
     }
 
     function openUpgradePlanFlow() {
-        const selected = window.prompt('Choose plan: 1_month, 3_month, or 12_month', '1_month');
-        if (!selected) {
-            return;
-        }
-        const normalized = String(selected).trim().toLowerCase();
-        if (!['1_month', '3_month', '12_month'].includes(normalized)) {
-            showToast('error', 'Invalid plan. Use 1_month, 3_month, or 12_month', 'fas fa-exclamation-circle');
-            return;
-        }
-        startPlanCheckout(normalized);
+        openUpgradeModal();
     }
+
+    function openUpgradeModal(triggerContext) {
+        const overlay = document.getElementById('upgrade-modal-overlay');
+        if (!overlay) return;
+
+        // Show current usage if we have billing data
+        const usagePill = document.getElementById('upg-usage-pill');
+        const usageText = document.getElementById('upg-usage-text');
+        if (latestBillingSnapshot) {
+            const used = getBillingUsage('posts_generated', 0);
+            const limit = getBillingLimit('posts_generated', 3);
+            const plan = String(latestBillingSnapshot.effective_plan || 'free');
+            if (plan === 'free' && usagePill && usageText) {
+                usageText.textContent = `You've used ${used} of ${limit} free posts this month`;
+                usagePill.style.display = 'inline-flex';
+            }
+        }
+
+        // Build plan cards
+        const grid = document.getElementById('upg-plans-grid');
+        if (grid) {
+            const plans = [
+                {
+                    code: '1_month',
+                    name: '1 Month',
+                    price: '999',
+                    period: 'per month',
+                    saving: null,
+                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation']
+                },
+                {
+                    code: '3_month',
+                    name: '3 Months',
+                    price: '833',
+                    period: 'per month · billed ₹2,499',
+                    saving: 'Save 17%',
+                    popular: true,
+                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation']
+                },
+                {
+                    code: '12_month',
+                    name: '12 Months',
+                    price: '625',
+                    period: 'per month · billed ₹7,499',
+                    saving: 'Save 37%',
+                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation + Early access']
+                }
+            ];
+
+            // Override prices from live data if available
+            (latestBillingPlans || []).forEach(p => {
+                const match = plans.find(x => x.code === p.plan);
+                if (match && p.amount_inr) {
+                    if (match.code === '1_month') match.price = String(p.amount_inr);
+                    if (match.code === '3_month') { match.price = String(Math.round(p.amount_inr / 3)); match.period = `per month · billed ₹${p.amount_inr}`; }
+                    if (match.code === '12_month') { match.price = String(Math.round(p.amount_inr / 12)); match.period = `per month · billed ₹${p.amount_inr}`; }
+                }
+            });
+
+            grid.innerHTML = plans.map(p => `
+                <div class="upg-plan-card ${p.popular ? 'is-popular' : ''}" id="upg-card-${p.code}" onclick="selectUpgradePlan('${p.code}')">
+                    ${p.popular ? '<div class="upg-plan-badge">⭐ Most Popular</div>' : ''}
+                    <div class="upg-plan-name">${p.name}</div>
+                    <div class="upg-plan-price"><sup>₹</sup>${p.price}</div>
+                    <div class="upg-plan-period">${p.period}</div>
+                    ${p.saving ? `<div class="upg-plan-saving">${p.saving}</div>` : '<div style="height:1.55rem;"></div>'}
+                    <ul class="upg-plan-features">
+                        ${p.features.map(f => `<li><i class="fas fa-check upg-check"></i><span>${f}</span></li>`).join('')}
+                    </ul>
+                    <button class="upg-select-btn" onclick="event.stopPropagation(); selectUpgradePlan('${p.code}')">
+                        Get ${p.name} Plan
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        overlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function selectUpgradePlan(planCode) {
+        // Highlight selected
+        document.querySelectorAll('.upg-plan-card').forEach(c => c.classList.remove('is-selected'));
+        const card = document.getElementById(`upg-card-${planCode}`);
+        if (card) card.classList.add('is-selected');
+
+        // Proceed to checkout
+        setTimeout(() => {
+            closeUpgradeModal();
+            startPlanCheckout(planCode);
+        }, 180);
+    }
+
+    function closeUpgradeModal() {
+        const overlay = document.getElementById('upgrade-modal-overlay');
+        if (overlay) overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click
+    document.getElementById('upgrade-modal-overlay')?.addEventListener('click', function(e) {
+        if (e.target === this) closeUpgradeModal();
+    });
 
     function showInvoiceInfo() {
         showToast('info', 'Invoice download will be enabled in the next update.', 'fas fa-circle-info');
@@ -15024,6 +15178,18 @@
         if (event.key !== 'Escape') {
             return;
         }
+        // Close upgrade modal
+        const upgradeModal = document.getElementById('upgrade-modal-overlay');
+        if (upgradeModal && upgradeModal.classList.contains('is-open')) {
+            closeUpgradeModal();
+            return;
+        }
+        // Close command palette
+        const cmdOverlay = document.getElementById('cmd-overlay');
+        if (cmdOverlay && cmdOverlay.classList.contains('is-open')) {
+            closeCommandPalette();
+            return;
+        }
         const activeModal = document.querySelector('.modal.active');
         if (activeModal) {
             activeModal.classList.remove('active');
@@ -15058,5 +15224,734 @@
         saveCreatorDraftState();
     });
 </script>
+
+<!-- ═══════════════════ COMMAND PALETTE ═══════════════════ -->
+<style>
+    /* Header search/cmd button */
+    .header-cmd-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.44rem 0.85rem;
+        border-radius: 8px;
+        border: 1px solid rgba(102,126,234,0.25);
+        background: rgba(102,126,234,0.06);
+        color: #64748b;
+        font-size: 0.82rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s;
+        white-space: nowrap;
+    }
+    .header-cmd-btn:hover {
+        border-color: #667eea;
+        background: rgba(102,126,234,0.1);
+        color: #667eea;
+    }
+    .header-cmd-btn kbd {
+        font-family: inherit;
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(102,126,234,0.12);
+        border: 1px solid rgba(102,126,234,0.2);
+        border-radius: 4px;
+        padding: 0.05rem 0.38rem;
+        color: #667eea;
+        letter-spacing: -0.01em;
+    }
+
+    /* Command Palette Overlay */
+    #cmd-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 10, 40, 0.65);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 99999;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: min(12vh, 120px);
+    }
+    #cmd-overlay.is-open { display: flex; }
+
+    .cmd-palette {
+        width: 100%;
+        max-width: 580px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 24px 80px rgba(10,10,30,0.35), 0 4px 16px rgba(102,126,234,0.15);
+        overflow: hidden;
+        animation: cmdSlide 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes cmdSlide {
+        from { opacity: 0; transform: translateY(-12px) scale(0.975); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .cmd-search-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 1.1rem;
+        border-bottom: 1px solid #f1f3f8;
+    }
+    .cmd-search-icon {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    #cmd-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #1e1b4b;
+        background: transparent;
+        caret-color: #667eea;
+    }
+    #cmd-input::placeholder { color: #c4ccdb; font-weight: 400; }
+    .cmd-esc-hint {
+        font-size: 0.72rem;
+        color: #c4ccdb;
+        border: 1px solid #e8eaf0;
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .cmd-results {
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 0.4rem 0 0.5rem;
+    }
+    .cmd-group-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #b0b8cc;
+        padding: 0.5rem 1.1rem 0.25rem;
+    }
+    .cmd-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.62rem 1.1rem;
+        cursor: pointer;
+        transition: background 0.12s;
+        border-radius: 0;
+    }
+    .cmd-item:hover, .cmd-item.is-active {
+        background: linear-gradient(90deg, rgba(102,126,234,0.08), rgba(102,126,234,0.04));
+    }
+    .cmd-item.is-active .cmd-item-icon { color: #667eea; }
+    .cmd-item-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: #f1f3f8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        color: #64748b;
+        flex-shrink: 0;
+        transition: all 0.12s;
+    }
+    .cmd-item.is-active .cmd-item-icon {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+    }
+    .cmd-item-label {
+        flex: 1;
+        font-size: 0.88rem;
+        font-weight: 500;
+        color: #1e1b4b;
+    }
+    .cmd-item-sub {
+        font-size: 0.76rem;
+        color: #94a3b8;
+        margin-top: 0.05rem;
+        font-weight: 400;
+    }
+    .cmd-item-shortcut {
+        font-size: 0.72rem;
+        color: #b0b8cc;
+        border: 1px solid #e8eaf0;
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .cmd-footer {
+        padding: 0.5rem 1.1rem;
+        border-top: 1px solid #f1f3f8;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .cmd-footer-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+        color: #c4ccdb;
+    }
+    .cmd-footer-hint kbd {
+        font-size: 0.68rem;
+        background: #f1f3f8;
+        border: 1px solid #e8eaf0;
+        border-radius: 4px;
+        padding: 0.08rem 0.35rem;
+        color: #94a3b8;
+        font-weight: 700;
+    }
+    .cmd-empty {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #b0b8cc;
+        font-size: 0.88rem;
+    }
+
+    /* KPI counter animation */
+    .kpi-counting { display: inline-block; }
+
+    /* AI typing cursor */
+    .ai-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1.1em;
+        background: #667eea;
+        border-radius: 1px;
+        margin-left: 1px;
+        vertical-align: text-bottom;
+        animation: blink 0.75s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+</style>
+
+<div id="cmd-overlay" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cmd-palette">
+        <div class="cmd-search-row">
+            <i class="fas fa-magnifying-glass cmd-search-icon"></i>
+            <input id="cmd-input" type="text" placeholder="Search or jump to..." autocomplete="off" autofocus>
+            <span class="cmd-esc-hint">esc</span>
+        </div>
+        <div class="cmd-results" id="cmd-results"></div>
+        <div class="cmd-footer">
+            <span class="cmd-footer-hint"><kbd>↑↓</kbd> Navigate</span>
+            <span class="cmd-footer-hint"><kbd>↵</kbd> Select</span>
+            <span class="cmd-footer-hint"><kbd>esc</kbd> Close</span>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ─── Command Palette Data ───────────────────────────────────────────
+    const CMD_ITEMS = [
+        // Navigation
+        { group: 'Navigate', icon: 'fas fa-chart-line', label: 'Dashboard', sub: 'Overview & analytics', shortcut: 'G D', action: () => switchTab('dashboard') },
+        { group: 'Navigate', icon: 'fab fa-linkedin', label: 'LinkedIn Post', sub: 'Create & generate posts', shortcut: 'G P', action: () => switchTab('content-creator') },
+        { group: 'Navigate', icon: 'fas fa-calendar-alt', label: 'Scheduler', sub: 'Manage post queue', shortcut: 'G S', action: () => switchTab('scheduler') },
+        { group: 'Navigate', icon: 'fas fa-database', label: 'Knowledge Base', sub: 'Upload & manage files', shortcut: 'G K', action: () => switchTab('knowledge-base') },
+        { group: 'Navigate', icon: 'fas fa-history', label: 'History', sub: 'Past generated posts', shortcut: 'G H', action: () => switchTab('history') },
+        { group: 'Navigate', icon: 'fas fa-cog', label: 'Settings', sub: 'AI, LinkedIn & billing', shortcut: 'G /', action: () => switchTab('settings') },
+        // Actions
+        { group: 'Actions', icon: 'fas fa-pen-fancy', label: 'New Post', sub: 'Start generating a LinkedIn post', action: () => { switchTab('content-creator'); setTimeout(() => document.getElementById('topic-input')?.focus(), 200); } },
+        { group: 'Actions', icon: 'fas fa-upload', label: 'Upload to Knowledge Base', sub: 'Add a PDF or document', action: () => switchTab('knowledge-base') },
+        { group: 'Actions', icon: 'fas fa-bolt', label: 'Upgrade Plan', sub: 'Unlock 100 posts/month', action: () => openUpgradeModal() },
+        { group: 'Actions', icon: 'fas fa-user', label: 'Profile & Account', sub: 'View your profile settings', action: () => { switchTab('settings'); setTimeout(() => showSettingsSection('profile', null), 120); } },
+        { group: 'Actions', icon: 'fas fa-credit-card', label: 'Billing & Plans', sub: 'Manage your subscription', action: () => { switchTab('settings'); setTimeout(() => showSettingsSection('billing', null), 120); } },
+        { group: 'Actions', icon: 'fas fa-right-from-bracket', label: 'Logout', sub: 'Sign out of Velank AI', action: () => logout() },
+    ];
+
+    let cmdActiveIndex = 0;
+    let cmdFilteredItems = [];
+
+    function openCommandPalette() {
+        const overlay = document.getElementById('cmd-overlay');
+        if (!overlay) return;
+        overlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        const input = document.getElementById('cmd-input');
+        if (input) { input.value = ''; input.focus(); }
+        renderCmdResults('');
+    }
+    window.openCommandPalette = openCommandPalette;
+
+    function closeCommandPalette() {
+        const overlay = document.getElementById('cmd-overlay');
+        if (overlay) overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    function renderCmdResults(query) {
+        const q = query.toLowerCase().trim();
+        cmdFilteredItems = q
+            ? CMD_ITEMS.filter(item =>
+                item.label.toLowerCase().includes(q) ||
+                (item.sub || '').toLowerCase().includes(q) ||
+                (item.group || '').toLowerCase().includes(q)
+              )
+            : CMD_ITEMS;
+        cmdActiveIndex = 0;
+
+        const container = document.getElementById('cmd-results');
+        if (!container) return;
+
+        if (cmdFilteredItems.length === 0) {
+            container.innerHTML = '<div class="cmd-empty">No results for "' + query + '"</div>';
+            return;
+        }
+
+        let html = '';
+        let lastGroup = null;
+        cmdFilteredItems.forEach((item, i) => {
+            if (item.group !== lastGroup) {
+                html += `<div class="cmd-group-label">${item.group}</div>`;
+                lastGroup = item.group;
+            }
+            html += `<div class="cmd-item${i === 0 ? ' is-active' : ''}" data-index="${i}" onclick="execCmdItem(${i})">`;
+            html += `  <div class="cmd-item-icon"><i class="${item.icon}"></i></div>`;
+            html += `  <div style="flex:1;min-width:0;"><div class="cmd-item-label">${item.label}</div><div class="cmd-item-sub">${item.sub || ''}</div></div>`;
+            if (item.shortcut) html += `<span class="cmd-item-shortcut">${item.shortcut}</span>`;
+            html += `</div>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function moveCmdCursor(dir) {
+        cmdActiveIndex = (cmdActiveIndex + dir + cmdFilteredItems.length) % cmdFilteredItems.length;
+        document.querySelectorAll('.cmd-item').forEach((el, i) => {
+            el.classList.toggle('is-active', i === cmdActiveIndex);
+            if (i === cmdActiveIndex) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    function execCmdItem(index) {
+        const item = cmdFilteredItems[index ?? cmdActiveIndex];
+        if (!item) return;
+        closeCommandPalette();
+        setTimeout(() => item.action && item.action(), 60);
+    }
+    window.execCmdItem = execCmdItem;
+
+    // Input handler
+    document.getElementById('cmd-input')?.addEventListener('input', function() {
+        renderCmdResults(this.value);
+    });
+    document.getElementById('cmd-input')?.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); moveCmdCursor(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); moveCmdCursor(-1); }
+        else if (e.key === 'Enter') { e.preventDefault(); execCmdItem(); }
+        else if (e.key === 'Escape') { closeCommandPalette(); }
+    });
+    document.getElementById('cmd-overlay')?.addEventListener('click', function(e) {
+        if (e.target === this) closeCommandPalette();
+    });
+
+    // Global keyboard: Cmd+K / Ctrl+K and G+x shortcuts
+    let gPressed = false, gTimer = null;
+    document.addEventListener('keydown', function(e) {
+        const tag = (e.target.tagName || '').toLowerCase();
+        const editable = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
+
+        // ⌘K / Ctrl+K
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            const isOpen = document.getElementById('cmd-overlay')?.classList.contains('is-open');
+            isOpen ? closeCommandPalette() : openCommandPalette();
+            return;
+        }
+
+        if (editable) return;
+
+        // G + key navigation shortcuts
+        if (e.key === 'g' || e.key === 'G') {
+            gPressed = true;
+            clearTimeout(gTimer);
+            gTimer = setTimeout(() => { gPressed = false; }, 1200);
+            return;
+        }
+        if (gPressed) {
+            gPressed = false;
+            clearTimeout(gTimer);
+            const map = { d: 'dashboard', p: 'content-creator', s: 'scheduler', k: 'knowledge-base', h: 'history', '/': 'settings' };
+            const dest = map[e.key.toLowerCase()];
+            if (dest) { e.preventDefault(); switchTab(dest); }
+            return;
+        }
+
+        // Close palette on Esc
+        if (e.key === 'Escape') {
+            closeCommandPalette();
+        }
+    });
+
+    // ─── Animated KPI Counters ────────────────────────────────────────────
+    function animateCounter(el, target, duration) {
+        if (!el || isNaN(target)) return;
+        const start = performance.now();
+        const from = 0;
+        function step(now) {
+            const pct = Math.min((now - start) / duration, 1);
+            // easeOutExpo
+            const ease = pct === 1 ? 1 : 1 - Math.pow(2, -10 * pct);
+            const current = Math.round(from + (target - from) * ease);
+            el.textContent = target > 999 ? current.toLocaleString() : String(current);
+            if (pct < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+    window.animateCounter = animateCounter;
+
+    // Patch the KPI number update so numbers always count up
+    const _origSet = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent')?.set;
+    ['kpi-posts-month', 'kpi-scheduled-posts'].forEach(id => {
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(m => {
+                const el = m.target;
+                const val = parseInt(el.textContent.replace(/[^0-9]/g, ''), 10);
+                if (!isNaN(val) && val > 0 && !el._animating) {
+                    el._animating = true;
+                    const stored = el.textContent;
+                    el.textContent = '0';
+                    animateCounter(el, val, 900);
+                    setTimeout(() => { el._animating = false; }, 950);
+                }
+            });
+        });
+        // Attach observer once DOM is ready
+        requestAnimationFrame(() => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el, { childList: true, subtree: true, characterData: true });
+        });
+    });
+
+    // ─── AI Text Stream ───────────────────────────────────────────────────
+    function streamTextIntoElement(el, text, onDone) {
+        el.textContent = '';
+        const cursor = document.createElement('span');
+        cursor.className = 'ai-cursor';
+        el.appendChild(cursor);
+
+        // Group chars into small chunks for smoother perf on long text
+        const chars = Array.from(text);
+        const CHUNK = 3; // chars per tick
+        let i = 0;
+
+        function tick() {
+            if (i >= chars.length) {
+                cursor.remove();
+                el.textContent = text; // ensure exact final content
+                if (onDone) onDone();
+                return;
+            }
+            const slice = chars.slice(i, i + CHUNK).join('');
+            cursor.insertAdjacentText('beforebegin', slice);
+            i += CHUNK;
+            // Speed: ~8ms base, tiny jitter for organic feel
+            setTimeout(tick, 7 + Math.random() * 4);
+        }
+        tick();
+    }
+    window.streamTextIntoElement = streamTextIntoElement;
+}());
+</script>
+<style>
+    /* Upgrade Modal */
+    #upgrade-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 10, 40, 0.72);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: upgFadeIn 0.22s ease;
+    }
+    #upgrade-modal-overlay.is-open { display: flex; }
+    @keyframes upgFadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes upgSlideUp { from { opacity:0; transform: translateY(28px) scale(0.97); } to { opacity:1; transform: translateY(0) scale(1); } }
+
+    .upg-modal {
+        background: #fff;
+        border-radius: 24px;
+        width: 100%;
+        max-width: 860px;
+        max-height: 92vh;
+        overflow-y: auto;
+        box-shadow: 0 32px 80px rgba(102, 126, 234, 0.28), 0 8px 24px rgba(0,0,0,0.18);
+        animation: upgSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .upg-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 24px 24px 0 0;
+        padding: 2rem 2rem 1.6rem;
+        text-align: center;
+        position: relative;
+    }
+    .upg-header-close {
+        position: absolute;
+        top: 1rem; right: 1rem;
+        width: 32px; height: 32px;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.32);
+        border-radius: 50%;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.18s;
+        line-height: 1;
+    }
+    .upg-header-close:hover { background: rgba(255,255,255,0.32); }
+    .upg-header-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 100px;
+        padding: 0.3rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+    }
+    .upg-header h2 {
+        color: #fff;
+        font-size: 1.65rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin: 0 0 0.4rem;
+    }
+    .upg-header p {
+        color: rgba(255,255,255,0.85);
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    .upg-usage-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 100px;
+        padding: 0.3rem 0.9rem;
+        font-size: 0.82rem;
+        color: #fff;
+        margin-top: 0.85rem;
+    }
+    .upg-usage-pip {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: #fbbf24;
+    }
+
+    .upg-body {
+        padding: 1.8rem 1.8rem 2rem;
+    }
+    .upg-plans-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 640px) {
+        .upg-plans-grid { grid-template-columns: 1fr; }
+    }
+
+    .upg-plan-card {
+        border: 2px solid #e8eaf0;
+        border-radius: 16px;
+        padding: 1.35rem 1.2rem 1.4rem;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+    .upg-plan-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 20px rgba(102,126,234,0.15);
+        transform: translateY(-2px);
+    }
+    .upg-plan-card.is-popular {
+        border-color: #667eea;
+        background: linear-gradient(160deg, #f5f3ff 0%, #eef2ff 100%);
+    }
+    .upg-plan-card.is-selected {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102,126,234,0.22);
+    }
+
+    .upg-plan-badge {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.22rem 0.75rem;
+        border-radius: 100px;
+        white-space: nowrap;
+    }
+
+    .upg-plan-name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #8b5cf6;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    .upg-plan-price {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #1e1b4b;
+        line-height: 1;
+    }
+    .upg-plan-price sup {
+        font-size: 1rem;
+        font-weight: 700;
+        vertical-align: top;
+        margin-top: 0.35rem;
+        display: inline-block;
+        color: #5b21b6;
+    }
+    .upg-plan-period {
+        font-size: 0.77rem;
+        color: #64748b;
+        font-weight: 500;
+        margin: 0.25rem 0 0.9rem;
+    }
+    .upg-plan-saving {
+        display: inline-block;
+        background: #dcfce7;
+        color: #15803d;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 100px;
+        padding: 0.18rem 0.6rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .upg-plan-features {
+        list-style: none;
+        padding: 0; margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+    .upg-plan-features li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.83rem;
+        color: #374151;
+        line-height: 1.35;
+    }
+    .upg-plan-features li .upg-check {
+        color: #667eea;
+        font-size: 0.75rem;
+        margin-top: 0.1rem;
+        flex-shrink: 0;
+    }
+
+    .upg-select-btn {
+        width: 100%;
+        margin-top: 1.2rem;
+        padding: 0.65rem 1rem;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.18s;
+        border: 2px solid #667eea;
+        background: #fff;
+        color: #667eea;
+    }
+    .upg-plan-card.is-popular .upg-select-btn,
+    .upg-plan-card.is-selected .upg-select-btn {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        border-color: transparent;
+    }
+    .upg-select-btn:hover {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 4px 14px rgba(102,126,234,0.35);
+    }
+
+    .upg-footer-note {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+    }
+    .upg-footer-note a { color: #667eea; text-decoration: none; }
+
+    /* Sidebar cursor hints */
+    #sidebar-user-card { cursor: default; }
+    #sidebar-user-avatar, #sidebar-user-name { cursor: pointer; }
+    #sidebar-user-plan { cursor: pointer; }
+    #sidebar-user-avatar:hover, #sidebar-user-name:hover { text-decoration: underline; text-decoration-color: rgba(255,255,255,0.5); }
+    #sidebar-user-plan:hover { text-decoration: underline; text-decoration-color: rgba(255,255,255,0.5); }
+
+    /* Upgrade gradient button (replaces btn-secondary in free-plan hints) */
+    .btn-upgrade-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.02em;
+        box-shadow: 0 3px 12px rgba(102,126,234,0.35);
+        transition: opacity 0.18s, box-shadow 0.18s, transform 0.18s;
+    }
+    .btn-upgrade-gradient:hover {
+        opacity: 0.92;
+        box-shadow: 0 5px 18px rgba(102,126,234,0.45);
+        transform: translateY(-1px);
+    }
+</style>
+
+<div id="upgrade-modal-overlay" role="dialog" aria-modal="true" aria-label="Upgrade Plan">
+    <div class="upg-modal">
+        <div class="upg-header">
+            <button class="upg-header-close" onclick="closeUpgradeModal()" aria-label="Close">&times;</button>
+            <div class="upg-header-eyebrow">⚡ Upgrade Your Plan</div>
+            <h2>Unlock the full power of Velank AI</h2>
+            <p>More posts, more automation, and priority AI generation.</p>
+            <div id="upg-usage-pill" class="upg-usage-pill" style="display:none;">
+                <span class="upg-usage-pip"></span>
+                <span id="upg-usage-text"></span>
+            </div>
+        </div>
+        <div class="upg-body">
+            <div class="upg-plans-grid" id="upg-plans-grid">
+                <!-- Plans injected by JS -->
+            </div>
+            <p class="upg-footer-note">
+                <i class="fas fa-lock" style="font-size:0.7rem; margin-right:0.25rem;"></i>
+                Secure checkout powered by Razorpay &nbsp;·&nbsp; Cancel anytime &nbsp;·&nbsp; Instant activation
+            </p>
+        </div>
+    </div>
+</div>
 </body>
 </html>

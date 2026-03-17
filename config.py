@@ -1,6 +1,9 @@
-"""Configuration and brand information for ValtriLabs LinkedIn automation."""
+"""Configuration for Mantraj AI LinkedIn automation."""
 from typing import List, Dict
 
+# Legacy profiles — kept for backward compatibility with main.py CLI only.
+# The web app (app.py / dashboard_enterprise) does NOT use PROFILES.
+# All generation uses per-user industry/role/tone settings.
 PROFILES = {
     "valtrilabs": {
         "company_info": {

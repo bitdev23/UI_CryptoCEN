@@ -53,7 +53,7 @@ def _load_project_env() -> None:
 _load_project_env()
 
 from ai_provider import AIProvider
-from config import PROFILES, DEFAULT_PROFILE, POST_FORMATS
+from config import DEFAULT_PROFILE, POST_FORMATS
 from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from kb_jobs import enqueue_kb_training_job, get_kb_training_status
@@ -908,7 +908,17 @@ def _run_local_kb_training(user_id: str, mode: str = 'full', filepaths: list = N
     for filepath in paths_to_process:
         filename = os.path.basename(filepath)
         file_size = os.path.getsize(filepath)
-        file_type = 'docx' if filename.lower().endswith('.docx') else 'pdf'
+        ext_lower = filename.lower()
+        if ext_lower.endswith('.docx'):
+            file_type = 'docx'
+        elif ext_lower.endswith('.pptx'):
+            file_type = 'pptx'
+        elif ext_lower.endswith('.csv'):
+            file_type = 'csv'
+        elif ext_lower.endswith(('.txt', '.md')):
+            file_type = 'txt'
+        else:
+            file_type = 'pdf'
 
         if mode_value == 'incremental':
             existing_records = [
@@ -989,7 +999,6 @@ CONFIG_DEFAULTS = {
     'LINKEDIN_CLIENT_ID': '',
     'LINKEDIN_CLIENT_SECRET': '',
     'TEST_MODE': 'true',
-    'CONTENT_PROFILE': DEFAULT_PROFILE,
     'POST_TIME_HOUR': '11',
     'POST_TIME_MINUTE': '0',
     'TIMEZONE': 'Asia/Kolkata',
@@ -1116,7 +1125,6 @@ LINKEDIN_PERSON_ID={_serialize_config_value('LINKEDIN_PERSON_ID', config.get('LI
 LINKEDIN_CLIENT_ID={_serialize_config_value('LINKEDIN_CLIENT_ID', config.get('LINKEDIN_CLIENT_ID'))}
 LINKEDIN_CLIENT_SECRET={_serialize_config_value('LINKEDIN_CLIENT_SECRET', config.get('LINKEDIN_CLIENT_SECRET'))}
 TEST_MODE={_serialize_config_value('TEST_MODE', config.get('TEST_MODE'))}
-CONTENT_PROFILE={_serialize_config_value('CONTENT_PROFILE', config.get('CONTENT_PROFILE'))}
 POST_TIME_HOUR={_serialize_config_value('POST_TIME_HOUR', config.get('POST_TIME_HOUR'))}
 POST_TIME_MINUTE={_serialize_config_value('POST_TIME_MINUTE', config.get('POST_TIME_MINUTE'))}
 TIMEZONE={_serialize_config_value('TIMEZONE', config.get('TIMEZONE'))}
@@ -1157,21 +1165,26 @@ def scheduled_post_job():
             return
             
         # Generate content directly (simplified version)
+        user_industry = str(config_obj.get('CONTENT_INDUSTRY', '') or '').strip()
+        user_role = str(config_obj.get('USER_ROLE', '') or '').strip()
         ai = AIProvider()
-        profile_key = config_obj['CONTENT_PROFILE']
-        profile = PROFILES.get(profile_key, PROFILES[DEFAULT_PROFILE])
-        theme = random.choice(profile.get('content_themes', []))
+        neutral_themes = [
+            f"{user_industry or 'business'} trends and practical insights",
+            f"{user_role or 'leadership'} execution strategies",
+            "team productivity and process improvement",
+            "scaling operations with better systems",
+        ]
+        theme = random.choice(neutral_themes)
         fmt = random.choice(POST_FORMATS)
-        services = profile.get('company_info', {}).get('services', '')
-        
+        services = f"Professional insights for {user_industry or 'business'} audiences, {user_role or 'leadership'} perspective."
+
         # Simple prompt for post generation
-        prompt = f"""Generate a LinkedIn post about: {theme}
+        prompt = f"""Write a short LinkedIn post about: {theme}
 
-Company context: {services}
+Context: {services}
+Format: {fmt}
 
-Post format: {fmt}
-
-Make it engaging, professional, and include relevant hashtags. Keep it between {config_obj['MIN_POST_LENGTH']} and {config_obj['MAX_POST_LENGTH']} characters."""
+Rules:\n- 120-180 words\n- Short punchy paragraphs (1-2 sentences each)\n- Natural human tone, no buzzwords\n- No markdown (no **, no bullets)\n- No hashtags in body\n- End with one open question to the reader"""
 
         result = ai.generate(prompt, max_tokens=500)
         content = result['text'].strip()
@@ -3851,9 +3864,6 @@ def generate_preview():
                 'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
             }
         )
-        profile_key = (config_obj.get('CONTENT_PROFILE') or cfg.DEFAULT_PROFILE)
-        profile = cfg.PROFILES.get(profile_key, cfg.PROFILES.get(cfg.DEFAULT_PROFILE, {}))
-
         user_topic = (req_data.get('topic') or '').strip()
         user_industry = _single_value(req_data.get('industry') or config_obj.get('CONTENT_INDUSTRY', ''))
         user_role = _single_value(req_data.get('role') or config_obj.get('USER_ROLE', ''))
@@ -3889,7 +3899,6 @@ def generate_preview():
         if word_count_mode not in {'custom_range', 'ai_random'}:
             word_count_mode = 'custom_range'
         
-        content_themes = profile.get('content_themes', ['AI', 'Technology', 'Business'])
         neutral_themes = [
             f"{user_industry or 'technology'} trends and practical insights",
             f"{user_role or 'leadership'} execution strategies",
@@ -3912,13 +3921,11 @@ def generate_preview():
         else:
             theme = random.choice(neutral_themes)
         
-        post_formats = getattr(cfg, 'POST_FORMATS', ['article', 'opinion', 'announcement'])
-        fmt = random.choice(post_formats) if post_formats else 'article'
-        
-        services = profile.get('company_info', {}).get('services', '')
+        fmt = random.choice(POST_FORMATS) if POST_FORMATS else 'article'
+
         if user_industry or user_role or target_audience or topics:
             services = f"Professional insights for {user_industry or 'business and technology'} audiences, with focus on {user_role or 'strategy and execution'}."
-        elif kb_mode == 'no_kb':
+        else:
             services = f"Professional insights for {user_industry or 'business and technology'} audiences, with focus on {user_role or 'leadership and execution'}."
 
         forbidden_terms = _forbidden_terms_for_context(
@@ -4011,68 +4018,89 @@ def generate_preview():
         except Exception as kb_error:
             logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
         
-        # Improved prompt for better human-like content
+        # ── Tone-to-voice map ─────────────────────────────────────────────────────
+        _tone_voices = {
+            'professional':   "Clear, confident, direct. Short declarative sentences. No filler words. Sound like a knowledgeable peer, not a press release.",
+            'conversational': "Casual first-person. Like messaging a smart colleague. Use 'I', 'we', contractions. Short sentences. Real talk, not corporate jargon.",
+            'authoritative':  "Opinion-forward, backed by logic. Make bold, decisive statements. Confident — not arrogant, but certain.",
+            'thought_leader': "Lead with a contrarian or surprising insight. Challenge the common assumptions people hold in this industry. Dense with ideas, zero filler.",
+            'inspirational':  "Story arc: challenge → insight → transformation. Make the reader feel something. Warm, genuine, personal — not motivational-poster cliché.",
+            'storytelling':   "Open with a vivid personal scene or moment. Let the story carry the lesson naturally. Don't moralize — let the reader draw their own conclusion.",
+            'educational':    "Deliver focused, specific insights. Each point standalone and immediately usable. Teach, don't preach.",
+        }
+        tone_voice = _tone_voices.get((post_tone or '').lower(), "Natural, human voice. Short sentences. No corporate fluff.")
+
+        # ── Goal-to-structure map ─────────────────────────────────────────────────
+        _goal_structures = {
+            'spark_comments':   "End the post with a genuinely open question that invites the reader to share their unique view.",
+            'drive_visibility': "Open with a bold, unexpected hook in the first 5-7 words that stops the scroll.",
+            'build_authority':  "Lead with a plain-spoken insight others haven't stated clearly. Follow with tight supporting logic or evidence.",
+            'generate_leads':   "Name a specific pain point the target audience faces. Close with a clear, low-pressure next step.",
+            'educate_audience': "Deliver 2-3 focused insights. Keep each one standalone and immediately usable.",
+            'brand_awareness':  "Communicate one clear value or belief. Make it memorable in a single sentence.",
+            'grow_network':     "Write from personal experience. Include a moment of genuine reflection or honest admission.",
+        }
+        goal_key = (business_goal or '').lower().replace(' ', '_')
+        goal_structure = _goal_structures.get(goal_key, "Deliver one clear, valuable idea. Make it skimmable and worth the reader's time.")
+
+        _BANNED_PHRASES = (
+            "In today's fast-paced world, In today's world, It's no secret, game changer, game-changer, "
+            "paradigm shift, leverage, synergy, cutting-edge, best practices, at the end of the day, "
+            "think outside the box, move the needle, exciting, thrilled, delighted to share, I am proud to share, "
+            "Dive into, Unlock, Revolutionize, seamlessly, robust, scalable solution, stakeholders, "
+            "actionable insights, transformative, empower, journey, innovative solution, disruptive, "
+            "holistic approach, ecosystem, value-add, going forward, circle back, take this to the next level"
+        )
+
+        # ── Build KB section ──────────────────────────────────────────────────────
         if kb_used and kb_context:
-            prompt = f"""Generate a professional LinkedIn post about: {theme}
+            kb_section = f"""KNOWLEDGE BASE EXCERPTS (use these as your factual foundation):
+{kb_context}
 
-    Company Context: {services}
-    Audience Context: Industry={user_industry}, Role={user_role}
-    Target Audience: {target_audience_hint}
-    Publishing Context: {audience_hint}
-    Content Topics: {topic_hint}
-    Business Goal: {business_goal or 'Maximize relevance and engagement'}
-    Desired Tone: {post_tone}
-
-    Knowledge Base Excerpts:
-    {kb_context}
-
-    Requirements:
-    - Use the knowledge-base excerpts above as the factual basis
-    - If a fact is not in the excerpts, keep wording general and do not invent specifics
-    - {domain_guardrail}
-    - If knowledge-base excerpts include off-domain details, ignore those details
-    - Write in a natural, human-like tone (not generic AI)
-    - Keep the writing tone aligned with: {post_tone}
-    - Reflect the selected audience context (industry and role) explicitly
-    - Focus on these content topics: {topic_hint}
-    - Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
-    - Include 1-2 actionable insights or takeaways
-    - {word_rule}
-    - {emoji_rule}
-    - Do NOT include hashtags in the post body; place hashtags only at the end
-    - End with exactly {hashtag_count} relevant hashtags
-
-    Format: {fmt}
-
-    Write ONLY the post content, nothing else."""
+KB RULES:
+- Base ALL factual claims, examples, and statistics ONLY on the excerpts above.
+- If an excerpt is off-domain (not about {user_industry}), IGNORE it completely.
+- If no excerpt covers a point, keep that sentence general — never invent specifics."""
         else:
-            prompt = f"""Generate a professional LinkedIn post about: {theme}
+            kb_section = f"(No knowledge base excerpts provided — draw only on real, well-known facts about the {user_industry} industry. Do not invent statistics, company names, or research studies.)"
 
-    Context: {services}
-    Audience Context: Industry={user_industry}, Role={user_role}
-    Target Audience: {target_audience_hint}
-    Publishing Context: {audience_hint}
-    Content Topics: {topic_hint}
-    Business Goal: {business_goal or 'Maximize relevance and engagement'}
-    Desired Tone: {post_tone}
+        prompt = f"""[DOMAIN LOCK — READ THIS FIRST]
+You are writing EXCLUSIVELY for the {user_industry} industry, from the perspective of a {user_role}.
+Every fact, insight, reference, statistic, and example MUST be grounded in the {user_industry} domain.
+Do NOT mention, reference, or borrow from any other industry or professional domain.
 
-    Requirements:
-    - {domain_guardrail}
-    - Write in a natural, human-like tone (not generic AI)
-    - Keep the writing tone aligned with: {post_tone}
-    - Reflect the selected audience context (industry and role) explicitly
-    - Focus on these content topics: {topic_hint}
-    - Avoid placeholder text like [Company Name], [Exchange Name], or [Exchange]
-    - Be specific and authentic
-    - Include 1-2 actionable insights or takeaways
-    - {word_rule}
-    - {emoji_rule}
-    - Do NOT include hashtags in the post body; place hashtags only at the end
-    - End with exactly {hashtag_count} relevant hashtags
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOICE / TONE: {tone_voice}
 
-    Format: {fmt}
+POST STRUCTURE (goal: "{business_goal or 'general engagement'}"):
+{goal_structure}
 
-    Write ONLY the post content, nothing else."""
+TOPIC: {theme}
+CONTEXT: {services}
+TARGET READER: {target_audience_hint}
+TOPICS TO COVER: {topic_hint}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{kb_section}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRICT RULES — every rule applies without exception:
+
+1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
+2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, research studies, product names, or quotes.
+3. VOICE: Follow the TONE instruction above exactly.
+4. STRUCTURE: Follow the POST STRUCTURE above.
+5. LENGTH: {word_rule}
+6. EMOJI: {emoji_rule}
+7. NO MARKDOWN: No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.
+8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body.
+9. BANNED PHRASES — never write any of these: {_BANNED_PHRASES}
+10. HUMAN VOICE: Write like a real person would talk or write — not like an AI assistant, not like a press release, not like a corporate newsletter.
+11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
+
+FORMAT STYLE: {fmt}
+
+Output ONLY the post text. No labels, no "Here is your post:", no preamble."""
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
@@ -4492,8 +4520,6 @@ def post_now():
                     'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
                 }
             )
-            profile_key = config_obj.get('CONTENT_PROFILE') or cfg.DEFAULT_PROFILE
-            profile = cfg.PROFILES.get(profile_key, cfg.PROFILES[cfg.DEFAULT_PROFILE])
             user_industry = (data.get('industry') or config_obj.get('CONTENT_INDUSTRY') or '').strip()
             user_role = (data.get('role') or config_obj.get('USER_ROLE') or '').strip()
             neutral_themes = [
@@ -4504,7 +4530,7 @@ def post_now():
                 "scaling operations with better systems"
             ]
             theme = random.choice(neutral_themes)
-            fmt = random.choice(cfg.POST_FORMATS)
+            fmt = random.choice(POST_FORMATS)
             services = f"Professional context for {user_industry or 'business and technology'} audiences, with {user_role or 'leadership'} perspective."
             
             # Improved prompt for better human-like content
@@ -4650,7 +4676,7 @@ def upload_knowledge_base():
         # Save uploaded files with validation
         uploaded_count = 0
         skipped_count = 0
-        allowed_extensions = ('.pdf', '.docx')
+        allowed_extensions = ('.pdf', '.docx', '.txt', '.md', '.csv', '.pptx')
         skipped_reasons = []
         saved_filepaths = []
         uploaded_size_bytes = 0
@@ -4664,8 +4690,8 @@ def upload_knowledge_base():
             
             # Check if file has allowed extension
             if not any(file_ext.endswith(ext) for ext in allowed_extensions):
-                logger.warning("Skipping non-PDF/DOCX file: %s", filename)
-                skipped_reasons.append(f"{filename}: Not a PDF or DOCX file")
+                logger.warning("Skipping unsupported file type: %s", filename)
+                skipped_reasons.append(f"{filename}: Unsupported file type (allowed: PDF, DOCX, TXT, MD, CSV, PPTX)")
                 skipped_count += 1
                 continue
             
@@ -5497,34 +5523,47 @@ def generate_preview_premium():
         }
         
         topic_str = ', '.join(custom_topics) if custom_topics else 'industry trends, insights, or announcements'
-        
-        prompt = f"""Generate a LinkedIn post from the perspective of a {role_perspective.get(role, 'professional')}.
 
-**Industry Context**: {industry_context.get(industry, industry)}
-**Your Role**: {role}
-**Topics**: {topic_str}
-**Specific Topic**: {topic if topic else 'Choose something relevant'}
-**Hashtags**: Create exactly {hashtags_count} relevant hashtags for maximum reach
-**Emoji Style**: {emoji_prompt.get(emoji_level, 'Use 2-4 strategic emojis')}
+        _premium_tone_voices = {
+            'professional':   "Clear, confident, direct. Short declarative sentences. No filler words. Knowledgeable peer, not press release.",
+            'conversational': "Casual first-person. Like messaging a smart colleague. Use 'I', 'we', contractions.",
+            'authoritative':  "Opinion-forward, backed by logic. Bold, decisive statements.",
+            'thought_leader': "Lead with a contrarian insight. Challenge assumptions. Dense ideas, zero filler.",
+            'inspirational':  "Story arc: challenge → insight → transformation. Warm, genuine, human.",
+        }
+        _premium_banned = (
+            "In today's fast-paced world, In today's world, It's no secret, game changer, game-changer, "
+            "paradigm shift, leverage, synergy, cutting-edge, best practices, at the end of the day, "
+            "think outside the box, move the needle, exciting, thrilled, delighted to share, Dive into, "
+            "Unlock, Revolutionize, seamlessly, robust, scalable solution, stakeholders, actionable insights, "
+            "transformative, empower, innovative solution, disruptive, holistic approach, ecosystem, value-add"
+        )
 
-Guidelines:
-- Write in a professional yet approachable tone
-- Include a hook in the first line to grab attention
-- Target audience: {role} professionals in {industry}
-- Post should be 150-300 words for optimal LinkedIn engagement
-- Include a clear CTA (Call to Action)
-- End with {hashtags_count} relevant hashtags
-- Keep paragraphs short (2-3 sentences max)
-- Make it shareable and valuable
+        prompt = f"""[DOMAIN LOCK — READ THIS FIRST]
+You are writing EXCLUSIVELY for the {industry} industry, from the perspective of a {role}.
+Every fact, insight, reference, and example MUST be grounded in the {industry} domain.
+Do NOT borrow from any other industry or domain.
 
-Format: 
-[Hook/Opening Line]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXT: {industry_context.get(industry, industry)}
+ROLE PERSPECTIVE: {role_perspective.get(role, 'experienced professional')} in {industry}
+TOPICS TO COVER: {topic_str}
+SPECIFIC TOPIC: {topic if topic else 'Most relevant current trend in ' + industry}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[2-3 body paragraphs with insights]
+STRICT RULES:
+1. DOMAIN LOCK: Every sentence grounded in {industry}. No crossover to other industries.
+2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, or research studies.
+3. VOICE: Clear, direct, first-person where natural. No corporate jargon.
+4. STRUCTURE: Open with a sharp hook (first 6 words must stop the scroll). 2-3 short body paragraphs. Close with a CTA or open question.
+5. LENGTH: 150-250 words.
+6. EMOJI: {emoji_prompt.get(emoji_level, 'Use 2-4 strategic emojis')}.
+7. NO MARKDOWN: No **, no ***, no bullet-point dashes — flowing prose only.
+8. HASHTAGS: Place exactly {hashtags_count} hashtags at the very end only. None in the body.
+9. BANNED PHRASES — never write: {_premium_banned}
+10. HUMAN VOICE: Write like a real person, not an AI assistant or press release.
 
-[CTA]
-
-[Hashtags]"""
+Output ONLY the post text. No labels, no preamble."""
 
         ai = AIProvider(
             ai_provider,

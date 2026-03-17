@@ -1,16 +1,27 @@
-"""PDF processing: extract text from PDFs and chunk for RAG."""
+"""Document processing: extract text from PDFs, DOCX, TXT, MD, CSV, PPTX and chunk for RAG."""
 from typing import List, Tuple
 import fitz  # pymupdf
 import os
+import csv
+import io
 from pathlib import Path
 import logging
+
 try:
     from docx import Document
     _HAS_DOCX = True
 except Exception:
     _HAS_DOCX = False
 
-logger = logging.getLogger("valtrilabs.pdf_processor")
+try:
+    from pptx import Presentation as PptxPresentation
+    _HAS_PPTX = True
+except Exception:
+    _HAS_PPTX = False
+
+logger = logging.getLogger("contentai.pdf_processor")
+
+SUPPORTED_EXTENSIONS = ('.pdf', '.docx', '.txt', '.md', '.csv', '.pptx')
 
 
 def extract_text_from_pdf(path: str) -> str:
@@ -47,13 +58,75 @@ def extract_text_from_docx(path: str) -> str:
         return ""
 
 
+def extract_text_from_txt(path: str) -> str:
+    """Extract text from a plain text or markdown file."""
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            return f.read()
+    except Exception:
+        logger.exception("Failed to extract TXT/MD: %s", path)
+        return ""
+
+
+def extract_text_from_csv(path: str) -> str:
+    """Extract text from a CSV by converting rows to readable sentences."""
+    try:
+        rows = []
+        with open(path, 'r', encoding='utf-8', errors='replace', newline='') as f:
+            reader = csv.reader(f)
+            headers = None
+            for i, row in enumerate(reader):
+                if i == 0:
+                    headers = row
+                    rows.append("Columns: " + ", ".join(row))
+                else:
+                    if headers:
+                        parts = [f"{h}: {v}" for h, v in zip(headers, row) if v.strip()]
+                        rows.append(" | ".join(parts))
+                    else:
+                        rows.append(" | ".join(row))
+                if i > 2000:  # cap large CSVs
+                    rows.append("... (truncated)")
+                    break
+        return "\n".join(rows)
+    except Exception:
+        logger.exception("Failed to extract CSV: %s", path)
+        return ""
+
+
+def extract_text_from_pptx(path: str) -> str:
+    """Extract text from a PowerPoint presentation."""
+    if not _HAS_PPTX:
+        logger.warning("python-pptx not installed; cannot parse PPTX: %s", path)
+        return ""
+    try:
+        prs = PptxPresentation(path)
+        lines = []
+        for slide_num, slide in enumerate(prs.slides, start=1):
+            lines.append(f"--- Slide {slide_num} ---")
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    lines.append(shape.text.strip())
+        return "\n".join(lines)
+    except Exception:
+        logger.exception("Failed to extract PPTX: %s", path)
+        return ""
+
+
 def load_document(path: str) -> Tuple[str, str]:
-    """Load one PDF/DOCX file and return (source, text)."""
+    """Load one document file and return (source, text). Supports: PDF, DOCX, TXT, MD, CSV, PPTX."""
+    """Load one document file and return (source, text). Supports: PDF, DOCX, TXT, MD, CSV, PPTX."""
     ext = Path(path).suffix.lower()
     if ext == ".pdf":
         text = extract_text_from_pdf(path)
     elif ext == ".docx":
         text = extract_text_from_docx(path)
+    elif ext in (".txt", ".md"):
+        text = extract_text_from_txt(path)
+    elif ext == ".csv":
+        text = extract_text_from_csv(path)
+    elif ext == ".pptx":
+        text = extract_text_from_pptx(path)
     else:
         logger.warning("Unsupported document type: %s", path)
         return (path, "")
@@ -61,32 +134,26 @@ def load_document(path: str) -> Tuple[str, str]:
 
 
 def load_pdfs(folder: str = "data/pdfs") -> List[Tuple[str, str]]:
-    """Load all PDFs in folder and return list of (filename, text)."""
+    """Load all supported documents in folder and return list of (filepath, text).
+    Supported: .pdf, .docx, .txt, .md, .csv, .pptx
+    """
     results = []
     p = Path(folder)
     if not p.exists():
-        logger.warning("PDF folder does not exist: %s", folder)
+        logger.warning("Document folder does not exist: %s", folder)
         return results
-    # process PDFs
-    for f in p.glob("**/*.pdf"):
-        logger.info("Processing PDF: %s", f)
-        text = extract_text_from_pdf(str(f))
-        if not text:
-            logger.warning("No text extracted from %s", f)
+    for f in p.glob("**/*"):
+        if f.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
-        results.append((str(f), text))
-    # process DOCX files if python-docx available
-    if _HAS_DOCX:
-        for f in p.glob("**/*.docx"):
-            logger.info("Processing DOCX: %s", f)
-            try:
-                doc = Document(str(f))
-                paragraphs = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
-                text = "\n".join(paragraphs)
-                if text:
-                    results.append((str(f), text))
-            except Exception:
-                logger.exception("Failed to extract DOCX: %s", f)
+        logger.info("Processing document: %s", f)
+        try:
+            source, text = load_document(str(f))
+            if text:
+                results.append((source, text))
+            else:
+                logger.warning("No text extracted from %s", f)
+        except Exception:
+            logger.exception("Failed to process document: %s", f)
     return results
 
 
