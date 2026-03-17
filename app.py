@@ -3721,24 +3721,9 @@ def clean_linkedin_body(text: str) -> str:
 
 
 def ensure_engagement_hook(body: str, industry: str, role: str, topic: str) -> str:
-    text = (body or '').strip()
-    if not text:
-        return text
-
-    lines = text.split('\n')
-    first_line = lines[0].strip() if lines else ''
-    has_hook = bool(re.search(r'\?|\d', first_line)) or len(first_line) <= 90
-    if has_hook:
-        return text
-
-    context = ', '.join([part for part in [industry, role] if part]).strip(', ')
-    if context:
-        hook = f"What separates high-performing {context} teams from everyone else?"
-    elif topic:
-        hook = f"What is the practical edge most teams miss about {topic}?"
-    else:
-        hook = "What are most teams missing when they try to scale results?"
-    return f"{hook}\n\n{text}".strip()
+    # The AI prompt (Rule 12 — TOPIC ANCHOR) now owns the opening sentence.
+    # Post-processing hooks caused generic off-topic openers; disabled.
+    return (body or '').strip()
 
 
 def ensure_engagement_cta(body: str, target_audience: str, role: str) -> str:
@@ -3749,14 +3734,15 @@ def ensure_engagement_cta(body: str, target_audience: str, role: str) -> str:
     lower = text.lower()
     cta_markers = [
         'what do you think', 'what has worked', 'share your', 'drop a comment', 'comment below',
-        'dm me', 'let me know', 'how are you', 'your take', 'agree or disagree'
+        'dm me', 'let me know', 'how are you', 'your take', 'agree or disagree',
+        'curious', 'have you', 'thoughts?', 'thoughts on', 'would love to hear'
     ]
     has_cta = any(marker in lower for marker in cta_markers) or text.endswith('?')
     if has_cta:
         return text
 
-    audience_hint = target_audience or role or 'your team'
-    cta_line = f"What has worked best for {audience_hint} in your experience?"
+    # Use plain open-ended CTA — never echo raw DB audience labels into post copy
+    cta_line = "What's your take on this?"
     return f"{text}\n\n{cta_line}".strip()
 
 
@@ -3941,17 +3927,117 @@ def generate_preview():
                 " Specifically do not mention: " + ', '.join(forbidden_terms[:10]) + "."
             )
 
+        # ── Style Clone injection ─────────────────────────────────────────────
+        use_style_clone = bool(req_data.get('use_style_clone', False))
+        style_instruction = ""
+        style_clone_active = False
+        if use_style_clone:
+            try:
+                sc_blob = (_ensure_user_feature_blob(user_id) or {}).get('style_clone') or {}
+                if sc_blob.get('enabled') and sc_blob.get('samples'):
+                    traits = sc_blob.get('traits') or {}
+                    samples_preview = sc_blob['samples'][:3]
+
+                    # Derive concrete format directives from traits
+                    _emoji_from_trait = {
+                        'none': 'ZERO emojis — absolutely none, not even at the end.',
+                        'rare': 'At most 1 emoji, only where it genuinely adds meaning.',
+                        'minimal': 'At most 1 emoji, only where it genuinely adds meaning.',
+                        'moderate': '2–3 emojis maximum.',
+                        'frequent': 'Emojis can appear throughout, but never more than 1 per sentence.',
+                    }
+                    trait_emoji_rule = _emoji_from_trait.get(
+                        (traits.get('emoji_usage') or '').lower().split('/')[0].strip(),
+                        None
+                    )
+
+                    # Paragraph/list format directive
+                    para_style = (traits.get('paragraph_style') or '').lower()
+                    if 'list' in para_style or 'bullet' in para_style:
+                        list_rule = (
+                            "FORMAT: Use single-line breaks between short statements or list-style lines. "
+                            "Dashes or line breaks as separators are ALLOWED — this person writes in lists."
+                        )
+                    elif 'single' in para_style or 'one-liner' in para_style:
+                        list_rule = (
+                            "FORMAT: Write in punchy single-line statements separated by line breaks. "
+                            "Short paragraphs, maximum 1–2 sentences each."
+                        )
+                    else:
+                        list_rule = "FORMAT: Short paragraphs. Maximum 2–3 sentences each. No long blocks of text."
+
+                    # Opening / closing directives
+                    opener = traits.get('opening_style') or 'direct statement'
+                    closer = traits.get('closing_style') or 'reflective thought'
+                    vocab = traits.get('vocabulary_level') or 'mixed'
+                    structure_desc = traits.get('post_structure') or ''
+                    sig_phrases = traits.get('signature_phrases') or []
+
+                    sig_block = ""
+                    if sig_phrases:
+                        sig_block = (
+                            f"\n- SIGNATURE STYLE MARKERS (do NOT copy these, but capture the same energy): "
+                            + ", ".join(f'"{p}"' for p in sig_phrases[:4])
+                        )
+
+                    style_instruction = f"""
+╔══════════════════════════════════════════════════════════════════╗
+║  STYLE CLONE — THIS OVERRIDES ALL OTHER VOICE/FORMAT RULES       ║
+╚══════════════════════════════════════════════════════════════════╝
+This post MUST be written in the user's exact personal voice. Every formatting,
+tone, and structural rule below REPLACES the generic defaults.
+
+VOICE FINGERPRINT:
+- Overall voice: {traits.get('style_summary', 'direct and analytical')}
+- Sentence length: {traits.get('avg_sentence_length', 'short')} — enforce this strictly
+- Tone: {traits.get('tone', 'direct and confident')}
+- Vocabulary level: {vocab}
+- Opening style: {opener} — the first line MUST open this way
+- Closing style: {closer} — the last line MUST close this way
+- Paragraph/structure: {traits.get('paragraph_style', 'short blocks')}
+- Structural pattern: {structure_desc}{sig_block}
+
+{list_rule}
+
+EMOJI RULE (HARD): {trait_emoji_rule or 'Match the emoji level shown in the fingerprint.'}
+
+REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy content):
+{chr(10).join(f'--- REF {i+1} ---{chr(10)}{s[:500]}' for i, s in enumerate(samples_preview))}
+╔══════════════════════════════════════════════════════════════════╗
+║  END STYLE CLONE — the post must sound like these reference posts ║
+╚══════════════════════════════════════════════════════════════════╝"""
+
+                    style_clone_active = True
+
+                    # Override derived values so downstream rules stay consistent
+                    if traits.get('tone'):
+                        tone_voice = traits['tone']
+                    if trait_emoji_rule:
+                        emoji_level = (traits.get('emoji_usage') or 'moderate').lower().split('/')[0].strip()
+
+            except Exception as sc_err:
+                logger.warning('Style clone fetch failed: %s', sc_err)
+
+        kb_used = False
         emoji_rule_map = {
-            'none': 'Do not use emojis.',
-            'minimal': 'Use at most 1-2 relevant emojis.',
-            'moderate': 'Use 2-4 relevant emojis for readability.',
-            'high': 'Use up to 5-7 relevant emojis without overstuffing.',
+            'none':     'Do not use emojis — zero, not even at the end.',
+            'rare':     'At most 1 emoji, only where it genuinely adds meaning.',
+            'minimal':  'Use at most 1–2 relevant emojis.',
+            'moderate': 'Use 2–4 relevant emojis for readability.',
+            'frequent': 'Use up to 5–7 relevant emojis, naturally placed.',
+            'high':     'Use up to 5–7 relevant emojis without overstuffing.',
         }
-        emoji_rule = emoji_rule_map.get(emoji_level, emoji_rule_map['moderate'])
+        emoji_rule = emoji_rule_map.get((emoji_level or '').lower(), emoji_rule_map['moderate'])
 
         topic_hint = ', '.join(topics) if topics else 'industry trends and practical insights'
-        audience_hint = 'B2B agency/company page' if audience_type in {'agency', 'b2b', 'company'} else 'Individual professional profile'
-        target_audience_hint = target_audience or audience_hint
+        # audience_hint describes the reader TYPE — never used as literal copy in the post
+        if audience_type in {'agency', 'b2b', 'company'}:
+            audience_hint = f'B2B decision-makers and teams in the {user_industry} space'
+        else:
+            audience_hint = f'{user_industry} professionals and practitioners'
+        # Always use the computed descriptive label — never let the raw DB enum
+        # value (e.g. "Individual professional profile") bleed into post copy.
+        target_audience_hint = audience_hint
 
         if word_count_mode == 'ai_random':
             random_target = random.randint(110, 230)
@@ -3960,10 +4046,13 @@ def generate_preview():
             word_rule = f"Keep the post between {min_words} and {max_words} words."
 
         kb_used = False
+        kb_no_match = False
+        kb_state = 'disabled'   # disabled | no_files | not_built | no_match | error | ok
         kb_sources = []
         kb_context = ""
         kb_selected_file_count = 0
         kb_selected_file_ids = []
+        kb_hits = []
         try:
             # Get current user's ID (authenticated or test user)
             user_id = get_current_user_id()
@@ -3981,42 +4070,87 @@ def generate_preview():
                         'message': 'Knowledge base is still training. Please wait a moment and try again.'
                     }), 403
 
-            if kb_mode != 'no_kb' and rag.is_built():
+            if kb_mode == 'no_kb':
+                kb_state = 'disabled'
+            elif not rag.is_built():
+                kb_state = 'not_built'
+                kb_no_match = True
+            else:
                 user_files = rag.db.list_kb_files(user_id)
                 user_file_ids = [str(row.get('id')) for row in user_files if row.get('id')]
-                selected_file_ids = list(user_file_ids)
 
-                if kb_mode == 'specific_files':
-                    selected_file_ids = [file_id for file_id in specific_file_ids if file_id in user_file_ids]
-                elif workspace_id:
-                    blob = _ensure_user_feature_blob(user_id)
-                    ws = _get_workspace(blob, workspace_id)
-                    if ws:
-                        if ws.get('use_all_files'):
-                            selected_file_ids = list(user_file_ids)
+                if not user_file_ids:
+                    kb_state = 'no_files'
+                    kb_no_match = True
+                else:
+                    selected_file_ids = list(user_file_ids)
+
+                    if kb_mode == 'specific_files':
+                        selected_file_ids = [fid for fid in specific_file_ids if fid in user_file_ids]
+                    elif workspace_id:
+                        blob = _ensure_user_feature_blob(user_id)
+                        ws = _get_workspace(blob, workspace_id)
+                        if ws:
+                            if ws.get('use_all_files'):
+                                selected_file_ids = list(user_file_ids)
+                            else:
+                                ws_file_ids = [str(fid) for fid in (ws.get('file_ids') or [])]
+                                selected_file_ids = [fid for fid in ws_file_ids if fid in user_file_ids]
+
+                    kb_selected_file_ids = selected_file_ids
+                    kb_selected_file_count = len(selected_file_ids)
+
+                    if not selected_file_ids:
+                        kb_state = 'no_files'
+                        kb_no_match = True
+                    else:
+                        filtered = len(selected_file_ids) < len(user_file_ids)
+                        file_id_arg = selected_file_ids if filtered else None
+
+                        # Pass 1: topic-focused search at strict threshold (0.75)
+                        topic_hits = rag.similarity_search(
+                            theme or topic_hint,
+                            k=4,
+                            match_threshold=0.75,
+                            file_ids=file_id_arg
+                        )
+
+                        if topic_hits:
+                            kb_hits = topic_hits
                         else:
-                            ws_file_ids = [str(file_id) for file_id in (ws.get('file_ids') or [])]
-                            selected_file_ids = [file_id for file_id in ws_file_ids if file_id in user_file_ids]
+                            # Pass 2: broader fallback at relaxed threshold (0.68)
+                            broad_query = " ".join(
+                                part for part in [theme, user_industry, user_role] if part
+                            )
+                            broad_hits = rag.similarity_search(
+                                broad_query,
+                                k=4,
+                                match_threshold=0.68,
+                                file_ids=file_id_arg
+                            )
+                            if broad_hits:
+                                kb_hits = broad_hits
 
-                kb_selected_file_ids = selected_file_ids
-                kb_selected_file_count = len(selected_file_ids)
+                        if kb_hits:
+                            kb_used = True
+                            kb_state = 'ok'
+                            snippets = []
+                            for idx, hit in enumerate(kb_hits[:3], start=1):
+                                src = os.path.basename((hit.get('metadata') or {}).get('source', 'knowledge_base'))
+                                kb_sources.append(src)
+                                doc_text = (hit.get('document') or '').strip()
+                                sim = hit.get('similarity', 0.0)
+                                if doc_text:
+                                    snippets.append(f"[{idx}] Source: {src} (relevance: {sim:.2f})\n{doc_text[:900]}")
+                            kb_context = "\n\n".join(snippets)
+                        else:
+                            kb_state = 'no_match'
+                            kb_no_match = True
 
-                if selected_file_ids:
-                    search_query = " | ".join(part for part in [theme, user_industry, user_role, services, topic_hint] if part)
-                    filtered = len(selected_file_ids) < len(user_file_ids)
-                    kb_hits = rag.similarity_search(search_query, k=4, file_ids=selected_file_ids if filtered else None)
-                    if kb_hits:
-                        kb_used = True
-                        snippets = []
-                        for idx, hit in enumerate(kb_hits[:3], start=1):
-                            src = os.path.basename((hit.get('metadata') or {}).get('source', 'knowledge_base'))
-                            kb_sources.append(src)
-                            doc_text = (hit.get('document') or '').strip()
-                            if doc_text:
-                                snippets.append(f"[{idx}] Source: {src}\n{doc_text[:900]}")
-                        kb_context = "\n\n".join(snippets)
         except Exception as kb_error:
             logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
+            kb_state = 'error'
+            kb_no_match = True  # KB was requested but failed — tell the user
         
         # ── Tone-to-voice map ─────────────────────────────────────────────────────
         _tone_voices = {
@@ -4029,6 +4163,16 @@ def generate_preview():
             'educational':    "Deliver focused, specific insights. Each point standalone and immediately usable. Teach, don't preach.",
         }
         tone_voice = _tone_voices.get((post_tone or '').lower(), "Natural, human voice. Short sentences. No corporate fluff.")
+
+        # ── Style Clone trait overrides (must run AFTER tone_voice is set) ────────
+        sc_trait_overrides = {}
+        if use_style_clone:
+            try:
+                sc_blob = (_ensure_user_feature_blob(user_id) or {}).get('style_clone') or {}
+                if sc_blob.get('enabled') and sc_blob.get('traits'):
+                    sc_trait_overrides = sc_blob['traits']
+            except Exception:
+                pass
 
         # ── Goal-to-structure map ─────────────────────────────────────────────────
         _goal_structures = {
@@ -4061,6 +4205,18 @@ KB RULES:
 - Base ALL factual claims, examples, and statistics ONLY on the excerpts above.
 - If an excerpt is off-domain (not about {user_industry}), IGNORE it completely.
 - If no excerpt covers a point, keep that sentence general — never invent specifics."""
+        elif kb_no_match:
+            _kb_state_msgs = {
+                'no_match':  f"KB searched but no content matched the topic '{theme}'.",
+                'not_built': "KB is still indexing — embeddings not ready.",
+                'no_files':  "No KB files are selected or available.",
+                'error':     "KB lookup failed (service error).",
+            }
+            kb_section = (
+                f"({_kb_state_msgs.get(kb_state, 'KB unavailable.')} "
+                f"Generate from your own well-established knowledge of the {user_industry} industry. "
+                "Do not invent statistics, company names, product names, or research studies.)"
+            )
         else:
             kb_section = f"(No knowledge base excerpts provided — draw only on real, well-known facts about the {user_industry} industry. Do not invent statistics, company names, or research studies.)"
 
@@ -4069,34 +4225,44 @@ You are writing EXCLUSIVELY for the {user_industry} industry, from the perspecti
 Every fact, insight, reference, statistic, and example MUST be grounded in the {user_industry} domain.
 Do NOT mention, reference, or borrow from any other industry or professional domain.
 
+{style_instruction}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VOICE / TONE: {tone_voice}
 
 POST STRUCTURE (goal: "{business_goal or 'general engagement'}"):
 {goal_structure}
 
-TOPIC: {theme}
-CONTEXT: {services}
-TARGET READER: {target_audience_hint}
-TOPICS TO COVER: {topic_hint}
+TOPIC — the post is about this specific subject (do not drift from it):
+{theme}
+
+BACKGROUND CONTEXT (use only as supporting colour; the post stays on the TOPIC above):
+{services}
+
+WHO WILL READ THIS (do NOT copy this into the post — it is context only):
+{target_audience_hint}
+
+OPTIONAL SUBTOPICS TO WEAVE IN:
+{topic_hint}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {kb_section}
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STRICT RULES — every rule applies without exception:
 
 1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
 2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, research studies, product names, or quotes.
-3. VOICE: Follow the TONE instruction above exactly.
-4. STRUCTURE: Follow the POST STRUCTURE above.
+3. VOICE: {'Follow the STYLE CLONE fingerprint above exactly — it overrides all other tone guidance.' if style_clone_active else f'Follow the TONE instruction above exactly.'}
+4. STRUCTURE: {'Follow the structural pattern in the STYLE CLONE block above.' if style_clone_active else 'Follow the POST STRUCTURE above.'}
 5. LENGTH: {word_rule}
 6. EMOJI: {emoji_rule}
-7. NO MARKDOWN: No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.
+7. FORMAT: {'The STYLE CLONE format rule above takes priority. Lists and single-line breaks are allowed if they match the reference posts.' if style_clone_active else 'No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.'}
 8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body.
 9. BANNED PHRASES — never write any of these: {_BANNED_PHRASES}
 10. HUMAN VOICE: Write like a real person would talk or write — not like an AI assistant, not like a press release, not like a corporate newsletter.
 11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
+12. TOPIC ANCHOR + HOOK: The very first sentence MUST be directly about "{theme}" AND must be under 120 characters. Short, punchy, curiosity-driven. Do not open with a generic industry question or a hook about your role/team. The post is about the topic, not about you.
+13. NO PROMPT ECHO: Never copy or paraphrase any instruction label from this prompt into the post. Do not use the reader description (WHO WILL READ THIS) as post copy.
+{'14. STYLE CLONE COMPLIANCE: The output MUST be stylistically indistinguishable from the reference posts provided above. If in doubt, re-read the references.' if style_clone_active else ''}
 
 FORMAT STYLE: {fmt}
 
@@ -4202,6 +4368,8 @@ Post:
             'hashtags': final_hashtags,
             'theme': theme,
             'kb_used': kb_used,
+            'kb_no_match': kb_no_match,
+            'kb_state': kb_state,
             'kb_sources': sorted(list(set(kb_sources))),
             'settings_applied': {
                 'industry': user_industry,
@@ -5622,6 +5790,323 @@ def get_enterprise_stats():
     except Exception as e:
         logger.exception(f"Failed to get stats: {e}")
         return jsonify({'error': str(e)}), 400
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STYLE CLONE
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/style', methods=['GET'])
+@require_auth
+def get_style():
+    """Return saved style samples and analysed traits for the current user."""
+    try:
+        user_id = get_current_user_id()
+        blob = _ensure_user_feature_blob(user_id)
+        return jsonify({'success': True, 'style': blob.get('style_clone') or {}})
+    except Exception as e:
+        logger.exception('get_style failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/api/style/save', methods=['POST'])
+@require_auth
+def save_style_samples():
+    """Save 2-15 LinkedIn writing samples and auto-analyse the writing fingerprint."""
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json() or {}
+        samples = data.get('samples') or []
+        if not isinstance(samples, list):
+            samples = [samples]
+        samples = [s.strip() for s in samples if isinstance(s, str) and s.strip()]
+        if len(samples) < 2:
+            return jsonify({'success': False, 'message': 'Provide at least 2 writing samples.'}), 400
+        samples = samples[:15]
+
+        config_obj = load_config(user_id)
+        ai = AIProvider(
+            config_obj.get('AI_PROVIDER', 'google'),
+            api_keys={
+                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
+                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
+                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', ''),
+            }
+        )
+
+        samples_text = "\n\n---\n\n".join(f"Sample {i+1}:\n{s}" for i, s in enumerate(samples))
+        analysis_prompt = f"""Study these {len(samples)} LinkedIn posts written by the same person. Extract their unique writing fingerprint.
+
+{samples_text}
+
+Return a JSON object with EXACTLY these keys:
+{{
+  "avg_sentence_length": "short / medium / long",
+  "paragraph_style": "e.g. single-line breaks / 2-3 sentence blocks",
+  "opening_style": "e.g. Bold statement / Question / Personal story / Statistic",
+  "closing_style": "e.g. Open question / Direct CTA / Reflection",
+  "tone": "e.g. Direct and confident / Warm and personal / Analytical",
+  "emoji_usage": "none / rare / moderate / frequent",
+  "signature_phrases": ["phrase1", "phrase2", "phrase3"],
+  "vocabulary_level": "simple / mixed / sophisticated",
+  "post_structure": "one clear structural pattern observed",
+  "style_summary": "One sentence describing this person's unique LinkedIn voice"
+}}
+
+Output ONLY valid JSON. No prose, no markdown fences."""
+
+        result = ai.generate(analysis_prompt, max_tokens=600)
+        raw = (result.get('text') or '').strip()
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+            raw = raw.strip()
+        try:
+            traits = json.loads(raw)
+        except Exception:
+            traits = {'style_summary': 'Style saved. Analysis unavailable — your voice will still be applied during generation.'}
+
+        style_data = {
+            'samples': samples,
+            'traits': traits,
+            'updated_at': datetime.now().isoformat(),
+            'enabled': True,
+        }
+        blob = _ensure_user_feature_blob(user_id)
+        blob['style_clone'] = style_data
+        _save_user_feature_blob(user_id, blob)
+        return jsonify({'success': True, 'style': style_data})
+    except Exception as e:
+        logger.exception('save_style_samples failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+@app.route('/api/style/toggle', methods=['POST'])
+@require_auth
+def toggle_style_clone():
+    """Enable or disable style clone for generation."""
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json() or {}
+        enabled = bool(data.get('enabled', True))
+        blob = _ensure_user_feature_blob(user_id)
+        style_data = blob.get('style_clone') or {}
+        style_data['enabled'] = enabled
+        blob['style_clone'] = style_data
+        _save_user_feature_blob(user_id, blob)
+        return jsonify({'success': True, 'enabled': enabled})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTENT REPURPOSE PIPELINE
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/repurpose', methods=['POST'])
+@require_auth
+def repurpose_content():
+    """Extract key insights from a URL or pasted text and produce 3 distinct LinkedIn post variants."""
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json() or {}
+        source_type = data.get('source_type', 'text')
+        source = (data.get('source') or '').strip()
+        industry = (data.get('industry') or 'technology').strip()
+        role = (data.get('role') or 'professional').strip()
+        tone = (data.get('tone') or 'professional').strip()
+
+        if not source:
+            return jsonify({'success': False, 'message': 'No source content provided.'}), 400
+
+        raw_text = source
+        page_title = ''
+
+        if source_type == 'url':
+            try:
+                import urllib.request as _ur
+                req = _ur.Request(source, headers={'User-Agent': 'Mozilla/5.0 (compatible; VelankBot/1.0)'})
+                with _ur.urlopen(req, timeout=12) as resp:
+                    html_bytes = resp.read(120_000)
+                html_str = html_bytes.decode('utf-8', errors='replace')
+                title_m = re.search(r'<title[^>]*>(.*?)</title>', html_str, re.I | re.S)
+                if title_m:
+                    page_title = re.sub(r'<[^>]+>', '', title_m.group(1)).strip()
+                html_str = re.sub(r'<(script|style|nav|header|footer|aside)[^>]*>.*?</\1>', ' ', html_str, flags=re.I | re.S)
+                raw_text = re.sub(r'<[^>]+>', ' ', html_str)
+                raw_text = re.sub(r'\s+', ' ', raw_text).strip()[:8000]
+            except Exception as fetch_err:
+                logger.warning('URL fetch failed: %s', fetch_err)
+                return jsonify({'success': False, 'message': f'Could not fetch URL: {fetch_err}'}), 400
+
+        config_obj = load_config(user_id)
+        ai = AIProvider(
+            config_obj.get('AI_PROVIDER', 'google'),
+            api_keys={
+                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
+                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
+                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', ''),
+            }
+        )
+
+        extract_prompt = f"""Extract exactly 5 specific, valuable insights from this content. Return ONLY a JSON array of 5 strings (each under 20 words). No prose.
+
+CONTENT:
+{raw_text[:5000]}
+
+Output: ["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]"""
+
+        extract_result = ai.generate(extract_prompt, max_tokens=300)
+        raw_points = (extract_result.get('text') or '').strip()
+        if raw_points.startswith('```'):
+            raw_points = raw_points.split('```')[1]
+            if raw_points.startswith('json'):
+                raw_points = raw_points[4:]
+        try:
+            key_points = json.loads(raw_points.strip())
+            if not isinstance(key_points, list):
+                key_points = []
+        except Exception:
+            key_points = []
+
+        _BANNED_R = (
+            "In today's fast-paced world, game-changer, paradigm shift, leverage, synergy, "
+            "cutting-edge, best practices, move the needle, seamlessly, robust, transformative, "
+            "empower, innovative solution, value-add, at the end of the day"
+        )
+
+        variant_specs = [
+            ("Data & Insight", "Lead with the most surprising or specific insight. Be concrete, cite what you found. End with a punchy standalone statement."),
+            ("Personal Takeaway", f"Write in first person as a {role}. Share what YOU personally took from this. Make it a genuine reflection, not generic. Start mid-thought."),
+            ("Contrarian Take", f"Challenge the obvious reading of this. What are most {role}s getting wrong? Make one bold, well-reasoned claim. Invite debate."),
+        ]
+
+        variants = []
+        for angle_name, angle_instruction in variant_specs:
+            points_text = '\n'.join(f'- {p}' for p in key_points) if key_points else raw_text[:1500]
+            gen_prompt = f"""[DOMAIN LOCK] You are a {role} in the {industry} industry writing a LinkedIn post.
+
+SOURCE KEY POINTS:
+{points_text}
+
+ANGLE: {angle_name}
+INSTRUCTION: {angle_instruction}
+
+STRICT RULES:
+- 130-200 words, flowing prose, short paragraphs
+- No markdown (no **, no ***)
+- Do NOT open with "I" as the literal first character
+- No banned phrases: {_BANNED_R}
+- End with 3-4 relevant hashtags on the final line
+- Output ONLY the post text"""
+
+            gen_result = ai.generate(gen_prompt, max_tokens=400)
+            full_text = gen_result.get('text') or ''
+            post_body = clean_linkedin_body(remove_hashtags_from_body(full_text))
+            hashtags = normalize_hashtags(HASHTAG_RE.findall(full_text))
+            variants.append({'angle': angle_name, 'text': post_body, 'hashtags': hashtags[:4]})
+
+        return jsonify({
+            'success': True,
+            'title': page_title or 'Repurposed Content',
+            'key_points': key_points,
+            'variants': variants,
+            'industry': industry,
+            'role': role,
+        })
+    except Exception as e:
+        logger.exception('repurpose_content failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BEST TIME TO POST
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/best-time', methods=['GET'])
+@require_auth
+def get_best_time():
+    """Analyse published post history + global LinkedIn benchmarks to surface optimal slots."""
+    try:
+        user_id = get_current_user_id()
+        posts = [
+            row for row in _read_json_list(POSTS_PATH)
+            if str(row.get('user_id') or '').strip() == str(user_id)
+            and row.get('posted')
+        ]
+
+        # LinkedIn global engagement benchmarks (0–100 score per day/hour)
+        GLOBAL_DAY = [72, 88, 92, 90, 80, 35, 28]  # Mon-Sun
+        GLOBAL_HOUR = {7: 60, 8: 82, 9: 90, 10: 88, 11: 75, 12: 78, 13: 65,
+                       14: 58, 15: 55, 16: 60, 17: 72, 18: 68, 19: 55, 20: 42}
+        DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        user_day = [0] * 7
+        user_hour: dict[int, int] = {}
+        for post in posts:
+            ts = post.get('created_at') or post.get('scheduled_for') or ''
+            try:
+                dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                user_day[dt.weekday()] += 1
+                h = dt.hour
+                user_hour[h] = user_hour.get(h, 0) + 1
+            except Exception:
+                pass
+
+        total = sum(user_day)
+        has_data = total >= 3
+
+        if has_data:
+            mx_d = max(user_day) or 1
+            mx_h = max(user_hour.values()) if user_hour else 1
+            blended_day = [round(0.65 * GLOBAL_DAY[i] + 0.35 * round(user_day[i] / mx_d * 100)) for i in range(7)]
+            blended_hour = {h: round(0.65 * base + 0.35 * round(user_hour.get(h, 0) / mx_h * 100))
+                            for h, base in GLOBAL_HOUR.items()}
+        else:
+            blended_day = list(GLOBAL_DAY)
+            blended_hour = dict(GLOBAL_HOUR)
+
+        def fmt_h(h: int) -> str:
+            s = 'AM' if h < 12 else 'PM'
+            return f"{h % 12 or 12}:00 {s}"
+
+        sorted_days = sorted(range(7), key=lambda i: blended_day[i], reverse=True)
+        sorted_hours = sorted(blended_hour, key=lambda h: blended_hour[h], reverse=True)
+
+        top_slots = [
+            {
+                'day': DAY_NAMES[sorted_days[0]],
+                'time': f'{fmt_h(sorted_hours[0])}–{fmt_h(sorted_hours[0]+1)}',
+                'score': blended_day[sorted_days[0]],
+                'reason': 'Your top publishing day at peak engagement hour' if has_data else 'Globally highest LinkedIn traffic window',
+            },
+            {
+                'day': DAY_NAMES[sorted_days[1]],
+                'time': f'{fmt_h(sorted_hours[1])}–{fmt_h(sorted_hours[1]+1)}',
+                'score': blended_day[sorted_days[1]],
+                'reason': 'Second strongest window for your audience' if has_data else 'Top-2 global LinkedIn day',
+            },
+            {
+                'day': 'Thursday',
+                'time': '12:00 PM–1:00 PM',
+                'score': blended_day[3],
+                'reason': 'Lunch-hour scroll spike — consistent across all industries',
+            },
+        ]
+
+        return jsonify({
+            'success': True,
+            'has_user_data': has_data,
+            'total_analyzed_posts': total,
+            'day_scores': [{'day': DAY_NAMES[i], 'score': blended_day[i]} for i in range(7)],
+            'hour_scores': [{'hour': h, 'label': fmt_h(h), 'score': blended_hour[h]} for h in sorted(blended_hour)],
+            'top_slots': top_slots,
+            'note': f'Based on your {total} published posts + global LinkedIn engagement data.' if has_data else 'Based on global LinkedIn research. Publish more posts to personalise.',
+        })
+    except Exception as e:
+        logger.exception('get_best_time failed: %s', e)
+        return jsonify({'success': False, 'message': str(e)}), 400
+
 
 if __name__ == '__main__':
     missing_auth = []

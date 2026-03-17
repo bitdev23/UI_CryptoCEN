@@ -1425,6 +1425,26 @@
             color: #1f2937;
             font-weight: 700;
         }
+        .insight-chip--warn {
+            border-color: #fcd34d;
+            background: #fffbeb;
+            color: #92400e;
+        }
+        .insight-chip--warn strong { color: #92400e; }
+        .insight-kb-nomatch {
+            display: flex; align-items: flex-start; gap: 0.6rem;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            margin-bottom: 0.6rem;
+            font-size: 0.79rem;
+            color: #78350f;
+            line-height: 1.5;
+        }
+        .insight-kb-nomatch i {
+            font-size: 0.85rem; color: #d97706; margin-top: 0.1rem; flex-shrink: 0;
+        }
         .validator-list {
             display: flex;
             flex-direction: column;
@@ -3065,6 +3085,9 @@
             .dashboard-main-layout {
                 grid-template-columns: 1fr;
                 gap: 0.9rem;
+            }
+            .dashboard-row-2, .dashboard-row-3 {
+                grid-template-columns: 1fr;
             }
             .settings-v2-layout {
                 grid-template-columns: 1fr;
@@ -6840,6 +6863,1310 @@
             }
         }
     </style>
+
+    <!-- ═══ PREMIUM DESIGN LAYER ═══ -->
+    <style>
+        /* ── Design tokens (overrides) ─────────────────────────────── */
+        :root {
+            --sidebar-bg: #0f1628;
+            --sidebar-text: rgba(255,255,255,0.85);
+            --sidebar-text-dim: rgba(255,255,255,0.45);
+            --sidebar-hover: rgba(255,255,255,0.08);
+            --sidebar-active: linear-gradient(135deg,rgba(99,102,241,0.9),rgba(139,92,246,0.9));
+            --card-bg: #ffffff;
+            --card-border: #e8ecf0;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+            --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.1),0 12px 32px rgba(0,0,0,0.08);
+            --page-bg: #f3f4f8;
+            --text-1: #111827;
+            --text-2: #374151;
+            --text-3: #6b7280;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-light: #eef2ff;
+            --success-bg: #ecfdf5;
+            --warning-bg: #fffbeb;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        /* ── Base ───────────────────────────────────────────────────── */
+        body { background: var(--page-bg); color: var(--text-1); }
+
+        /* ── Sidebar redesign ───────────────────────────────────────── */
+        .sidebar {
+            background: var(--sidebar-bg) !important;
+            box-shadow: 1px 0 0 rgba(255,255,255,0.05),4px 0 24px rgba(0,0,0,0.25) !important;
+            padding: 1.5rem 1rem !important;
+        }
+        .sidebar-logo { margin-bottom: 1.5rem !important; padding-left:0.25rem; }
+        .sidebar-nav-section-label {
+            color: var(--sidebar-text-dim) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.67rem !important;
+            font-weight: 600;
+            padding: 0.75rem 0.75rem 0.35rem !important;
+            margin-bottom: 0 !important;
+        }
+        .nav-item {
+            color: var(--sidebar-text) !important;
+            border-radius: var(--radius-sm) !important;
+            padding: 0.6rem 0.75rem !important;
+            margin-bottom: 2px !important;
+            font-size: 0.875rem !important;
+            transition: background 0.15s ease;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .nav-item:hover {
+            background: var(--sidebar-hover) !important;
+            color: #fff !important;
+        }
+        .nav-item.active {
+            background: var(--sidebar-active) !important;
+            color: #fff !important;
+            font-weight: 600;
+        }
+        .nav-item i { width: 16px; text-align: center; font-size: 0.875rem; opacity: 0.85; }
+        .sidebar-user-card {
+            background: rgba(255,255,255,0.06) !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: var(--radius-md) !important;
+        }
+        .sidebar-user-name { color: rgba(255,255,255,0.9) !important; }
+        .sidebar-user-plan {
+            color: rgba(255,255,255,0.5) !important;
+            font-size:0.72rem !important;
+        }
+        .sidebar-toggle { color: rgba(255,255,255,0.5) !important; }
+        .sidebar-toggle:hover { color: #fff !important; }
+
+        /* ── Main content area ──────────────────────────────────────── */
+        main { background: var(--page-bg); }
+        .tab-content { padding: 2rem 2.25rem !important; max-width: 1280px; }
+
+        /* ── Cards ──────────────────────────────────────────────────── */
+        .card {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            box-shadow: var(--card-shadow) !important;
+            border-radius: var(--radius-lg) !important;
+        }
+        .card:hover { box-shadow: var(--card-shadow-hover) !important; }
+        .card-header {
+            border-bottom: 1px solid #f1f3f7 !important;
+            padding-bottom: 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+        .card-header h3 { color: var(--text-1); font-size: 0.95rem; font-weight: 700; }
+
+        /* ── Dashboard hero ─────────────────────────────────────────── */
+        .dashboard-hero {
+            background: linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%) !important;
+            border-radius: var(--radius-xl) !important;
+            padding: 2rem 2.25rem !important;
+            margin-bottom: 1.5rem !important;
+            border: none !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .dashboard-hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+        }
+        .dashboard-hero h2 { color: #fff !important; font-size: 1.5rem !important; font-weight: 700 !important; }
+        .dashboard-hero p { color: rgba(255,255,255,0.8) !important; }
+
+        /* ── KPI Cards ──────────────────────────────────────────────── */
+        .dashboard-kpi-card {
+            border-radius: var(--radius-lg) !important;
+            border: 1px solid var(--card-border) !important;
+            background: var(--card-bg) !important;
+            box-shadow: var(--card-shadow) !important;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dashboard-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow-hover) !important;
+        }
+        .dashboard-kpi-value {
+            font-size: 2.2rem !important;
+            font-weight: 800 !important;
+            color: var(--text-1) !important;
+            line-height: 1.1 !important;
+        }
+        .dashboard-kpi-title { font-weight: 600 !important; color: var(--text-2) !important; font-size:0.82rem !important; }
+        .dashboard-kpi-meta { color: var(--text-3) !important; font-size: 0.75rem !important; }
+        .dashboard-kpi-pill {
+            background: var(--accent-light) !important;
+            color: var(--accent) !important;
+            font-weight: 700;
+            font-size: 0.65rem !important;
+            border-radius: 100px !important;
+            padding: 0.2rem 0.55rem !important;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Quick actions ──────────────────────────────────────────── */
+        .quick-action-item {
+            border: 1px solid var(--card-border) !important;
+            border-radius: var(--radius-md) !important;
+            background: var(--card-bg) !important;
+            transition: all 0.15s ease;
+        }
+        .quick-action-item:hover {
+            border-color: var(--accent) !important;
+            background: var(--accent-light) !important;
+            transform: translateY(-1px);
+        }
+        .quick-action-icon { color: var(--accent) !important; }
+        .quick-action-title { font-weight: 700 !important; color: var(--text-1) !important; font-size: 0.85rem !important; }
+        .quick-action-meta { color: var(--text-3) !important; font-size: 0.72rem !important; }
+
+        /* ── Primary button ─────────────────────────────────────────── */
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.35) !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.01em;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.45) !important;
+            transform: translateY(-1px);
+        }
+        .btn-generate {
+            font-size: 1rem !important;
+            padding: 0.9rem 1.5rem !important;
+            border-radius: var(--radius-md) !important;
+            width: 100% !important;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Creator panel ──────────────────────────────────────────── */
+        .creator-panel {
+            border-radius: var(--radius-xl) !important;
+        }
+        .ux-section-title {
+            font-size: 0.82rem !important;
+            font-weight: 700 !important;
+            color: var(--text-1) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .creator-step-badge {
+            background: linear-gradient(135deg,#6366f1,#8b5cf6) !important;
+            color: #fff !important;
+            font-size: 0.65rem !important;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 700;
+        }
+        .creator-option-card {
+            border-radius: var(--radius-sm) !important;
+            border: 1.5px solid var(--card-border) !important;
+            font-size: 0.78rem !important;
+        }
+        .creator-option-card.active, .creator-option-card:hover {
+            border-color: var(--accent) !important;
+            background: var(--accent-light) !important;
+            color: var(--accent) !important;
+        }
+        .creator-tone-card {
+            border-radius: var(--radius-md) !important;
+            border: 1.5px solid var(--card-border) !important;
+        }
+        .creator-tone-card.active {
+            border-color: var(--accent) !important;
+            background: var(--accent-light) !important;
+        }
+
+        /* ── Tip bar ────────────────────────────────────────────────── */
+        .dashboard-tip {
+            background: linear-gradient(135deg,#fffbeb,#fef3c7) !important;
+            border: 1px solid #fde68a !important;
+            border-radius: var(--radius-md) !important;
+        }
+
+        /* ── Usage card ─────────────────────────────────────────────── */
+        .usage-meter span { background: linear-gradient(90deg,#6366f1,#8b5cf6) !important; }
+
+        /* ════════════════════════════════════════════════════════════ */
+        /* POWER TOOLS — shared layout                                  */
+        /* ════════════════════════════════════════════════════════════ */
+        .ptool-page-header {
+            margin-bottom: 1.75rem;
+        }
+        .ptool-page-header h2 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--text-1);
+            margin-bottom: 0.25rem;
+        }
+        .ptool-page-header p {
+            color: var(--text-3);
+            font-size: 0.9rem;
+        }
+        .ptool-badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+            color: #fff;
+            font-size: 0.65rem; font-weight: 800;
+            padding: 0.2rem 0.6rem;
+            border-radius: 100px;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+        .ptool-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 900px) { .ptool-grid-2 { grid-template-columns: 1fr; } }
+        .ptool-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 1.25rem;
+        }
+        @media (max-width: 1024px) { .ptool-grid-3 { grid-template-columns: 1fr; } }
+
+        /* ═══ STYLE CLONE — PREMIUM V3 ═══ */
+
+        /* --- Animations --- */
+        @keyframes scFadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scPulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.25); }
+            50% { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+        }
+        @keyframes scShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes scFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* --- Tab Container --- */
+        #style-clone { padding: 0 !important; }
+
+        /* --- Hero Banner --- */
+        .sc-hero {
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(135deg, #0f0a2e 0%, #1e1b4b 30%, #312e81 60%, #4c1d95 100%);
+            border-radius: 16px; padding: 2rem 2.25rem;
+            margin: 0 0 1.5rem; gap: 1.25rem; flex-wrap: wrap;
+            position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(30,27,75,0.35), 0 0 0 1px rgba(139,92,246,0.15);
+        }
+        .sc-hero::before {
+            content: ''; position: absolute; inset: 0;
+            background:
+              radial-gradient(ellipse 600px 400px at 10% 80%, rgba(99,102,241,0.18) 0%, transparent 70%),
+              radial-gradient(ellipse 500px 300px at 90% 20%, rgba(167,139,250,0.22) 0%, transparent 60%),
+              radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 40%);
+            pointer-events: none;
+        }
+        .sc-hero::after {
+            content: ''; position: absolute; top: -40%; right: -10%; width: 340px; height: 340px;
+            border-radius: 50%; border: 1px solid rgba(255,255,255,0.04);
+            pointer-events: none;
+        }
+        .sc-hero-left { display: flex; align-items: center; gap: 1.1rem; position: relative; z-index: 1; flex: 1 1 280px; min-width: 0; }
+        .sc-hero-icon {
+            width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(16px);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.35rem; color: #c4b5fd;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: scFloat 4s ease-in-out infinite;
+        }
+        .sc-hero-title { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 0.2rem; letter-spacing: -0.01em; }
+        .sc-hero-desc { font-size: 0.8rem; color: rgba(255,255,255,0.55); max-width: 380px; line-height: 1.5; }
+        .sc-hero-right { display: flex; align-items: center; gap: 0.85rem; position: relative; z-index: 1; flex-wrap: wrap; flex-shrink: 0; }
+
+        @media (max-width: 700px) {
+            .sc-hero { padding: 1.25rem 1.25rem; }
+            .sc-hero-left { flex: 1 1 100%; }
+            .sc-hero-right { flex: 1 1 100%; justify-content: flex-start; }
+        }
+
+        /* --- Status pill --- */
+        .sc-status-pill {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 100px; padding: 0.32rem 0.9rem;
+            font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.7);
+            transition: all 0.4s ease; backdrop-filter: blur(8px);
+        }
+        .sc-status-pill.active { border-color: rgba(16,185,129,0.5); background: rgba(16,185,129,0.15); color: rgba(255,255,255,0.9); }
+        .sc-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4b5563; transition: all 0.4s; flex-shrink: 0; }
+        .sc-status-pill.active .sc-status-dot { background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.6); animation: scPulseGlow 2s ease-in-out infinite; }
+
+        /* --- Toggle --- */
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background: rgba(255,255,255,0.15); border-radius: 100px; transition: 0.35s ease;
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute;
+            width: 18px; height: 18px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%; transition: 0.35s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #10b981; box-shadow: 0 0 12px rgba(16,185,129,0.3); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+        .toggle-switch input:disabled + .toggle-slider { opacity: 0.45; cursor: not-allowed; }
+
+        /* --- Steps --- */
+        .sc-steps {
+            display: flex; align-items: center;
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 12px; padding: 0.85rem 1.5rem;
+            margin-bottom: 1.5rem; overflow-x: auto; gap: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .sc-step-item { display: flex; align-items: center; gap: 0.55rem; flex: 1; min-width: fit-content; }
+        .sc-step-num {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            background: #f1f5f9; color: #94a3b8;
+            font-size: 0.75rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+        }
+        .sc-step-item.active .sc-step-num {
+            background: var(--accent); color: #fff;
+            border-color: rgba(99,102,241,0.3);
+            box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+            animation: scPulseGlow 2.5s ease-in-out infinite;
+        }
+        .sc-step-item.done .sc-step-num { background: #10b981; color: #fff; border-color: rgba(16,185,129,0.3); }
+        .sc-step-label { font-size: 0.78rem; font-weight: 600; color: var(--text-3); transition: color 0.3s; white-space: nowrap; }
+        .sc-step-item.active .sc-step-label { color: var(--accent); font-weight: 700; }
+        .sc-step-item.done .sc-step-label { color: #10b981; }
+        .sc-step-line {
+            flex: 1; min-width: 20px; height: 2px; margin: 0 0.7rem;
+            background: var(--card-border); border-radius: 1px;
+            position: relative; overflow: hidden;
+        }
+        .sc-step-item.done + .sc-step-line { background: #10b981; }
+
+        /* --- Main Grid --- */
+        .sc-main-grid {
+            display: grid;
+            grid-template-columns: 5fr 5fr;
+            gap: 1.25rem;
+            align-items: start;
+        }
+        @media (max-width: 960px) { .sc-main-grid { grid-template-columns: 1fr; } }
+
+        /* --- Panels (shared) --- */
+        .sc-samples-panel, .sc-results-panel {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 14px; overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.02);
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .sc-samples-panel:hover, .sc-results-panel:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 8px 32px rgba(0,0,0,0.04);
+            border-color: rgba(99,102,241,0.15);
+        }
+
+        /* --- Samples Panel --- */
+        .sc-panel-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 1.25rem 1.25rem 0.75rem; gap: 0.65rem;
+        }
+        .sc-panel-header h3 { font-size: 0.95rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.15rem; }
+        .sc-panel-header p { font-size: 0.76rem; color: var(--text-3); line-height: 1.45; }
+        .sc-add-btn {
+            flex-shrink: 0; background: none;
+            border: 1.5px dashed var(--card-border);
+            border-radius: 8px; padding: 0.4rem 0.75rem;
+            font-size: 0.76rem; font-weight: 600; color: var(--text-3);
+            cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 0.3rem; white-space: nowrap;
+        }
+        .sc-add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); transform: translateY(-1px); }
+
+        .sc-samples-list-v2 { padding: 0.5rem 1.25rem 0; max-height: 520px; overflow-y: auto; }
+        .sc-samples-list-v2::-webkit-scrollbar { width: 4px; }
+        .sc-samples-list-v2::-webkit-scrollbar-track { background: transparent; }
+        .sc-samples-list-v2::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+        .sc-sample-v2 {
+            border: 1.5px solid var(--card-border); border-radius: 10px;
+            margin-bottom: 0.75rem; transition: all 0.2s ease; overflow: hidden;
+            animation: scFadeSlideUp 0.3s ease both;
+        }
+        .sc-sample-v2:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+        .sc-sample-v2-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 0.85rem; background: linear-gradient(to right, #f8fafc, #faf9ff);
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sc-sample-v2-num {
+            font-size: 0.68rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.06em;
+            display: flex; align-items: center; gap: 0.35rem;
+        }
+        .sc-sample-v2-num i { color: var(--accent); font-size: 0.7rem; }
+        .sc-sample-v2-counter {
+            font-size: 0.65rem; color: #cbd5e1;
+            background: #f1f5f9; padding: 0.1rem 0.45rem; border-radius: 4px;
+        }
+        .sc-sample-v2 textarea {
+            width: 100%; border: none; outline: none;
+            resize: vertical; min-height: 90px;
+            font-family: inherit; font-size: 0.84rem;
+            color: var(--text-1); background: transparent;
+            line-height: 1.65; padding: 0.75rem 0.95rem;
+            display: block; box-sizing: border-box;
+        }
+        .sc-sample-v2 textarea::placeholder { color: #c8cdd3; }
+        .sc-sample-v2-foot {
+            display: flex; align-items: center; justify-content: flex-end;
+            padding: 0.3rem 0.85rem 0.4rem;
+            border-top: 1px solid var(--card-border); background: #fafbfc;
+        }
+        .sc-sample-remove-v2 {
+            background: none; border: none; cursor: pointer;
+            color: #b0b8c4; font-size: 0.73rem; padding: 0.2rem 0.5rem;
+            border-radius: 6px; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 0.3rem;
+        }
+        .sc-sample-remove-v2:hover { color: #ef4444; background: #fef2f2; transform: scale(1.04); }
+
+        .sc-samples-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1rem 1.25rem; border-top: 1px solid var(--card-border);
+            flex-wrap: wrap; gap: 0.65rem;
+            background: linear-gradient(to right, #fafbfc, #f8f9ff);
+        }
+        .sc-count-label { font-size: 0.76rem; font-weight: 600; color: var(--text-3); }
+        .sc-count-label span { color: var(--accent); font-weight: 800; }
+        .sc-analyze-btn {
+            padding: 0.65rem 1.2rem !important; font-size: 0.82rem !important; white-space: nowrap;
+            border-radius: 10px !important;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.25) !important;
+            transition: all 0.2s ease !important;
+        }
+        .sc-analyze-btn:hover { transform: translateY(-1px) !important; box-shadow: 0 4px 16px rgba(99,102,241,0.35) !important; }
+        .sc-save-status { padding: 0 1.25rem 0.75rem; font-size: 0.76rem; color: var(--text-3); text-align: center; min-height: 1rem; }
+
+        /* --- Results Panel (empty state) --- */
+        .sc-empty-state {
+            padding: 3rem 2rem; text-align: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 340px;
+        }
+        .sc-empty-icon {
+            width: 72px; height: 72px; border-radius: 20px;
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 50%, #c4b5fd 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.75rem; color: #7c3aed; margin-bottom: 1.25rem;
+            box-shadow: 0 8px 24px rgba(139,92,246,0.15);
+            animation: scFloat 5s ease-in-out infinite;
+        }
+        .sc-empty-state h4 {
+            font-size: 1.05rem; font-weight: 800; color: var(--text-1); margin-bottom: 0.5rem;
+            letter-spacing: -0.01em;
+        }
+        .sc-empty-state p { font-size: 0.82rem; color: var(--text-3); line-height: 1.65; margin-bottom: 1.5rem; max-width: 340px; }
+        .sc-empty-features { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%; max-width: 320px; }
+        .sc-empty-feature {
+            display: flex; align-items: center; gap: 0.45rem;
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+            border: 1px solid rgba(139,92,246,0.12);
+            border-radius: 8px; padding: 0.5rem 0.7rem;
+            font-size: 0.74rem; font-weight: 600; color: #6d28d9;
+            transition: all 0.2s ease;
+        }
+        .sc-empty-feature:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(139,92,246,0.12); }
+        .sc-empty-feature i { font-size: 0.72rem; flex-shrink: 0; opacity: 0.7; }
+
+        /* --- Results Panel (voice captured) --- */
+        .sc-voice-banner {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border-bottom: 2px solid rgba(16,185,129,0.2); padding: 1.25rem 1.35rem;
+            position: relative; overflow: hidden;
+        }
+        .sc-voice-banner::before {
+            content: ''; position: absolute; top: 0; right: 0; width: 200px; height: 100%;
+            background: radial-gradient(circle at 100% 50%, rgba(16,185,129,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .sc-voice-banner-label {
+            font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase;
+            letter-spacing: 0.08em; margin-bottom: 0.4rem;
+            display: flex; align-items: center; gap: 0.4rem;
+        }
+        .sc-voice-banner-label i { color: #10b981; }
+        .sc-voice-banner-text { font-size: 0.88rem; font-weight: 600; color: #064e3b; line-height: 1.55; position: relative; }
+        .sc-voice-banner-meta { font-size: 0.73rem; color: #047857; margin-top: 0.4rem; opacity: 0.85; }
+
+        .sc-traits-section { padding: 1.1rem 1.35rem 1.35rem; }
+        .sc-traits-section-title {
+            font-size: 0.73rem; font-weight: 800; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between;
+        }
+        .sc-trait-count-badge {
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #6d28d9;
+            font-size: 0.65rem; font-weight: 700;
+            padding: 0.15rem 0.55rem; border-radius: 100px;
+        }
+
+        /* --- Trait Cards --- */
+        .sc-trait-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.65rem;
+        }
+        .sc-trait-card {
+            background: linear-gradient(135deg, #fafbff, #f8fafc);
+            border: 1px solid var(--card-border);
+            border-radius: 10px; padding: 0.85rem 1rem;
+            transition: all 0.25s ease; min-width: 0; overflow: hidden;
+            position: relative;
+        }
+        .sc-trait-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+            background: var(--accent); border-radius: 3px 0 0 3px;
+            opacity: 0; transition: opacity 0.25s ease;
+        }
+        .sc-trait-card:hover {
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+            border-color: rgba(99,102,241,0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(99,102,241,0.08);
+        }
+        .sc-trait-card:hover::before { opacity: 1; }
+        .sc-trait-label {
+            font-size: 0.62rem; font-weight: 800; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;
+        }
+        .sc-trait-value { font-size: 0.82rem; color: var(--text-1); font-weight: 500; line-height: 1.45; word-break: break-word; }
+
+        /* --- Signature Phrases (full-width card) --- */
+        .sc-trait-card.sc-trait-wide {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border-color: rgba(245,158,11,0.15);
+        }
+        .sc-trait-card.sc-trait-wide::before { background: #f59e0b; }
+        .sc-trait-card.sc-trait-wide .sc-trait-label { color: #b45309; }
+        .sc-trait-card.sc-trait-wide .sc-trait-value { color: #78350f; }
+        .sc-trait-card.sc-trait-wide:hover {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-color: rgba(245,158,11,0.25);
+        }
+
+        @media (max-width: 960px) {
+            .sc-trait-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .sc-trait-grid { grid-template-columns: 1fr; }
+            .sc-empty-features { grid-template-columns: 1fr; }
+        }
+
+        /* ═══ REPURPOSE ═══ */
+        .rp-source-toggle {
+            display: flex; gap: 0.5rem; margin-bottom: 1rem;
+        }
+        .rp-source-btn {
+            flex: 1; padding: 0.6rem;
+            border: 1.5px solid var(--card-border);
+            background: var(--card-bg); border-radius: var(--radius-sm);
+            font-size: 0.83rem; font-weight: 600; color: var(--text-2);
+            cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+        }
+        .rp-source-btn.active {
+            border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+        }
+        .rp-insight-chips {
+            display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0;
+        }
+        .rp-insight-chip {
+            background: var(--accent-light); border: 1px solid rgba(99,102,241,0.2);
+            color: var(--accent); font-size: 0.78rem; font-weight: 500;
+            padding: 0.3rem 0.75rem; border-radius: 100px;
+        }
+        .rp-variant-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg); padding: 1.25rem 1.35rem;
+            position: relative; transition: box-shadow 0.15s;
+        }
+        .rp-variant-card:hover { box-shadow: var(--card-shadow-hover); }
+        .rp-variant-angle {
+            font-size: 0.68rem; font-weight: 700; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.35rem;
+        }
+        .rp-variant-angle::before {
+            content: ''; width: 24px; height: 2px;
+            background: linear-gradient(90deg,#6366f1,#8b5cf6);
+            border-radius: 2px;
+        }
+        .rp-variant-text {
+            font-size: 0.875rem; color: var(--text-1); line-height: 1.65;
+            white-space: pre-wrap; margin-bottom: 0.75rem;
+        }
+        .rp-variant-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.85rem; }
+        .rp-variant-tag {
+            background: #f1f5f9; color: #64748b;
+            font-size: 0.72rem; font-weight: 600;
+            padding: 0.2rem 0.5rem; border-radius: 100px;
+        }
+        .rp-variant-actions { display: flex; gap: 0.5rem; }
+        .rp-progress {
+            display: none; margin: 1rem 0;
+        }
+        .rp-progress-steps {
+            display: flex; gap: 0;
+        }
+        .rp-step {
+            flex: 1; text-align: center; padding: 0.6rem 0.5rem 0.5rem;
+            font-size: 0.75rem; font-weight: 600; color: var(--text-3);
+            border-bottom: 2px solid var(--card-border);
+            transition: all 0.3s;
+        }
+        .rp-step.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .rp-step.done { color: #059669; border-bottom-color: #059669; }
+
+        /* ═══ BEST TIME ═══ */
+        .bt-heatmap-wrap { overflow-x: auto; }
+        .bt-day-grid {
+            display: grid; grid-template-columns: repeat(7,1fr); gap: 8px;
+            margin-bottom: 1.25rem;
+        }
+        .bt-day-cell {
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            transition: transform 0.15s;
+        }
+        .bt-day-cell:hover { transform: scale(1.04); }
+        .bt-day-name { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+        .bt-day-score { font-size: 1.3rem; font-weight: 800; }
+        .bt-hour-row {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 0.45rem;
+        }
+        .bt-hour-label {
+            width: 72px; flex-shrink: 0;
+            font-size: 0.72rem; font-weight: 600; color: var(--text-3);
+            text-align: right;
+        }
+        .bt-hour-bar-wrap { flex: 1; height: 20px; background: #f1f3f7; border-radius: 100px; overflow: hidden; }
+        .bt-hour-bar { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
+        .bt-hour-score-val { width: 34px; font-size: 0.72rem; font-weight: 700; color: var(--text-3); text-align: right; }
+        .bt-slot-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg); padding: 1.1rem 1.25rem;
+            display: flex; align-items: flex-start; gap: 1rem;
+        }
+        .bt-slot-rank {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+            color: #fff; font-weight: 800; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .bt-slot-rank.rank-2 { background: linear-gradient(135deg,#0ea5e9,#6366f1); }
+        .bt-slot-rank.rank-3 { background: linear-gradient(135deg,#10b981,#0ea5e9); }
+        .bt-slot-day { font-size: 1rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.15rem; }
+        .bt-slot-time { font-size: 0.82rem; color: var(--accent); font-weight: 600; margin-bottom: 0.25rem; }
+        .bt-slot-reason { font-size: 0.78rem; color: var(--text-3); }
+        .bt-note {
+            background: #f8f9ff; border: 1px solid rgba(99,102,241,0.15);
+            border-radius: var(--radius-md); padding: 0.7rem 1rem;
+            font-size: 0.78rem; color: var(--text-2);
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .bt-note i { color: var(--accent); }
+        .bt-section-title {
+            font-size: 0.78rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-bottom: 0.75rem;
+        }
+        .bt-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .bt-legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--text-3); }
+        .bt-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+        /* ═══ DASHBOARD — PREMIUM V3 ═══════════════════════════════ */
+
+        /* --- Animations --- */
+        @keyframes dbFadeSlideUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes dbPulseGlow {
+            0%, 100% { opacity: 0.45; transform: scale(1); }
+            50%      { opacity: 0.7; transform: scale(1.06); }
+        }
+        @keyframes dbShimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position:  200% center; }
+        }
+        @keyframes dbFloat {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
+        }
+        @keyframes dbOrbitalSpin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+        @keyframes dbCountUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Hero (dark gradient banner — taller, more presence) --- */
+        .dashboard-hero {
+            position: relative !important;
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%) !important;
+            border-radius: 20px !important;
+            padding: 2rem 2.2rem 1.8rem !important;
+            margin-bottom: 1.25rem !important;
+            overflow: hidden;
+            animation: dbFadeSlideUp 0.45s ease-out;
+        }
+        .dashboard-hero::before {
+            content: '';
+            position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .dashboard-hero::after {
+            content: '';
+            position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .dashboard-hero > div { position: relative; z-index: 1; }
+        .dashboard-hero h2 {
+            color: #ffffff !important;
+            font-size: 1.65rem !important;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em;
+            line-height: 1.25 !important;
+        }
+        .dashboard-hero p {
+            color: rgba(255,255,255,0.55) !important;
+            font-size: 0.9rem !important;
+            margin-top: 0.4rem !important;
+        }
+        .db-hero-orbital {
+            position: absolute; top: 50%; right: 2.8rem;
+            width: 120px; height: 120px;
+            transform: translateY(-50%);
+            pointer-events: none; z-index: 0;
+        }
+        .db-hero-orbital-ring {
+            position: absolute; inset: 0;
+            border: 2px solid rgba(139,92,246,0.16);
+            border-radius: 50%;
+            animation: dbOrbitalSpin 20s linear infinite;
+        }
+        .db-hero-orbital-ring::after {
+            content: ''; position: absolute; top: -4px; left: 50%;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #a78bfa;
+            box-shadow: 0 0 12px rgba(167,139,250,0.6);
+            transform: translateX(-50%);
+        }
+        .db-hero-orbital-icon {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            animation: dbFloat 3.5s ease-in-out infinite;
+        }
+
+        /* --- Tip Bar (warm amber, refined) --- */
+        .dashboard-tip {
+            padding: 0.9rem 1.1rem !important;
+            border-radius: 14px !important;
+            position: relative; overflow: hidden;
+            animation: dbFadeSlideUp 0.45s ease-out 0.08s both;
+        }
+        .dashboard-tip::after {
+            content: ''; position: absolute; top: 0; right: 0;
+            width: 200px; height: 100%;
+            background: radial-gradient(circle at 100% 50%, rgba(251,191,36,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .dashboard-tip > i {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+            color: #ffffff !important; border-radius: 10px !important;
+            width: 32px !important; height: 32px !important;
+            font-size: 0.85rem !important;
+        }
+
+        /* -- KPI Row (full-width, no nested grid wrapper) -- */
+        .dashboard-main-layout {
+            display: block !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.12s both;
+        }
+        .dashboard-left-rail { min-width: 0; }
+        .dashboard-analytics-toolbar { margin-bottom: 0.5rem !important; }
+
+        .dashboard-kpi-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 1.1rem !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* --- KPI Cards (bigger, breathable, premium) --- */
+        .dashboard-kpi-card {
+            border: 1px solid rgba(139,92,246,0.08) !important;
+            border-radius: 18px !important;
+            background: #ffffff !important;
+            padding: 1.35rem 1.25rem 1.2rem !important;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 4px 16px rgba(99,102,241,0.05) !important;
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1) !important;
+            position: relative; overflow: hidden;
+        }
+        .dashboard-kpi-card::before {
+            content: '' !important;
+            position: absolute !important; top: 0 !important; left: 0 !important;
+            width: 3.5px !important; height: 0% !important;
+            border-radius: 0 3px 3px 0 !important;
+            transition: height 0.4s cubic-bezier(0.4,0,0.2,1) !important;
+        }
+        .dashboard-kpi-card.accent-primary::before { background: linear-gradient(180deg, #6366f1, #818cf8) !important; }
+        .dashboard-kpi-card.accent-success::before { background: linear-gradient(180deg, #34d399, #10b981) !important; }
+        .dashboard-kpi-card.accent-warning::before { background: linear-gradient(180deg, #fbbf24, #f59e0b) !important; }
+        .dashboard-kpi-card.accent-purple::before  { background: linear-gradient(180deg, #8b5cf6, #a78bfa) !important; }
+        .dashboard-kpi-card::after {
+            height: 3px !important; opacity: 0 !important;
+            transition: opacity 0.3s ease !important;
+        }
+        .dashboard-kpi-card:hover {
+            transform: translateY(-4px) !important;
+            box-shadow: 0 12px 28px rgba(99,102,241,0.12), 0 0 0 1px rgba(139,92,246,0.1) !important;
+            border-color: rgba(139,92,246,0.18) !important;
+        }
+        .dashboard-kpi-card:hover::before { height: 100% !important; }
+        .dashboard-kpi-card:hover::after  { opacity: 0.85 !important; }
+
+        .dashboard-kpi-header {
+            margin-bottom: 0.75rem !important;
+        }
+        .dashboard-kpi-icon {
+            width: 42px !important; height: 42px !important;
+            border-radius: 12px !important; font-size: 1rem !important;
+            transition: transform 0.3s ease;
+        }
+        .dashboard-kpi-card:hover .dashboard-kpi-icon { transform: scale(1.06); }
+        .accent-primary .dashboard-kpi-icon {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important; color: #4f46e5 !important;
+        }
+        .accent-success .dashboard-kpi-icon {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5) !important; color: #059669 !important;
+        }
+        .accent-warning .dashboard-kpi-icon {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7) !important; color: #d97706 !important;
+        }
+        .accent-purple .dashboard-kpi-icon {
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe) !important; color: #7c3aed !important;
+        }
+
+        .dashboard-kpi-value {
+            font-size: 2rem !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
+            background: none !important;
+            line-height: 1.1 !important;
+            margin-bottom: 0.2rem !important;
+            animation: dbCountUp 0.5s ease-out 0.3s both;
+        }
+        .dashboard-kpi-title {
+            font-size: 0.84rem !important;
+            color: #475569 !important;
+            font-weight: 700 !important;
+            margin-bottom: 0.35rem !important;
+        }
+        .dashboard-kpi-meta {
+            font-size: 0.78rem !important;
+            color: #94a3b8 !important;
+            line-height: 1.35 !important;
+        }
+        .dashboard-kpi-pill {
+            border: 1px solid rgba(99,102,241,0.12) !important;
+            background: rgba(99,102,241,0.05) !important;
+            color: #6366f1 !important;
+            font-weight: 700 !important;
+            font-size: 0.64rem !important;
+            padding: 0.15rem 0.45rem !important;
+            letter-spacing: 0.03em;
+            white-space: nowrap !important;
+            text-transform: uppercase;
+        }
+
+        /* -- Row 2 + Row 3 grid layout -- */
+        .dashboard-row-2 {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+            gap: 1.1rem;
+            margin-top: 1.15rem;
+            animation: dbFadeSlideUp 0.45s ease-out 0.18s both;
+        }
+        .dashboard-row-3 {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+            gap: 1.1rem;
+            margin-top: 1.15rem;
+            animation: dbFadeSlideUp 0.45s ease-out 0.24s both;
+        }
+        .dashboard-row-2 > .next-post-card { margin-top: 0 !important; }
+        .dashboard-row-2 > .setup-card-featured { align-self: stretch; }
+        .dashboard-row-3 > .quick-actions-card { margin-top: 0 !important; }
+        .dashboard-row-3 > .usage-card { margin-top: 0 !important; align-self: start; }
+
+        /* --- Next Scheduled Post Card (dark, premium) --- */
+        .next-post-card {
+            border: none !important;
+            border-radius: 20px !important;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(160deg, #0e0c28 0%, #161244 45%, #1c185a 100%) !important;
+            box-shadow: 0 8px 36px rgba(99,102,241,0.14), 0 0 0 1px rgba(99,102,241,0.08) !important;
+            color: #ffffff;
+            animation: dbFadeSlideUp 0.45s ease-out 0.2s both;
+        }
+        .next-post-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; z-index: 2;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #c084fc, #6366f1);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+        }
+        .next-post-card::after {
+            content: ''; position: absolute; bottom: -20%; right: -10%;
+            width: 220px; height: 220px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .next-post-head {
+            border-bottom: 1px solid rgba(139,92,246,0.12) !important;
+            padding: 1.15rem 1.25rem 0.85rem !important;
+            background: transparent !important;
+        }
+        .next-post-head h2 {
+            font-size: 1.05rem !important;
+            font-weight: 700 !important;
+            color: #e0e7ff !important;
+            -webkit-text-fill-color: #e0e7ff !important;
+            background: none !important;
+            margin: 0 !important;
+        }
+        .next-post-head-icon {
+            width: 34px; height: 34px; border-radius: 10px;
+            background: rgba(99,102,241,0.12);
+            color: #a5b4fc;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.88rem; flex-shrink: 0;
+        }
+        .next-post-card .status-badge {
+            background: rgba(251,191,36,0.1) !important;
+            border: 1px solid rgba(251,191,36,0.25) !important;
+            color: #fbbf24 !important;
+            font-size: 0.72rem !important;
+        }
+
+        /* --- Empty State (dark, centered, inviting) --- */
+        .next-post-empty-state {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 3rem 1.5rem 2.8rem;
+            text-align: center;
+            position: relative; z-index: 1;
+        }
+        .next-post-empty-plus {
+            width: 62px; height: 62px;
+            border-radius: 16px;
+            border: 2px dashed rgba(139,92,246,0.35);
+            background: rgba(99,102,241,0.08);
+            color: #a5b4fc; font-size: 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; margin-bottom: 1.2rem;
+            transition: all 0.3s ease;
+        }
+        .next-post-empty-plus:hover {
+            border-color: rgba(139,92,246,0.55);
+            background: rgba(99,102,241,0.18);
+            color: #c4b5fd;
+            transform: scale(1.08);
+            box-shadow: 0 0 28px rgba(99,102,241,0.25);
+        }
+        .next-post-empty-title {
+            font-size: 1.15rem; font-weight: 700;
+            color: #e0e7ff; margin-bottom: 0.5rem;
+        }
+        .next-post-empty-desc {
+            font-size: 0.84rem;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.5; max-width: 340px;
+            margin-bottom: 1.4rem;
+        }
+        .next-post-empty-cta {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.72rem 1.7rem;
+            border-radius: 12px; border: none;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #ffffff; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.45);
+            transition: all 0.25s ease;
+            letter-spacing: 0.01em;
+        }
+        .next-post-empty-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(99,102,241,0.55);
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        }
+
+        /* --- Filled State (dark theme) --- */
+        .next-post-filled-state { position: relative; z-index: 1; }
+        .next-post-filled-state .next-post-content-wrap {
+            border: 1px solid rgba(139,92,246,0.1) !important;
+            border-radius: 12px !important;
+            background: rgba(255,255,255,0.03) !important;
+            margin: 0.9rem 1.15rem !important;
+            padding: 0.95rem 1rem !important;
+        }
+        .next-post-filled-state #next-post-content {
+            color: rgba(255,255,255,0.7) !important;
+        }
+        .next-post-filled-state .next-post-author { color: #c7d2fe !important; }
+        .next-post-filled-state .next-post-platform {
+            background: rgba(99,102,241,0.1) !important;
+            border-color: rgba(99,102,241,0.18) !important;
+            color: #a5b4fc !important;
+        }
+        .next-post-filled-state .next-post-tag {
+            background: rgba(99,102,241,0.08) !important;
+            border-color: rgba(99,102,241,0.18) !important;
+            color: #a5b4fc !important;
+        }
+        .next-post-filled-state .next-post-queue-hint {
+            border-color: rgba(139,92,246,0.08) !important;
+            color: rgba(255,255,255,0.3) !important;
+        }
+        .next-post-filled-state .next-post-actions {
+            padding: 0 1.15rem 0.9rem !important;
+        }
+        .next-post-filled-state .next-post-actions .btn-secondary {
+            background: rgba(255,255,255,0.05) !important;
+            border-color: rgba(139,92,246,0.18) !important;
+            color: #c7d2fe !important;
+        }
+        .next-post-filled-state .next-post-actions .btn-secondary:hover {
+            background: rgba(255,255,255,0.1) !important;
+        }
+        .next-post-filled-state .next-post-actions .btn-danger {
+            background: rgba(239,68,68,0.1) !important;
+            border-color: rgba(239,68,68,0.2) !important;
+            color: #fca5a5 !important;
+        }
+
+        /* --- Setup Card (right column, premium) --- */
+        .setup-card-featured {
+            border: 1px solid rgba(139,92,246,0.12) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.08) !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.25s both;
+            overflow: hidden !important;
+        }
+        .setup-card-featured .card-header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important;
+            padding: 1rem 1.2rem !important;
+            position: relative; overflow: hidden;
+        }
+        .setup-card-featured .card-header::after {
+            content: ''; position: absolute; top: -50%; right: -15%;
+            width: 130px; height: 130px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .setup-card-featured .card-header h3 { position: relative; z-index: 1; font-size: 1rem !important; }
+        .setup-card-featured .setup-badge {
+            position: relative; z-index: 1;
+            background: rgba(255,255,255,0.12) !important;
+            border-color: rgba(255,255,255,0.3) !important;
+            backdrop-filter: blur(4px);
+        }
+        .setup-item {
+            border: 1px solid rgba(99,102,241,0.06) !important;
+            border-radius: 11px !important;
+            transition: all 0.2s ease;
+        }
+        .setup-item:hover {
+            border-color: rgba(99,102,241,0.15) !important;
+            background: #faf8ff !important;
+        }
+        .setup-state {
+            border: 1.5px solid rgba(99,102,241,0.15) !important;
+            transition: all 0.2s ease;
+        }
+        .setup-item.complete .setup-state {
+            border-color: #86efac !important; background: #ecfdf5 !important;
+            box-shadow: 0 0 6px rgba(16,163,127,0.12);
+        }
+
+        /* --- Quick Actions (gradient icons, tighter) --- */
+        .quick-actions-card {
+            border: 1px solid rgba(99,102,241,0.08) !important;
+            border-radius: 18px !important;
+            background: #ffffff !important;
+            box-shadow: 0 2px 12px rgba(99,102,241,0.05) !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.28s both;
+        }
+        .quick-actions-card .card-header h3 {
+            font-size: 1rem !important;
+        }
+        .quick-action-item {
+            border: 1px solid rgba(99,102,241,0.06) !important;
+            border-radius: 14px !important;
+            background: linear-gradient(180deg, #fafbff 0%, #f8f7ff 100%) !important;
+            padding: 1rem !important;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+            position: relative; overflow: hidden;
+        }
+        .quick-action-item::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(99,102,241,0.02) 0%, rgba(139,92,246,0.06) 100%);
+            opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .quick-action-item:hover {
+            transform: translateY(-3px) !important;
+            border-color: rgba(139,92,246,0.18) !important;
+            box-shadow: 0 10px 24px rgba(99,102,241,0.1) !important;
+        }
+        .quick-action-item:hover::after { opacity: 1; }
+        .quick-action-icon {
+            width: 38px !important; height: 38px !important;
+            border-radius: 11px !important;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+            color: #ffffff !important; font-size: 0.85rem !important;
+            box-shadow: 0 3px 12px rgba(99,102,241,0.25);
+            position: relative; z-index: 1;
+            transition: transform 0.3s ease;
+        }
+        .quick-action-item:hover .quick-action-icon {
+            transform: scale(1.06);
+            box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+        }
+        .quick-action-title {
+            font-size: 0.88rem !important; font-weight: 700 !important;
+            color: #1e1b4b !important; position: relative; z-index: 1;
+        }
+        .quick-action-meta {
+            font-size: 0.76rem !important; color: #94a3b8 !important;
+            position: relative; z-index: 1;
+        }
+
+        /* --- Usage Card (refined meters) --- */
+        .usage-card {
+            border: 1px solid rgba(99,102,241,0.08) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 2px 12px rgba(99,102,241,0.05) !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.32s both;
+        }
+        .usage-plan-pill {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
+            border: 1px solid rgba(99,102,241,0.18) !important;
+            color: #4f46e5 !important; font-weight: 800 !important;
+        }
+        .usage-meter {
+            height: 7px !important;
+            background: rgba(99,102,241,0.06) !important;
+            border-radius: 999px !important;
+        }
+        .usage-meter > span {
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa) !important;
+            position: relative; overflow: hidden;
+        }
+        .usage-meter > span::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: dbShimmer 2.5s ease-in-out infinite;
+        }
+        .usage-label { font-weight: 700 !important; color: #1e293b !important; font-size: 0.8rem !important; }
+        .usage-value { font-weight: 800 !important; color: #312e81 !important; }
+        .usage-reset {
+            border-top: 1px solid rgba(99,102,241,0.06) !important;
+            color: #6366f1 !important; font-weight: 700 !important; font-size: 0.73rem !important;
+        }
+
+        /* --- Dashboard + Next Post Add Button --- */
+        .next-post-add-btn {
+            width: 32px; height: 32px;
+            border-radius: 9px; border: none;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff; font-size: 0.8rem;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(99,102,241,0.35);
+            transition: all 0.25s ease;
+        }
+        .next-post-add-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 16px rgba(99,102,241,0.5);
+        }
+
+        /* --- Dashboard responsive overrides --- */
+        @media (max-width: 1100px) {
+            .dashboard-kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+        }
+        @media (max-width: 960px) {
+            .db-hero-orbital { display: none; }
+            .dashboard-hero { padding: 1.5rem 1.6rem 1.3rem !important; }
+            .dashboard-row-2, .dashboard-row-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 480px) {
+            .dashboard-hero {
+                padding: 1.2rem 1.1rem 1.1rem !important;
+                border-radius: 16px !important;
+            }
+            .dashboard-hero h2 { font-size: 1.3rem !important; }
+            .dashboard-kpi-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .dashboard-kpi-card { padding: 1.1rem 1rem 1rem !important; }
+            .next-post-empty-state { padding: 2rem 1rem 1.8rem; }
+            .next-post-empty-plus { width: 52px; height: 52px; font-size: 1.2rem; }
+        }
+
+
+    </style>
 </head>
 <body>
 <div class="app-container">
@@ -6872,6 +8199,20 @@
             <div class="nav-item" data-tab="post-history" onclick="switchTab('post-history', this)">
                 <i class="fas fa-clock"></i>
                 <span>History</span>
+            </div>
+
+            <div class="sidebar-nav-section-label">Power Tools</div>
+            <div class="nav-item" data-tab="style-clone" onclick="switchTab('style-clone', this)">
+                <i class="fas fa-fingerprint"></i>
+                <span>Style Clone</span>
+            </div>
+            <div class="nav-item" data-tab="repurpose" onclick="switchTab('repurpose', this)">
+                <i class="fas fa-recycle"></i>
+                <span>Repurpose</span>
+            </div>
+            <div class="nav-item" data-tab="best-time" onclick="switchTab('best-time', this)">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Best Time</span>
             </div>
 
             <div class="sidebar-nav-section-label">Account</div>
@@ -6949,6 +8290,11 @@
                         <h2 id="dashboard-greeting">Good afternoon, User 👋</h2>
                         <p>Here's what's happening with your LinkedIn content today.</p>
                     </div>
+                    <!-- orbital decoration -->
+                    <div class="db-hero-orbital" aria-hidden="true">
+                        <div class="db-hero-orbital-ring"></div>
+                        <span class="db-hero-orbital-icon">🚀</span>
+                    </div>
                 </div>
 
                 <div class="dashboard-tip">
@@ -6994,7 +8340,7 @@
                             <div class="dashboard-kpi-card accent-warning">
                                 <div class="dashboard-kpi-header">
                                     <span class="dashboard-kpi-icon"><i class="fas fa-align-left"></i></span>
-                                    <span class="dashboard-kpi-pill">Content quality</span>
+                                    <span class="dashboard-kpi-pill">Quality</span>
                                 </div>
                                 <div id="kpi-followers" class="dashboard-kpi-value">—</div>
                                 <div class="dashboard-kpi-title">Avg Post Length</div>
@@ -7010,14 +8356,34 @@
                                 <div id="kpi-scheduled-meta" class="dashboard-kpi-meta">Next: not scheduled</div>
                             </div>
                         </div>
-                        <div class="card next-post-card">
-                            <div class="next-post-head">
-                                <div>
-                                    <h2>📅 Next Scheduled Post</h2>
-                                    <div class="next-post-subtitle" id="next-post-subtitle">Your upcoming LinkedIn content</div>
-                                </div>
-                                <span id="next-post-status" class="status-badge pending">Not scheduled</span>
+                    </div>
+                </div>
+
+                <!-- ── Row 2: Next Scheduled Post + Setup Checklist ── -->
+                <div class="dashboard-row-2">
+                    <div class="card next-post-card">
+                        <div class="next-post-head">
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <span class="next-post-head-icon"><i class="fas fa-calendar-check"></i></span>
+                                <h2>Next Scheduled Post</h2>
                             </div>
+                            <span id="next-post-status" class="status-badge pending">Not scheduled</span>
+                        </div>
+
+                        <!-- Empty state (shown when no post scheduled) -->
+                        <div id="next-post-empty-state" class="next-post-empty-state">
+                            <div class="next-post-empty-plus" onclick="switchTab('content-creator')" title="Create a new post">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                            <div class="next-post-empty-title">No posts in queue</div>
+                            <div class="next-post-empty-desc">Generate a post from your Knowledge Base and schedule it to keep your LinkedIn active</div>
+                            <button class="next-post-empty-cta" type="button" onclick="switchTab('content-creator')">
+                                <i class="fas fa-wand-magic-sparkles"></i> Generate First Post
+                            </button>
+                        </div>
+
+                        <!-- Filled state (shown when post exists) -->
+                        <div id="next-post-filled-state" class="next-post-filled-state" style="display:none;">
                             <div class="next-post-content-wrap">
                                 <div class="next-post-meta">
                                     <div class="next-post-user">
@@ -7026,7 +8392,7 @@
                                     </div>
                                     <span class="next-post-platform"><i class="fab fa-linkedin"></i> LinkedIn</span>
                                 </div>
-                                <p id="next-post-content" class="skeleton skeleton-text next-post-skeleton"></p>
+                                <p id="next-post-content"></p>
                                 <div id="next-post-tags" class="next-post-tags"></div>
                             </div>
                             <div id="next-post-actions" class="next-post-actions">
@@ -7045,93 +8411,94 @@
                             </div>
                             <div id="next-post-queue-hint" class="next-post-queue-hint">No more posts in queue</div>
                         </div>
+                    </div>
 
-                        <div class="card quick-actions-card">
-                            <div class="card-header">
-                                <h3>⚡ Quick Actions</h3>
-                            </div>
-                            <div class="quick-actions-subtitle">Jump right into what matters</div>
-                            <div class="quick-actions-grid">
-                                <button class="quick-action-item" onclick="switchTab('content-creator')">
-                                    <span class="quick-action-icon"><i class="fas fa-pen"></i></span>
-                                    <span class="quick-action-title">Generate Post</span>
-                                    <span class="quick-action-meta">Create a LinkedIn post with AI</span>
-                                </button>
-                                <button class="quick-action-item" onclick="switchTab('knowledge-base')">
-                                    <span class="quick-action-icon"><i class="fas fa-folder-open"></i></span>
-                                    <span class="quick-action-title">Upload to KB</span>
-                                    <span class="quick-action-meta">Add docs to your knowledge base</span>
-                                </button>
-                                <button class="quick-action-item" onclick="switchTab('scheduler')">
-                                    <span class="quick-action-icon"><i class="fas fa-calendar-alt"></i></span>
-                                    <span class="quick-action-title">Schedule Post</span>
-                                    <span class="quick-action-meta">Plan your content calendar</span>
-                                </button>
-                                <button class="quick-action-item" onclick="switchTab('post-history')">
-                                    <span class="quick-action-icon"><i class="fas fa-chart-bar"></i></span>
-                                    <span class="quick-action-title">View Analytics</span>
-                                    <span class="quick-action-meta">Track post performance</span>
-                                </button>
+                    <div class="card setup-card setup-card-featured">
+                        <div class="card-header">
+                            <h3 id="setup-card-title">🚀 Setup Complete</h3>
+                            <span id="setup-progress-badge" class="setup-badge">0/3 completed</span>
+                        </div>
+                        <div id="setup-checklist" class="setup-checklist">
+                            <div class="setup-item">
+                                <div class="setup-item-main">
+                                    <span class="setup-state"><i class="fas fa-circle"></i></span>
+                                    <div class="setup-text">Loading onboarding checklist…</div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="dashboard-right-rail">
-                        <div class="card setup-card setup-card-featured">
-                            <div class="card-header">
-                                <h3 id="setup-card-title">🚀 Setup Complete</h3>
-                                <span id="setup-progress-badge" class="setup-badge">0/3 completed</span>
+                <!-- ── Row 3: Quick Actions + Usage ── -->
+                <div class="dashboard-row-3">
+                    <div class="card quick-actions-card">
+                        <div class="card-header">
+                            <h3>⚡ Quick Actions</h3>
+                        </div>
+                        <div class="quick-actions-subtitle">Jump right into what matters</div>
+                        <div class="quick-actions-grid">
+                            <button class="quick-action-item" onclick="switchTab('content-creator')">
+                                <span class="quick-action-icon"><i class="fas fa-pen"></i></span>
+                                <span class="quick-action-title">Generate Post</span>
+                                <span class="quick-action-meta">Create a LinkedIn post with AI</span>
+                            </button>
+                            <button class="quick-action-item" onclick="switchTab('knowledge-base')">
+                                <span class="quick-action-icon"><i class="fas fa-folder-open"></i></span>
+                                <span class="quick-action-title">Upload to KB</span>
+                                <span class="quick-action-meta">Add docs to your knowledge base</span>
+                            </button>
+                            <button class="quick-action-item" onclick="switchTab('scheduler')">
+                                <span class="quick-action-icon"><i class="fas fa-calendar-alt"></i></span>
+                                <span class="quick-action-title">Schedule Post</span>
+                                <span class="quick-action-meta">Plan your content calendar</span>
+                            </button>
+                            <button class="quick-action-item" onclick="switchTab('post-history')">
+                                <span class="quick-action-icon"><i class="fas fa-chart-bar"></i></span>
+                                <span class="quick-action-title">View Analytics</span>
+                                <span class="quick-action-meta">Track post performance</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card usage-card">
+                        <div class="card-header usage-head">
+                            <h3>📊 Usage This Month</h3>
+                            <span id="usage-plan-pill" class="usage-plan-pill">Pro Plan</span>
+                        </div>
+
+                        <div class="usage-row">
+                            <div class="usage-label-line">
+                                <span class="usage-label">Posts Generated</span>
+                                <span id="usage-posts-value" class="usage-value">0 / 100</span>
                             </div>
-                            <div id="setup-checklist" class="setup-checklist">
-                                <div class="setup-item">
-                                    <div class="setup-item-main">
-                                        <span class="setup-state"><i class="fas fa-circle"></i></span>
-                                        <div class="setup-text">Loading onboarding checklist…</div>
-                                    </div>
-                                </div>
+                            <div class="usage-meter"><span id="usage-posts-progress" style="width: 0%;"></span></div>
+                        </div>
+
+                        <div class="usage-row">
+                            <div class="usage-label-line">
+                                <span class="usage-label">KB Storage</span>
+                                <span id="usage-kb-value" class="usage-value">0 MB / 500 MB</span>
+                            </div>
+                            <div class="usage-meter"><span id="usage-kb-progress" style="width: 0%;"></span></div>
+                        </div>
+
+                        <div class="usage-row">
+                            <div class="usage-label-line">
+                                <span class="usage-label">Scheduled Posts</span>
+                                <span id="usage-scheduled-value" class="usage-value">0 / 30 queued</span>
+                            </div>
+                            <div class="usage-meter"><span id="usage-scheduled-progress" style="width: 0%;"></span></div>
+                        </div>
+
+                        <div id="usage-free-plan-card" class="setup-kb-stat" style="display:none; margin-top:0.25rem;">
+                            <div class="setup-kb-label">Free Plan Limits</div>
+                            <div class="setup-kb-value" style="font-size:0.86rem; margin-top:0.35rem;">3 posts/month · 5 MB KB storage · no scheduling automation</div>
+                            <div style="margin-top:0.6rem;">
+                                <button class="btn btn-sm btn-upgrade-gradient" type="button" onclick="openUpgradePlanFlow()">⚡ Upgrade Plan</button>
                             </div>
                         </div>
 
-                        <div class="card usage-card">
-                            <div class="card-header usage-head">
-                                <h3>📊 Usage This Month</h3>
-                                <span id="usage-plan-pill" class="usage-plan-pill">Pro Plan</span>
-                            </div>
-
-                            <div class="usage-row">
-                                <div class="usage-label-line">
-                                    <span class="usage-label">Posts Generated</span>
-                                    <span id="usage-posts-value" class="usage-value">0 / 100</span>
-                                </div>
-                                <div class="usage-meter"><span id="usage-posts-progress" style="width: 0%;"></span></div>
-                            </div>
-
-                            <div class="usage-row">
-                                <div class="usage-label-line">
-                                    <span class="usage-label">KB Storage</span>
-                                    <span id="usage-kb-value" class="usage-value">0 MB / 500 MB</span>
-                                </div>
-                                <div class="usage-meter"><span id="usage-kb-progress" style="width: 0%;"></span></div>
-                            </div>
-
-                            <div class="usage-row">
-                                <div class="usage-label-line">
-                                    <span class="usage-label">Scheduled Posts</span>
-                                    <span id="usage-scheduled-value" class="usage-value">0 / 30 queued</span>
-                                </div>
-                                <div class="usage-meter"><span id="usage-scheduled-progress" style="width: 0%;"></span></div>
-                            </div>
-
-                            <div id="usage-free-plan-card" class="setup-kb-stat" style="display:none; margin-top:0.25rem;">
-                                <div class="setup-kb-label">Free Plan Limits</div>
-                                <div class="setup-kb-value" style="font-size:0.86rem; margin-top:0.35rem;">3 posts/month · 5 MB KB storage · no scheduling automation</div>
-                                <div style="margin-top:0.6rem;">
-                                    <button class="btn btn-sm btn-upgrade-gradient" type="button" onclick="openUpgradePlanFlow()">⚡ Upgrade Plan</button>
-                                </div>
-                            </div>
-
-                            <div id="usage-reset-date" class="usage-reset">Resets next billing cycle</div>
-                        </div>
+                        <div id="usage-reset-date" class="usage-reset">Resets next billing cycle</div>
                     </div>
                 </div>
             </div>
@@ -8471,7 +9838,222 @@
                 </div>
             </div>
 
+            </div>
+
         </main>
+    </div>
+</div>
+
+<!-- ═══ POWER TOOL TABS ═══ (injected after main; hidden until activated) -->
+<!-- They are placed INSIDE main by JS init — we keep them here and move with a small init script -->
+
+<!-- STYLE CLONE TAB -->
+<div id="style-clone" class="tab-content" style="display:none;">
+    <!-- Hero Banner -->
+    <div class="sc-hero">
+        <div class="sc-hero-left">
+            <div class="sc-hero-icon"><i class="fas fa-fingerprint"></i></div>
+            <div>
+                <div class="sc-hero-title">Writing Style Clone</div>
+                <div class="sc-hero-desc">AI learns your unique voice and applies it to every post you generate &mdash; automatically.</div>
+            </div>
+        </div>
+        <div class="sc-hero-right">
+            <div class="sc-status-pill" id="sc-status-pill">
+                <span class="sc-status-dot"></span><span id="sc-status-label">Not set up</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="sc-enabled-toggle" onchange="toggleStyleClone(this.checked)" disabled>
+                <span class="toggle-slider"></span>
+            </label>
+            <span id="sc-toggle-sub" style="font-size:0.73rem;color:rgba(255,255,255,0.5);font-weight:500;">Save samples to enable</span>
+        </div>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="sc-steps">
+        <div class="sc-step-item active" id="sc-step-1">
+            <div class="sc-step-num">1</div>
+            <div class="sc-step-label">Add Samples</div>
+        </div>
+        <div class="sc-step-line"></div>
+        <div class="sc-step-item" id="sc-step-2">
+            <div class="sc-step-num">2</div>
+            <div class="sc-step-label">Analyse Voice</div>
+        </div>
+        <div class="sc-step-line"></div>
+        <div class="sc-step-item" id="sc-step-3">
+            <div class="sc-step-num">3</div>
+            <div class="sc-step-label">Activate</div>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="sc-main-grid">
+        <!-- Left: Samples -->
+        <div class="sc-samples-panel">
+            <div class="sc-panel-header">
+                <div>
+                    <h3>Your LinkedIn Posts</h3>
+                    <p>Paste 2&ndash;15 posts you've written. Longer &#61; better cloning.</p>
+                </div>
+                <button class="sc-add-btn" onclick="scAddSample()"><i class="fas fa-plus"></i> Add</button>
+            </div>
+            <div id="sc-samples-list" class="sc-samples-list-v2"></div>
+            <div class="sc-samples-footer">
+                <span class="sc-count-label" id="sc-count-label"><span>0</span> of 2 samples added</span>
+                <button class="btn btn-primary sc-analyze-btn" id="sc-save-btn" onclick="scSaveSamples()">
+                    <i class="fas fa-wand-magic-sparkles"></i> Analyse &amp; Clone My Voice
+                </button>
+            </div>
+            <div id="sc-save-status" class="sc-save-status"></div>
+        </div>
+
+        <!-- Right: Results -->
+        <div class="sc-results-panel">
+            <div id="sc-empty-right" class="sc-empty-state">
+                <div class="sc-empty-icon"><i class="fas fa-fingerprint"></i></div>
+                <h4>Your voice fingerprint appears here</h4>
+                <p>After analysis, we map your unique writing DNA &mdash; sentence rhythm, tone, vocabulary, and signature phrases.</p>
+                <div class="sc-empty-features">
+                    <div class="sc-empty-feature"><i class="fas fa-wave-square"></i> Rhythm</div>
+                    <div class="sc-empty-feature"><i class="fas fa-comment-dots"></i> Tone</div>
+                    <div class="sc-empty-feature"><i class="fas fa-door-open"></i> Openers</div>
+                    <div class="sc-empty-feature"><i class="fas fa-quote-right"></i> Phrases</div>
+                </div>
+            </div>
+            <div id="sc-results-section" style="display:none;">
+                <div class="sc-voice-banner">
+                    <div class="sc-voice-banner-label"><i class="fas fa-check-circle"></i> Voice fingerprint captured</div>
+                    <div id="sc-summary-text" class="sc-voice-banner-text">&ndash;</div>
+                    <div id="sc-summary-sub" class="sc-voice-banner-meta"></div>
+                </div>
+                <div class="sc-traits-section">
+                    <div class="sc-traits-section-title">
+                        Writing Fingerprint
+                        <span class="sc-trait-count-badge" id="sc-traits-count"></span>
+                    </div>
+                    <div id="sc-trait-grid" class="sc-trait-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REPURPOSE TAB -->
+<div id="repurpose" class="tab-content" style="display:none;">
+    <div class="ptool-page-header">
+        <h2>Content Repurpose <span class="ptool-badge"><i class="fas fa-recycle"></i> New</span></h2>
+        <p>Paste a URL or text — AI extracts the core ideas and writes 3 ready-to-post LinkedIn variants.</p>
+    </div>
+    <div class="ptool-grid-2" style="align-items:start;">
+        <div class="card" style="padding:1.5rem;">
+            <div class="card-header"><h3>Source Content</h3></div>
+            <div class="rp-source-toggle">
+                <button class="rp-source-btn active" id="rp-btn-url" onclick="rpSetSource('url')">
+                    <i class="fas fa-link"></i> URL
+                </button>
+                <button class="rp-source-btn" id="rp-btn-text" onclick="rpSetSource('text')">
+                    <i class="fas fa-align-left"></i> Paste Text
+                </button>
+            </div>
+            <div id="rp-url-wrap" style="margin-bottom:1rem;">
+                <input id="rp-url-input" placeholder="https://example.com/blog/article" style="width:100%;" class="creator-native-field" type="url">
+            </div>
+            <div id="rp-text-wrap" style="margin-bottom:1rem;display:none;">
+                <textarea id="rp-text-input" rows="7" placeholder="Paste your article, blog post, newsletter, or any text here..." style="width:100%;font-size:0.875rem;padding:0.75rem;border:1px solid var(--card-border);border-radius:var(--radius-sm);resize:vertical;font-family:inherit;outline:none;color:var(--text-1);"></textarea>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <div style="flex:1;min-width:120px;">
+                    <label style="font-size:0.75rem;font-weight:600;color:var(--text-3);display:block;margin-bottom:0.35rem;">INDUSTRY</label>
+                    <select id="rp-industry" style="width:100%;" class="creator-native-field">
+                        <option value="technology">Technology</option>
+                        <option value="finance">Finance</option>
+                        <option value="healthcare">Healthcare</option>
+                        <option value="ecommerce">E-Commerce</option>
+                        <option value="crypto">Crypto / Web3</option>
+                        <option value="saas">SaaS</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:120px;">
+                    <label style="font-size:0.75rem;font-weight:600;color:var(--text-3);display:block;margin-bottom:0.35rem;">YOUR ROLE</label>
+                    <select id="rp-role" style="width:100%;" class="creator-native-field">
+                        <option value="ceo">CEO / Founder</option>
+                        <option value="cto">CTO</option>
+                        <option value="developer">Developer</option>
+                        <option value="product manager">Product Manager</option>
+                        <option value="marketer">Marketer</option>
+                        <option value="cfo">CFO</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="rp-go-btn" onclick="rpGenerate()" style="width:100%;">
+                <i class="fas fa-wand-magic-sparkles"></i> Extract &amp; Generate 3 Posts
+            </button>
+            <!-- Progress -->
+            <div id="rp-progress" class="rp-progress">
+                <div class="rp-progress-steps">
+                    <div class="rp-step" id="rp-s1"><i class="fas fa-download"></i> Fetching</div>
+                    <div class="rp-step" id="rp-s2"><i class="fas fa-brain"></i> Extracting</div>
+                    <div class="rp-step" id="rp-s3"><i class="fas fa-pen-nib"></i> Writing</div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div id="rp-insights-section" style="display:none;margin-bottom:1rem;">
+                <div class="card" style="padding:1.1rem 1.25rem;">
+                    <div class="card-header" style="margin-bottom:0.6rem;"><h3 id="rp-page-title">Key Insights Extracted</h3></div>
+                    <div id="rp-insight-chips" class="rp-insight-chips"></div>
+                </div>
+            </div>
+            <div id="rp-variants-section" style="display:none;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem;">3 Post Variants</div>
+                <div id="rp-variants-list" style="display:flex;flex-direction:column;gap:1rem;"></div>
+            </div>
+            <div id="rp-empty-right" class="card" style="padding:2rem;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔄</div>
+                <h4 style="color:var(--text-1);margin-bottom:0.5rem;">One source, 3 angles</h4>
+                <p style="font-size:0.83rem;color:var(--text-3);line-height:1.6;">Paste any URL or text. AI extracts key points and writes a data-driven take, a personal perspective, and a contrarian view — all ready to schedule.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BEST TIME TO POST TAB -->
+<div id="best-time" class="tab-content" style="display:none;">
+    <div class="ptool-page-header">
+        <h2>Best Time to Post <span class="ptool-badge"><i class="fas fa-clock-rotate-left"></i> Smart</span></h2>
+        <p>Personalised posting windows based on your history + global LinkedIn engagement data.</p>
+    </div>
+    <div id="bt-note" class="bt-note"><i class="fas fa-circle-info"></i> <span id="bt-note-text">Loading your data...</span></div>
+    <div class="ptool-grid-2" style="align-items:start;gap:1.75rem;">
+        <div>
+            <div class="card" style="padding:1.5rem;">
+                <div class="bt-section-title">Day-of-week engagement score</div>
+                <div id="bt-day-grid" class="bt-day-grid"></div>
+                <div class="bt-legend">
+                    <div class="bt-legend-item"><div class="bt-legend-dot" style="background:#6366f1;"></div> High (80+)</div>
+                    <div class="bt-legend-item"><div class="bt-legend-dot" style="background:#a5b4fc;"></div> Medium (60–79)</div>
+                    <div class="bt-legend-item"><div class="bt-legend-dot" style="background:#e0e7ff;"></div> Low (&lt;60)</div>
+                </div>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1.25rem;">
+                <div class="bt-section-title">Optimal posting hours</div>
+                <div id="bt-hour-rows"></div>
+            </div>
+        </div>
+        <div>
+            <div class="card" style="padding:1.5rem;">
+                <div class="bt-section-title" style="margin-bottom:1rem;">Your top posting windows</div>
+                <div id="bt-slots-list" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
+                <div style="margin-top:1.5rem;border-top:1px solid var(--card-border);padding-top:1.25rem;">
+                    <button class="btn btn-primary" id="bt-schedule-btn" onclick="btScheduleOptimal()" style="width:100%;">
+                        <i class="fas fa-calendar-check"></i> Schedule Next Post at Best Time
+                    </button>
+                    <p style="font-size:0.75rem;color:var(--text-3);text-align:center;margin-top:0.5rem;">Opens the scheduler pre-filled with your #1 slot</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -8614,15 +10196,23 @@
 
     // Tab switching
     function switchTab(tabId, sourceEl = null, quiet = false) {
+        // Move power-tool tab divs into main if not already there.
+        // NOTE: the element is <main class="main-content"> so use compound selector, not descendant.
+        const mainEl = document.querySelector('main.main-content') || document.querySelector('.main-content');
+        ['style-clone','repurpose','best-time'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && mainEl && !mainEl.contains(el)) {
+                mainEl.appendChild(el);
+            }
+        });
+
         const targetTab = document.getElementById(tabId);
         if (!targetTab) {
             return false;
         }
-
         closeMobileSidebar();
-
         // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => { tab.classList.remove('active'); tab.style.display=''; });
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         
         // Show selected tab
@@ -8640,15 +10230,19 @@
             'knowledge-base': 'Database',
             'settings': 'Settings',
             'post-history': 'Post History',
-            'help': 'Help'
+            'help': 'Help',
+            'style-clone': 'Style Clone',
+            'repurpose': 'Repurpose',
+            'best-time': 'Best Time to Post',
         };
         document.getElementById('page-title').textContent = titles[tabId] || 'Dashboard';
 
-        try {
-            localStorage.setItem('activeTab', tabId);
-        } catch (_) {}
+        try { localStorage.setItem('activeTab', tabId); } catch (_) {}
 
-        if (tabId === 'knowledge-base') {
+        if (tabId === 'style-clone') { scInit(); }
+        else if (tabId === 'repurpose') { rpInit(); }
+        else if (tabId === 'best-time') { btLoad(); }
+        else if (tabId === 'knowledge-base') {
             refreshKnowledgeBaseStatus();
             refreshKnowledgeBaseFiles();
             refreshKbFileOptions();
@@ -9718,10 +11312,22 @@
         const templateName = workspace?.name || (ctx.kb_mode === 'specific_files' ? 'Selected template' : 'Default');
         const specificCount = Array.isArray(ctx.specific_file_ids) ? ctx.specific_file_ids.length : 0;
         const kbDetails = ctx.kb_mode === 'specific_files'
-            ? `${ctx.knowledge_base_used || getKbUsageLabelFromMode(ctx.kb_mode, ctx.kb_used)} • ${specificCount} selected file${specificCount === 1 ? '' : 's'}`
-            : (ctx.knowledge_base_used || getKbUsageLabelFromMode(ctx.kb_mode, ctx.kb_used));
+            ? `${ctx.knowledge_base_used || getKbUsageLabelFromMode(ctx.kb_mode, ctx.kb_used, ctx.kb_no_match, ctx.kb_state)} • ${specificCount} selected file${specificCount === 1 ? '' : 's'}`
+            : (ctx.knowledge_base_used || getKbUsageLabelFromMode(ctx.kb_mode, ctx.kb_used, ctx.kb_no_match, ctx.kb_state));
+
+        const _kbStateMessages = {
+            no_match:  `Topic not found in your knowledge base — this post was written from AI\'s general knowledge, not your files. Upload content covering \u201c${escapeHtml(ctx.theme || 'this topic')}\u201d to get grounded, on-brand posts.`,
+            not_built: 'Your knowledge base is still indexing. Wait a moment, then regenerate to use your uploaded content.',
+            no_files:  'No KB files are attached to this workspace. Add files in the Knowledge Base tab and regenerate.',
+            error:     'Knowledge base lookup failed — the post was generated from AI\'s general knowledge. Check your KB status in the Knowledge Base tab.',
+        };
+        const kbWarnMsg = ctx.kb_no_match && ctx.kb_mode !== 'no_kb' ? _kbStateMessages[ctx.kb_state] || _kbStateMessages.no_match : null;
+        const noMatchWarning = kbWarnMsg
+            ? `<div class="insight-kb-nomatch"><i class="fas fa-triangle-exclamation"></i><div>${kbWarnMsg}</div></div>`
+            : '';
 
         panel.innerHTML = `
+            ${noMatchWarning}
             <div class="insight-title"><i class="fas fa-circle-info"></i> Why this post was generated this way</div>
             <div class="insight-chips">
                 <span class="insight-chip"><strong>Industry:</strong> ${escapeHtml(ctx.industry || 'Not set')}</span>
@@ -9730,7 +11336,7 @@
                 <span class="insight-chip"><strong>Goal:</strong> ${escapeHtml(ctx.post_goal || 'Not set')}</span>
                 <span class="insight-chip"><strong>Audience:</strong> ${escapeHtml(ctx.target_audience || 'Not set')}</span>
                 <span class="insight-chip"><strong>Template:</strong> ${escapeHtml(templateName)}</span>
-                <span class="insight-chip"><strong>Knowledge Source:</strong> ${escapeHtml(kbDetails)}</span>
+                <span class="insight-chip ${(ctx.kb_no_match && ctx.kb_mode !== 'no_kb') ? 'insight-chip--warn' : ''}"><strong>Knowledge Source:</strong> ${escapeHtml(kbDetails)}</span>
             </div>
         `;
         panel.style.display = 'block';
@@ -11125,6 +12731,8 @@
         
         showToast('info', 'Generating post...', 'fas fa-spinner');
         
+        const _scToggle = document.getElementById('sc-enabled-toggle');
+        const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -11133,7 +12741,8 @@
                 word_count_mode, min_words, max_words,
                 kb_mode, workspace_id, specific_file_ids,
                 audience_type, business_goal,
-                post_goal, target_audience, tone
+                post_goal, target_audience, tone,
+                use_style_clone
             })
         })
         .then(r => parseJsonResponse(r))
@@ -11153,6 +12762,7 @@
                 const settingsApplied = (data.settings_applied && typeof data.settings_applied === 'object') ? data.settings_applied : {};
                 const effectiveKbMode = settingsApplied.kb_mode || kb_mode || 'use_kb';
                 const effectiveKbUsed = typeof data.kb_used === 'boolean' ? data.kb_used : true;
+                const kbNoMatch = data.kb_no_match === true;
                 lastGeneratedContext = {
                     industry: settingsApplied.industry || industry || '',
                     role: settingsApplied.role || role || '',
@@ -11161,9 +12771,11 @@
                     tone: settingsApplied.tone || tone || 'professional',
                     kb_mode: effectiveKbMode,
                     kb_used: effectiveKbUsed,
+                    kb_no_match: kbNoMatch,
+                    theme: data.theme || topic || '',
                     workspace_id: settingsApplied.workspace_id || workspace_id || '',
                     specific_file_ids: Array.isArray(specific_file_ids) ? specific_file_ids : [],
-                    knowledge_base_used: getKbUsageLabelFromMode(effectiveKbMode, effectiveKbUsed)
+                    knowledge_base_used: getKbUsageLabelFromMode(effectiveKbMode, effectiveKbUsed, kbNoMatch)
                 };
                 renderGenerationInsights(lastGeneratedContext);
                 renderPrePublishValidator(buildPrePublishValidation(content, lastGeneratedHashtags));
@@ -13109,6 +14721,17 @@
         const nextPostSubtitle = document.getElementById('next-post-subtitle');
         const nextPostTags = document.getElementById('next-post-tags');
         const nextPostQueueHint = document.getElementById('next-post-queue-hint');
+        const nextPostEmptyState = document.getElementById('next-post-empty-state');
+        const nextPostFilledState = document.getElementById('next-post-filled-state');
+
+        const showEmptyState = () => {
+            if (nextPostEmptyState) nextPostEmptyState.style.display = '';
+            if (nextPostFilledState) nextPostFilledState.style.display = 'none';
+        };
+        const showFilledState = () => {
+            if (nextPostEmptyState) nextPostEmptyState.style.display = 'none';
+            if (nextPostFilledState) nextPostFilledState.style.display = '';
+        };
 
         const clearNextPostSkeleton = (isEmptyState = false) => {
             if (!nextPostEl) {
@@ -13116,32 +14739,13 @@
             }
             nextPostEl.classList.remove('skeleton', 'skeleton-text', 'next-post-skeleton');
             nextPostEl.style.margin = '0';
-            nextPostEl.style.color = '#4b5563';
             nextPostEl.style.fontStyle = isEmptyState ? 'italic' : 'normal';
         };
 
         const setNextPreviewFallback = (text, statusText) => {
-            if (nextPostEl) {
-                clearNextPostSkeleton(true);
-                nextPostEl.textContent = text;
-            }
+            showEmptyState();
             if (nextPostStatus) {
                 nextPostStatus.textContent = statusText;
-            }
-            if (nextPostAuthor) {
-                nextPostAuthor.textContent = 'LinkedIn Scheduled Content';
-            }
-            if (nextPostAvatar) {
-                nextPostAvatar.textContent = 'L';
-            }
-            if (nextPostSubtitle) {
-                nextPostSubtitle.textContent = 'Your upcoming LinkedIn content';
-            }
-            if (nextPostTags) {
-                nextPostTags.innerHTML = '';
-            }
-            if (nextPostQueueHint) {
-                nextPostQueueHint.textContent = 'No more posts in queue';
             }
             if (nextPostActions) {
                 nextPostActions.classList.add('hidden');
@@ -13203,6 +14807,7 @@
                 clearNextPostSkeleton(false);
                 nextPostEl.textContent = posts[0].content;
             }
+            showFilledState();
             if (nextPostStatus) {
                 nextPostStatus.textContent = posts[0].last_error ? 'Retry pending' : formatCompactScheduleLabel(posts[0].schedule_time);
             }
@@ -14071,10 +15676,16 @@
         });
     }
 
-    function getKbUsageLabelFromMode(kbMode, kbUsed) {
+    function getKbUsageLabelFromMode(kbMode, kbUsed, kbNoMatch, kbState) {
         const mode = String(kbMode || '').toLowerCase();
+        if (mode === 'no_kb') return 'KB disabled';
+        const state = String(kbState || '');
+        if (state === 'not_built') return 'KB still indexing';
+        if (state === 'no_files') return 'No KB files selected';
+        if (state === 'error') return 'KB lookup failed';
+        if (state === 'no_match' || kbNoMatch) return 'KB searched — topic not found';
+        if (!kbUsed) return 'General knowledge';
         if (mode === 'specific_files') return 'Selected KB files';
-        if (mode === 'no_kb' || kbUsed === false) return 'General context';
         return 'All KB files';
     }
 
@@ -15953,5 +17564,367 @@
         </div>
     </div>
 </div>
+
+<!-- POWER TOOLS JS -->
+<script>
+// ══════════════════════════════════════════════════════════════════
+// STYLE CLONE
+// ══════════════════════════════════════════════════════════════════
+const _SC = { samples: ['', ''], traits: null, enabled: false };
+
+function scInit() {
+    authFetch('/api/style').then(r => r.ok ? r.json() : {success:false}).then(data => {
+        if (data.success && data.style && data.style.samples) {
+            _SC.samples = [...data.style.samples];
+            _SC.traits = data.style.traits || null;
+            _SC.enabled = data.style.enabled !== false;
+        }
+        scRender();
+        if (_SC.traits) scShowTraits(_SC.traits);
+    }).catch(() => scRender());
+}
+
+function _ptEsc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _scSetStep(n) {
+    [1,2,3].forEach(i => {
+        const el = document.getElementById('sc-step-'+i);
+        if (!el) return;
+        el.classList.remove('active','done');
+        if (i < n) el.classList.add('done');
+        else if (i === n) el.classList.add('active');
+    });
+}
+
+function scRender() {
+    const list = document.getElementById('sc-samples-list');
+    if (!list) return;
+    if (_SC.samples.length < 2) _SC.samples = ['', ''];
+    list.innerHTML = _SC.samples.map((s, i) => {
+        const charCount = (s || '').length;
+        const showRemove = _SC.samples.length > 2;
+        return `<div class="sc-sample-v2">
+            <div class="sc-sample-v2-head">
+                <span class="sc-sample-v2-num"><i class="fas fa-pen-nib"></i> Sample ${i + 1}</span>
+                <span class="sc-sample-v2-counter" id="sc-sc-${i}">${charCount} chars</span>
+            </div>
+            <textarea placeholder="Paste a LinkedIn post you've written\u2026 (100+ chars for best results)" oninput="_SC.samples[${i}]=this.value; const c=document.getElementById('sc-sc-${i}'); if(c) c.textContent=this.value.length+' chars'; scUpdateCount();">${_ptEsc(s)}</textarea>
+            ${showRemove ? `<div class="sc-sample-v2-foot"><button class="sc-sample-remove-v2" onclick="scRemoveSample(${i})"><i class="fas fa-times"></i> Remove</button></div>` : ''}
+        </div>`;
+    }).join('');
+    scUpdateCount();
+}
+
+function scUpdateCount() {
+    const filled = _SC.samples.filter(s => s.trim().length > 40).length;
+    const total = _SC.samples.length;
+    const countEl = document.getElementById('sc-count-label');
+    if (countEl) countEl.innerHTML = `<span>${filled}</span> of ${total} samples added`;
+    const toggle = document.getElementById('sc-enabled-toggle');
+    const sub = document.getElementById('sc-toggle-sub');
+    const pill = document.getElementById('sc-status-pill');
+    const pillLabel = document.getElementById('sc-status-label');
+    const has = filled >= 2;
+    if (toggle) { toggle.disabled = !has; toggle.checked = _SC.enabled && has; }
+    const isActive = toggle && toggle.checked;
+    if (sub) sub.textContent = has ? (isActive ? 'Active \u2014 applied to every post' : 'Toggle to apply your voice') : 'Add 2+ samples (40+ chars each)';
+    if (pill) pill.classList.toggle('active', isActive);
+    if (pillLabel) pillLabel.textContent = isActive ? 'Style Active' : (has ? 'Ready to activate' : 'Not set up');
+    if (_SC.traits) _scSetStep(3);
+    else if (has) _scSetStep(2);
+    else _scSetStep(1);
+}
+
+function scAddSample() {
+    if (_SC.samples.length >= 15) { showToast('info','Maximum 15 samples','fas fa-info-circle'); return; }
+    _SC.samples.push(''); scRender();
+}
+function scRemoveSample(i) { _SC.samples.splice(i, 1); scRender(); }
+
+async function scSaveSamples() {
+    const filled = _SC.samples.filter(s => s.trim().length > 40);
+    if (filled.length < 2) { showToast('error','Add at least 2 posts (40+ chars each)','fas fa-exclamation-circle'); return; }
+    const btn = document.getElementById('sc-save-btn');
+    const status = document.getElementById('sc-save-status');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analysing your writing style\u2026';
+    status.textContent = 'This takes ~10 seconds\u2026';
+    try {
+        const res = await authFetch('/api/style/save', { method:'POST', body: JSON.stringify({samples:filled}) });
+        const data = await res.json();
+        if (data.success) {
+            _SC.traits = data.style.traits; _SC.enabled = true;
+            scShowTraits(_SC.traits); scRender();
+            _scSetStep(3);
+            showToast('success','Voice cloned \u2014 AI will now write like you','fas fa-check-circle');
+            status.textContent = '';
+        } else { showToast('error', data.message||'Save failed','fas fa-exclamation-circle'); status.textContent=''; }
+    } catch(e) { showToast('error','Network error — please check your API key is set in Settings','fas fa-exclamation-triangle'); status.textContent=''; }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Analyse &amp; Clone My Voice';
+}
+
+function scShowTraits(traits) {
+    const section = document.getElementById('sc-results-section');
+    const empty = document.getElementById('sc-empty-right');
+    const grid = document.getElementById('sc-trait-grid');
+    if (!section) return;
+    section.style.display = '';
+    if (empty) empty.style.display = 'none';
+    const sumText = document.getElementById('sc-summary-text');
+    const sumSub = document.getElementById('sc-summary-sub');
+    if (sumText) sumText.textContent = traits.style_summary || 'Style fingerprint captured.';
+    if (sumSub) sumSub.textContent = 'Sentence length: '+(traits.avg_sentence_length||'\u2014')+' \u00b7 Tone: '+(traits.tone||'\u2014')+' \u00b7 Emoji: '+(traits.emoji_usage||'\u2014');
+
+    const traitIcon = {
+        'Voice Summary': 'fa-microphone-lines',
+        'Sentence Length': 'fa-ruler-horizontal',
+        'Paragraph Style': 'fa-align-left',
+        'Opens With': 'fa-door-open',
+        'Closes With': 'fa-flag-checkered',
+        'Tone': 'fa-palette',
+        'Emoji Usage': 'fa-face-smile',
+        'Vocabulary': 'fa-book-open',
+        'Structure': 'fa-sitemap',
+        'Signature Phrases': 'fa-quote-right',
+    };
+
+    const fields = [
+        ['Voice Summary',traits.style_summary],['Sentence Length',traits.avg_sentence_length],
+        ['Paragraph Style',traits.paragraph_style],['Opens With',traits.opening_style],
+        ['Closes With',traits.closing_style],['Tone',traits.tone],
+        ['Emoji Usage',traits.emoji_usage],['Vocabulary',traits.vocabulary_level],
+        ['Structure',traits.post_structure],
+    ].filter(([,v])=>v);
+
+    // Signature phrases get a full-width golden card at the end
+    let sigHtml = '';
+    if (traits.signature_phrases && traits.signature_phrases.length) {
+        const phrases = traits.signature_phrases.map(p => `<span style="display:inline-block;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.18);border-radius:6px;padding:0.2rem 0.55rem;margin:0.15rem 0.1rem;font-size:0.76rem;font-weight:600;color:#92400e;">&ldquo;${_ptEsc(p)}&rdquo;</span>`).join(' ');
+        sigHtml = `<div class="sc-trait-card sc-trait-wide"><div class="sc-trait-label"><i class="fas fa-quote-right" style="margin-right:0.3rem;opacity:0.6;"></i>Signature Phrases</div><div class="sc-trait-value">${phrases}</div></div>`;
+    }
+
+    if (grid) {
+        const countBadge = document.getElementById('sc-traits-count');
+        const totalCount = fields.length + (sigHtml ? 1 : 0);
+        if (countBadge) countBadge.textContent = totalCount + ' traits';
+
+        grid.innerHTML = fields.map(([l,v]) => {
+            const ic = traitIcon[l] || 'fa-circle-info';
+            return `<div class="sc-trait-card">
+                <div class="sc-trait-label"><i class="fas ${ic}" style="margin-right:0.3rem;opacity:0.5;font-size:0.58rem;"></i>${_ptEsc(l)}</div>
+                <div class="sc-trait-value">${_ptEsc(String(v))}</div>
+            </div>`;
+        }).join('') + sigHtml;
+    }
+}
+
+async function toggleStyleClone(checked) {
+    _SC.enabled = checked;
+    const sub = document.getElementById('sc-toggle-sub');
+    if (sub) sub.textContent = checked ? 'Active \u2014 applied to every generated post' : 'Disabled \u2014 toggle to re-enable';
+    const pill = document.getElementById('sc-status-pill');
+    const pillLabel = document.getElementById('sc-status-label');
+    if (pill) pill.classList.toggle('active', checked);
+    if (pillLabel) pillLabel.textContent = checked ? 'Style Active' : 'Ready to activate';
+    await authFetch('/api/style/toggle',{method:'POST',body:JSON.stringify({enabled:checked})}).catch(()=>{});
+    showToast(checked?'success':'info', checked?'Style clone activated \u2014 your voice will be applied':'Style clone disabled','fas fa-fingerprint');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// REPURPOSE
+// ══════════════════════════════════════════════════════════════════
+let _rpSourceType = 'url';
+function rpInit() {}
+
+function rpSetSource(type) {
+    _rpSourceType = type;
+    document.getElementById('rp-btn-url').classList.toggle('active', type==='url');
+    document.getElementById('rp-btn-text').classList.toggle('active', type==='text');
+    document.getElementById('rp-url-wrap').style.display = type==='url' ? '' : 'none';
+    document.getElementById('rp-text-wrap').style.display = type==='text' ? '' : 'none';
+}
+
+function rpSetStep(n) {
+    [1,2,3].forEach(i => {
+        const el = document.getElementById('rp-s'+i);
+        if (!el) return;
+        el.classList.remove('active','done');
+        if (i < n) el.classList.add('done'); else if (i===n) el.classList.add('active');
+    });
+}
+
+async function rpGenerate() {
+    const source = _rpSourceType==='url'
+        ? (document.getElementById('rp-url-input').value||'').trim()
+        : (document.getElementById('rp-text-input').value||'').trim();
+    if (!source) { showToast('error','Paste a URL or text first','fas fa-exclamation-circle'); return; }
+    const btn = document.getElementById('rp-go-btn');
+    const progress = document.getElementById('rp-progress');
+    const insSection = document.getElementById('rp-insights-section');
+    const varSection = document.getElementById('rp-variants-section');
+    const emptyRight = document.getElementById('rp-empty-right');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working\u2026';
+    progress.style.display = ''; rpSetStep(1);
+    if (insSection) insSection.style.display='none';
+    if (varSection) varSection.style.display='none';
+    if (emptyRight) emptyRight.style.display='none';
+    const industry = document.getElementById('rp-industry').value;
+    const role = document.getElementById('rp-role').value;
+    try {
+        await new Promise(r=>setTimeout(r,300)); rpSetStep(2);
+        const res = await authFetch('/api/repurpose',{method:'POST',body:JSON.stringify({source_type:_rpSourceType,source,industry,role})});
+        rpSetStep(3);
+        const data = await res.json();
+        if (!data.success) { showToast('error',data.message||'Failed','fas fa-exclamation-circle'); return; }
+        const titleEl = document.getElementById('rp-page-title');
+        if (titleEl && data.title) titleEl.textContent = data.title;
+        const chipsEl = document.getElementById('rp-insight-chips');
+        if (chipsEl && data.key_points) chipsEl.innerHTML = data.key_points.map(p=>`<span class="rp-insight-chip">${_ptEsc(p)}</span>`).join('');
+        if (insSection) insSection.style.display='';
+        const listEl = document.getElementById('rp-variants-list');
+        if (listEl && data.variants) {
+            listEl.innerHTML = data.variants.map((v,i)=>`
+                <div class="rp-variant-card">
+                    <div class="rp-variant-angle">${_ptEsc(v.angle)}</div>
+                    <div class="rp-variant-text">${_ptEsc(v.text)}</div>
+                    ${v.hashtags&&v.hashtags.length?`<div class="rp-variant-tags">${v.hashtags.map(h=>`<span class="rp-variant-tag">${_ptEsc(h)}</span>`).join('')}</div>`:''}
+                    <div class="rp-variant-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="rpUsePost(${i})"><i class="fas fa-pen"></i> Use this post</button>
+                        <button class="btn btn-sm btn-secondary" onclick="rpCopyPost(${i})"><i class="fas fa-copy"></i> Copy</button>
+                    </div>
+                </div>`).join('');
+            window._rpVariants = data.variants;
+        }
+        if (varSection) varSection.style.display='';
+        progress.style.display='none';
+        showToast('success','3 variants ready','fas fa-check-circle');
+    } catch(e) {
+        showToast('error','Network error','fas fa-exclamation-triangle');
+        if (emptyRight) emptyRight.style.display='';
+        progress.style.display='none';
+    }
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Extract &amp; Generate 3 Posts';
+}
+
+function rpCopyPost(i) {
+    const v=(window._rpVariants||[])[i]; if (!v) return;
+    const full=v.text+(v.hashtags.length?'\n\n'+v.hashtags.join(' '):'');
+    navigator.clipboard.writeText(full).then(()=>showToast('success','Copied','fas fa-check'));
+}
+
+function rpUsePost(i) {
+    const v=(window._rpVariants||[])[i]; if (!v) return;
+    const full=v.text+(v.hashtags.length?'\n\n'+v.hashtags.join(' '):'');
+    switchTab('content-creator');
+    setTimeout(()=>{
+        const ta=document.getElementById('topic-input');
+        const pt=document.getElementById('post-text');
+        if (ta) { ta.value=v.text.slice(0,200); typeof updateTopicCounter==='function'&&updateTopicCounter(); }
+        if (pt) {
+            pt.textContent=full;
+            const ph=document.getElementById('post-placeholder');
+            if (ph) ph.style.display='none';
+            const qa=document.getElementById('creator-quick-actions');
+            if (qa) qa.style.display='';
+        }
+    },350);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BEST TIME TO POST
+// ══════════════════════════════════════════════════════════════════
+let _btData = null;
+
+async function btLoad() {
+    if (_btData) { btRender(_btData); return; }
+    const noteEl = document.getElementById('bt-note-text');
+    if (noteEl) noteEl.textContent = 'Analysing your post history\u2026';
+    try {
+        const res = await authFetch('/api/best-time');
+        const data = await res.json();
+        if (!data.success) { if (noteEl) noteEl.textContent='Could not load data.'; return; }
+        _btData = data; btRender(data);
+    } catch(e) { if (noteEl) noteEl.textContent='Could not load data.'; }
+}
+
+function btRender(data) {
+    const noteEl = document.getElementById('bt-note-text');
+    if (noteEl) noteEl.textContent = data.note || '';
+    const dayGrid = document.getElementById('bt-day-grid');
+    if (dayGrid && data.day_scores) {
+        dayGrid.innerHTML = data.day_scores.map(d=>{
+            const pct=d.score/100;
+            const bg=pct>=0.8?'#6366f1':pct>=0.6?'#a5b4fc':'#e0e7ff';
+            const tc=pct>=0.8?'#fff':pct>=0.6?'#3730a3':'#6b7280';
+            return `<div class="bt-day-cell" style="background:${bg};color:${tc};"><div class="bt-day-name">${d.day.slice(0,3)}</div><div class="bt-day-score">${d.score}</div></div>`;
+        }).join('');
+    }
+    const hourRows = document.getElementById('bt-hour-rows');
+    if (hourRows && data.hour_scores) {
+        const maxH = Math.max(...data.hour_scores.map(h=>h.score));
+        hourRows.innerHTML = data.hour_scores.map(h=>{
+            const pct=Math.round(h.score/maxH*100);
+            const bc=h.score>=80?'#6366f1':h.score>=60?'#a5b4fc':'#d1d5db';
+            return `<div class="bt-hour-row"><div class="bt-hour-label">${h.label}</div><div class="bt-hour-bar-wrap"><div class="bt-hour-bar" style="width:${pct}%;background:${bc};"></div></div><div class="bt-hour-score-val">${h.score}</div></div>`;
+        }).join('');
+    }
+    const slotsList = document.getElementById('bt-slots-list');
+    if (slotsList && data.top_slots) {
+        const rc=['','rank-2','rank-3'];
+        slotsList.innerHTML = data.top_slots.map((s,i)=>`
+            <div class="bt-slot-card">
+                <div class="bt-slot-rank ${rc[i]||''}">${i+1}</div>
+                <div style="flex:1;">
+                    <div class="bt-slot-day">${_ptEsc(s.day)}</div>
+                    <div class="bt-slot-time"><i class="fas fa-clock" style="font-size:0.7rem;"></i> ${_ptEsc(s.time)}</div>
+                    <div class="bt-slot-reason">${_ptEsc(s.reason)}</div>
+                </div>
+                <div style="font-size:1.4rem;font-weight:800;color:${i===0?'#6366f1':'#94a3b8'}">${s.score}</div>
+            </div>`).join('');
+    }
+}
+
+function btScheduleOptimal() {
+    if (!_btData||!_btData.top_slots||!_btData.top_slots.length) { showToast('info','Load your best times first','fas fa-info-circle'); return; }
+    const slot=_btData.top_slots[0];
+    const dayIndex=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(slot.day);
+    const now=new Date(); let target=new Date(now);
+    const curDay=(now.getDay()+6)%7;
+    let diff=(dayIndex-curDay+7)%7; if (diff===0) diff=7;
+    target.setDate(now.getDate()+diff);
+    const m=slot.time.match(/(\d+):00\s*(AM|PM)/i);
+    if (m) {
+        let h=parseInt(m[1]);
+        if (m[2].toUpperCase()==='PM'&&h!==12) h+=12;
+        if (m[2].toUpperCase()==='AM'&&h===12) h=0;
+        target.setHours(h,0,0,0);
+    }
+    switchTab('scheduler');
+    setTimeout(()=>{
+        const de=document.getElementById('schedule-date');
+        const te=document.getElementById('schedule-time');
+        if (de) de.value=target.toISOString().split('T')[0];
+        if (te) te.value=target.toTimeString().slice(0,5);
+        typeof openScheduleModal==='function'&&openScheduleModal();
+    },400);
+}
+
+// Wire style clone into generatePost request payload
+(function() {
+    const _orig = window.generatePost;
+    if (typeof _orig === 'function') {
+        window.generatePost = async function(...args) {
+            const toggle = document.getElementById('sc-enabled-toggle');
+            window._styleCloneEnabled = toggle ? (toggle.checked && !toggle.disabled) : false;
+            return _orig.apply(this, args);
+        };
+    }
+})();
+</script>
 </body>
 </html>
