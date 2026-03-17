@@ -1264,6 +1264,9 @@
                 authMethod: '',
             };
 
+            // Get plan from URL if coming from pricing page
+            window.SELECTED_PLAN = new URLSearchParams(window.location.search).get('plan') || 'free';
+
             function showScreen(i) {
                 document.querySelectorAll('.screen').forEach((s, idx) => {
                     s.classList.toggle('active', idx === i);

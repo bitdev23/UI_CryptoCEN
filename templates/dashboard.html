@@ -809,14 +809,40 @@
                     <i class="fab fa-linkedin"></i>
                     LinkedIn Content Automation
                 </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="font-size: 0.8rem; color: #6c757d;">
+                <div style="display: flex; align-items: center; gap: 2rem;">
+                    <div style="font-size: 0.8rem; color: #6c757d; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-clock"></i>
                         <span id="current-time"></span>
                     </div>
-                    <div style="font-size: 0.8rem; color: #6c757d;">
+                    <div style="font-size: 0.8rem; color: #6c757d; display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-server"></i>
                         System Online
+                    </div>
+                    <!-- Plan Indicator -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #f0f4ff; border-radius: 20px; cursor: pointer;" onclick="switchTab('settings')">
+                        <i class="fas fa-crown" style="color: #667eea; font-size: 0.9rem;"></i>
+                        <span id="plan-indicator" style="font-weight: 500; color: #667eea; font-size: 0.85rem;">Free Plan</span>
+                    </div>
+                    <!-- User Profile Menu -->
+                    <div style="position: relative;">
+                        <button onclick="toggleProfileMenu()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-weight: bold; font-size: 1rem; display: flex; align-items: center; justify-content: center;">
+                            <span id="user-initial">U</span>
+                        </button>
+                        <div id="profileMenu" style="display: none; position: absolute; top: 50px; right: 0; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 220px; z-index: 1000;">
+                            <div style="padding: 1rem; border-bottom: 1px solid #ecf0f1;">
+                                <div id="profile-name" style="font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem;">User Name</div>
+                                <div id="profile-email" style="font-size: 0.85rem; color: #7f8c8d;">user@example.com</div>
+                            </div>
+                            <button onclick="switchTab('settings'); toggleProfileMenu();" style="width: 100%; padding: 0.75rem 1rem; border: none; background: white; cursor: pointer; text-align: left; color: #2c3e50; transition: background 0.2s;">
+                                <i class="fas fa-user-circle" style="margin-right: 0.5rem; color: #667eea;"></i> Profile & Account
+                            </button>
+                            <button onclick="switchTab('settings'); document.getElementById('settings-section').scrollIntoView(); toggleProfileMenu();" style="width: 100%; padding: 0.75rem 1rem; border: none; background: white; cursor: pointer; text-align: left; color: #2c3e50; transition: background 0.2s;">
+                                <i class="fas fa-credit-card" style="margin-right: 0.5rem; color: #28a745;"></i> Billing & Plans
+                            </button>
+                            <button onclick="logout()" style="width: 100%; padding: 0.75rem 1rem; border: none; background: white; cursor: pointer; text-align: left; color: #dc3545; border-top: 1px solid #ecf0f1;">
+                                <i class="fas fa-sign-out-alt" style="margin-right: 0.5rem;"></i> Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1127,8 +1153,22 @@
                         <div class="analytics-label">Test Posts</div>
                     </div>
                     <div class="analytics-card">
-                        <div class="analytics-value" id="engagement-rate">0%</div>
-                        <div class="analytics-label">Avg Engagement</div>
+                        <div class="analytics-value" id="quota-remaining" style="color: #667eea;">3</div>
+                        <div class="analytics-label">Free Posts Remaining</div>
+                    </div>
+                    <div class="analytics-card" id="quota-progress-card" style="grid-column: 1 / -1;">
+                        <div style="margin-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <div class="analytics-label" style="margin: 0;">Monthly Quota Progress</div>
+                                <span id="quota-usage-text" style="font-size: 0.85rem; color: #7f8c8d;">0/3 posts</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #ecf0f1; border-radius: 4px; overflow: hidden;">
+                                <div id="quota-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #7f8c8d; margin-top: 0.5rem;">
+                            <i class="fas fa-info-circle"></i> Generate posts to see your remaining quota. <span style="cursor: pointer; color: #667eea;" onclick="switchTab('settings')">Upgrade now</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1429,6 +1469,102 @@
 
             <!-- SETTINGS TAB -->
             <div id="settings" class="tab-content">
+                <!-- Account & Subscription Section -->
+                <div class="dashboard-grid" id="settings-section" style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #ecf0f1;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <h2 class="card-title">Profile & Account</h2>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Name</label>
+                            <input type="text" id="account-name" readonly style="background: #f8f9fa; cursor: not-allowed;">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="account-email" readonly style="background: #f8f9fa; cursor: not-allowed;">
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <label class="form-label" style="margin: 0;">Account Status</label>
+                                <span id="account-status" style="background: #d4edda; color: #155724; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">Active</span>
+                            </div>
+                            <small style="color: #6c757d;">Your account is active and verified</small>
+                        </div>
+
+                        <div class="btn-group" style="margin-top: 1.5rem;">
+                            <button onclick="changePassword()" class="btn secondary">
+                                <i class="fas fa-key"></i>
+                                Change Password
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <h2 class="card-title">Billing & Plans</h2>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem;" id="current-plan-name">Free Plan</div>
+                                    <small style="color: #6c757d;">Your current subscription</small>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">₹0</div>
+                                    <small style="color: #6c757d;">per month</small>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #f0f4ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.9rem; color: #2c3e50;">Monthly Posts</span>
+                                    <span style="font-weight: 600; color: #667eea;" id="plan-posts-quota">3</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.9rem; color: #2c3e50;">This Month Used</span>
+                                    <span style="font-weight: 600; color: #2c3e50;" id="plan-posts-used">0</span>
+                                </div>
+                                <div style="width: 100%; height: 6px; background: #dde5f7; border-radius: 3px; overflow: hidden; margin-top: 0.75rem;">
+                                    <div id="plan-usage-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="upgrade-plans-container" style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Upgrade plans will be populated here -->
+                        </div>
+
+                        <div class="btn-group">
+                            <button onclick="showUpgradeOptions()" class="btn success" style="width: 100%;">
+                                <i class="fas fa-crown"></i>
+                                Upgrade to Pro Plan
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <div style="font-weight: 600; color: #856404; margin-bottom: 0.5rem;">
+                                <i class="fas fa-lightbulb"></i> Pro Plan Benefits
+                            </div>
+                            <ul style="margin: 0; padding-left: 1.25rem; color: #856404; font-size: 0.9rem;">
+                                <li>100 posts per month (vs 3 free)</li>
+                                <li>Priority support</li>
+                                <li>Advanced content settings</li>
+                                <li>Custom personas</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="dashboard-grid">
                     <div class="card">
                         <div class="card-header">
@@ -2120,10 +2256,6 @@
                     }
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
-                }
-                
                 const text = await response.text();
                 console.log('Raw response:', text);
                 
@@ -2135,12 +2267,34 @@
 
                 document.getElementById('gen-spinner').innerHTML = '';
 
+                // Check for quota exceeded
+                if (response.status === 403 && result.quota_exceeded) {
+                    document.getElementById('gen-status').className = 'status error';
+                    document.getElementById('gen-status').innerHTML = '<i class="fas fa-lock"></i> ' + (result.message || 'Monthly post limit reached');
+                    showUpgradeModal(result.quota_info);
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                }
+
                 if (result.success) {
                     document.getElementById('gen-status').className = 'status success';
                     document.getElementById('gen-status').innerHTML = '<i class="fas fa-check"></i> Content generated successfully!';
                     document.getElementById('preview-content').textContent = result.post;
                     document.getElementById('preview-hashtags').innerHTML = result.hashtags.map(tag => `<span class="hashtag">${tag}</span>`).join('');
                     document.getElementById('preview').style.display = 'block';
+                    
+                    // Track usage for quota display
+                    try {
+                        const usage = JSON.parse(localStorage.getItem('velank_usage') || '{"posts": 0}');
+                        usage.posts = (usage.posts || 0) + 1;
+                        localStorage.setItem('velank_usage', JSON.stringify(usage));
+                        loadQuotaStatus(); // Refresh quota display
+                    } catch (e) {
+                        console.debug('Usage tracking error:', e);
+                    }
                 } else {
                     document.getElementById('gen-status').className = 'status error';
                     document.getElementById('gen-status').innerHTML = '<i class="fas fa-times"></i> ' + (result.message || 'Unknown error');
@@ -3012,14 +3166,135 @@
                 });
         }
 
+        // ===== NEW: Freemium and Profile Management Functions =====
+        
+        function loadUserProfile() {
+            try {
+                const user = JSON.parse(localStorage.getItem('velank_user') || '{}');
+                if (user.firstName) {
+                    document.getElementById('user-initial').textContent = user.firstName.charAt(0).toUpperCase();
+                    document.getElementById('profile-name').textContent = user.firstName + (user.lastName ? ' ' + user.lastName : '');
+                    document.getElementById('account-name').value = user.firstName + (user.lastName ? ' ' + user.lastName : '');
+                }
+                if (user.email) {
+                    document.getElementById('profile-email').textContent = user.email;
+                    document.getElementById('account-email').value = user.email;
+                }
+            } catch (e) {
+                console.debug('Could not load user profile');
+            }
+        }
+
+        function toggleProfileMenu() {
+            const menu = document.getElementById('profileMenu');
+            if (menu.style.display === 'none' || !menu.style.display) {
+                menu.style.display = 'block';
+            } else {
+                menu.style.display = 'none';
+            }
+        }
+
+        function loadQuotaStatus() {
+            try {
+                const token = localStorage.getItem('velank_access_token');
+                if (!token) return;
+
+                // For now, we'll load from plan limits endpoint
+                fetch('/api/user/quota-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.plan_limits) {
+                        updateQuotaUI(data.plan_limits);
+                    }
+                })
+                .catch(e => console.debug('Quota load failed:', e));
+            } catch (e) {
+                console.debug('Quota loading error:', e);
+            }
+        }
+
+        function updateQuotaUI(planLimits) {
+            try {
+                // Get free plan quota
+                const freeQuota = planLimits['free']?.posts_generated || 3;
+                
+                // Get current usage from usage_monthly table (approximation)
+                // This would be done via API call, for now we estimate from localStorage
+                const usage = JSON.parse(localStorage.getItem('velank_usage') || '{"posts": 0}');
+                const postsUsed = usage.posts || 0;
+                const postsRemaining = Math.max(0, freeQuota - postsUsed);
+
+                // Update dashboard counter
+                document.getElementById('quota-remaining').textContent = postsRemaining;
+                document.getElementById('quota-usage-text').textContent = `${postsUsed}/${freeQuota} posts`;
+                const progressPercent = Math.min(100, (postsUsed / freeQuota) * 100);
+                document.getElementById('quota-progress-bar').style.width = progressPercent + '%';
+
+                // Update settings section
+                document.getElementById('plan-posts-quota').textContent = freeQuota;
+                document.getElementById('plan-posts-used').textContent = postsUsed;
+                document.getElementById('plan-usage-bar').style.width = progressPercent + '%';
+
+                // Update plan indicator
+                const planEl = document.getElementById('plan-indicator');
+                if (planEl) {
+                    planEl.textContent = `Free Plan (${postsRemaining} left)`;
+                }
+            } catch (e) {
+                console.debug('Quota UI update error:', e);
+            }
+        }
+
+        function showUpgradeOptions() {
+            fetchUpgradePlans().then(planLimits => {
+                showUpgradeModal({ used: 0, limit: 3 });
+            });
+        }
+
+        function fetchUpgradePlans() {
+            return new Promise((resolve) => {
+                const token = localStorage.getItem('velank_access_token');
+                fetch('/api/user/quota-status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resolve(data.plan_limits);
+                    }
+                })
+                .catch(e => {
+                    console.error('Failed to fetch plans:', e);
+                    resolve({});
+                });
+            });
+        }
+
+        function changePassword() {
+            alert('Password change functionality would be implemented here');
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('velank_access_token');
+                localStorage.removeItem('velank_user');
+                window.location.href = '/login';
+            }
+        }
+
         // Initialize
         checkSetupStatus();
         loadConfig();
+        loadUserProfile();
+        loadQuotaStatus();
         checkKBStatus();
         loadKBFiles();
         loadPersonas();
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
+        setInterval(loadQuotaStatus, 5000); // Refresh quota every 5 seconds
     </script>
     <script>
     // Dashboard bootstrap: auto-fill role/industry and welcome from signup flow
@@ -3050,5 +3325,6 @@
         }
     });
     </script>
+    {% include 'upgrade_modal_component.html' %}
 </body>
 </html>

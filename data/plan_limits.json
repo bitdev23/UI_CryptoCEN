@@ -1,0 +1,26 @@
+{
+  "free": {
+    "posts_generated": 3,
+    "scheduled_posts": 0,
+    "kb_documents": 1,
+    "kb_storage_mb": 5
+  },
+  "1_month": {
+    "posts_generated": 100,
+    "scheduled_posts": 30,
+    "kb_documents": 100,
+    "kb_storage_mb": 500
+  },
+  "3_month": {
+    "posts_generated": 100,
+    "scheduled_posts": 30,
+    "kb_documents": 100,
+    "kb_storage_mb": 500
+  },
+  "12_month": {
+    "posts_generated": 100,
+    "scheduled_posts": 30,
+    "kb_documents": 100,
+    "kb_storage_mb": 500
+  }
+}

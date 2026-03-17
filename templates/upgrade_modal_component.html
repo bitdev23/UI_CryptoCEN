@@ -1,0 +1,187 @@
+<!-- Upgrade Modal Component -->
+<div id="upgradeModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; color: #2c3e50;">Upgrade Your Plan</h2>
+            <button onclick="closeUpgradeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #95a5a6;">×</button>
+        </div>
+        
+        <div id="quotaStatusContainer" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: none;">
+            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                <strong>Current Usage:</strong> <span id="currentUsage">-</span>
+            </p>
+            <p style="margin: 0.5rem 0 0 0; color: #e74c3c; font-size: 0.9rem;">
+                <strong>Monthly Limit:</strong> <span id="monthlyLimit">-</span>
+            </p>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem;">
+            <p style="color: #7f8c8d; margin-bottom: 1rem;">Choose a plan to continue generating content:</p>
+            
+            <div id="plansContainer" style="display: grid; gap: 1rem;">
+                <!-- Plans will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="closeUpgradeModal()" style="flex: 1; padding: 0.75rem; border: 1px solid #bdc3c7; background: white; border-radius: 6px; cursor: pointer; font-weight: 500; color: #2c3e50; transition: all 0.3s;">
+                Continue Free
+            </button>
+            <button onclick="proceedWithUpgrade()" id="upgradeBtn" style="flex: 1; padding: 0.75rem; border: none; background: #667eea; color: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.3s;">
+                Continue with Selected Plan
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global state for upgrade modal
+window.SELECTED_UPGRADE_PLAN = null;
+window.QUOTA_INFO = null;
+
+// Show upgrade modal
+async function showUpgradeModal(quotaInfo) {
+    window.QUOTA_INFO = quotaInfo;
+    const modal = document.getElementById('upgradeModal');
+    
+    // Update quota status
+    const statusContainer = document.getElementById('quotaStatusContainer');
+    const currentUsage = document.getElementById('currentUsage');
+    const monthlyLimit = document.getElementById('monthlyLimit');
+    
+    if (quotaInfo && quotaInfo.used !== undefined) {
+        statusContainer.style.display = 'block';
+        currentUsage.textContent = `${quotaInfo.used} posts generated`;
+        monthlyLimit.textContent = `${quotaInfo.limit} posts/month`;
+    }
+    
+    // Fetch and display plans
+    try {
+        const token = localStorage.getItem('velank_access_token');
+        const response = await fetch('/api/user/quota-status', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.plan_limits) {
+                displayUpgradePlans(data.plan_limits);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load plan limits:', e);
+    }
+    
+    modal.style.display = 'flex';
+}
+
+// Display available upgrade plans
+function displayUpgradePlans(planLimits) {
+    const container = document.getElementById('plansContainer');
+    container.innerHTML = '';
+    
+    const planInfo = {
+        'free': { name: 'Free Plan', description: 'For getting started', price: '₹0', color: '#95a5a6' },
+        '1_month': { name: '1-Month Plan', description: 'Monthly pricing', price: '₹999', color: '#3498db' },
+        '3_month': { name: '3-Month Plan', description: 'Best value', price: '₹2,499', color: '#667eea' },
+        '12_month': { name: 'Annual Plan', description: 'Maximum savings', price: '₹8,999', color: '#e74c3c' }
+    };
+    
+    for (const [planKey, limits] of Object.entries(planLimits)) {
+        const info = planInfo[planKey] || { name: planKey, description: '', price: '₹0', color: '#95a5a6' };
+        const postsLimit = limits.posts_generated || 0;
+        
+        const planElement = document.createElement('div');
+        planElement.style.cssText = `
+            padding: 1rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        `;
+        
+        planElement.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                <div>
+                    <h3 style="margin: 0; color: #2c3e50; font-size: 1rem;">${info.name}</h3>
+                    <p style="margin: 0.25rem 0 0 0; color: #7f8c8d; font-size: 0.85rem;">${info.description}</p>
+                </div>
+                <span style="color: ${info.color}; font-weight: bold; font-size: 1.1rem;">${info.price}</span>
+            </div>
+            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                📊 ${postsLimit} posts/month
+            </p>
+        `;
+        
+        planElement.addEventListener('click', function() {
+            // Remove previous selection styling
+            document.querySelectorAll('#plansContainer > div').forEach(el => {
+                el.style.borderColor = '#ecf0f1';
+                el.style.background = 'white';
+            });
+            
+            // Add selection styling
+            planElement.style.borderColor = info.color;
+            planElement.style.background = `${info.color}10`;
+            
+            window.SELECTED_UPGRADE_PLAN = planKey;
+            document.getElementById('upgradeBtn').textContent = 
+                planKey === 'free' ? 'Continue Free' : 'Proceed to Payment';
+        });
+        
+        container.appendChild(planElement);
+    }
+}
+
+// Check quota before generation
+async function checkQuotaBeforeGenerate() {
+    try {
+        // This is called before post generation
+        // The quota check happens server-side in /api/generate-preview
+        // This function is here for future client-side validation
+        return true;
+    } catch (e) {
+        console.error('Error checking quota:', e);
+        return false;
+    }
+}
+
+// Proceed with upgrade
+function proceedWithUpgrade() {
+    if (!window.SELECTED_UPGRADE_PLAN) {
+        alert('Please select a plan');
+        return;
+    }
+    
+    const plan = window.SELECTED_UPGRADE_PLAN;
+    
+    if (plan === 'free') {
+        closeUpgradeModal();
+        return;
+    }
+    
+    // For paid plans, redirect to checkout
+    // TODO: Integrate with Razorpay payment gateway
+    console.log('Redirecting to checkout for plan:', plan);
+    // Placeholder: alert('Payment integration coming soon!');
+    closeUpgradeModal();
+}
+
+// Close upgrade modal
+function closeUpgradeModal() {
+    const modal = document.getElementById('upgradeModal');
+    modal.style.display = 'none';
+    window.SELECTED_UPGRADE_PLAN = null;
+    window.QUOTA_INFO = null;
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeUpgradeModal();
+    }
+});
+</script>

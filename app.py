@@ -57,6 +57,7 @@ from config import PROFILES, DEFAULT_PROFILE, POST_FORMATS
 from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from kb_jobs import enqueue_kb_training_job, get_kb_training_status
+from freemium import create_freemium_blueprint, load_plan_limits as load_freemium_plan_limits
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -67,6 +68,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
+
+# Register freemium blueprint
+freemium_bp = create_freemium_blueprint()
+app.register_blueprint(freemium_bp)
 
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -1647,32 +1652,7 @@ def _normalize_subscription_plan(plan_raw: str):
     return plan_map.get(value)
 
 
-PLAN_LIMITS = {
-    'free': {
-        'posts_generated': 3,
-        'scheduled_posts': 0,
-        'kb_documents': 1,
-        'kb_storage_mb': 5,
-    },
-    '1_month': {
-        'posts_generated': 100,
-        'scheduled_posts': 30,
-        'kb_documents': 100,
-        'kb_storage_mb': 500,
-    },
-    '3_month': {
-        'posts_generated': 100,
-        'scheduled_posts': 30,
-        'kb_documents': 100,
-        'kb_storage_mb': 500,
-    },
-    '12_month': {
-        'posts_generated': 100,
-        'scheduled_posts': 30,
-        'kb_documents': 100,
-        'kb_storage_mb': 500,
-    }
-}
+PLAN_LIMITS = load_freemium_plan_limits()
 
 
 def _plan_price_inr(plan: str) -> int:
@@ -3838,7 +3818,12 @@ def generate_preview():
 
         can_generate, quota_meta = _check_generation_guardrail(user_id)
         if not can_generate:
-            return jsonify({'success': False, **quota_meta}), 403
+            return jsonify({
+                'success': False,
+                'quota_exceeded': True,
+                'quota_info': quota_meta,
+                **quota_meta
+            }), 403
         effective_plan = quota_meta.get('plan') or _get_effective_plan(user_id)
         is_free_plan = effective_plan == 'free'
 

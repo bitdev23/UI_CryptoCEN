@@ -1,0 +1,135 @@
+<!-- QUOTA EXCEEDED / UPGRADE MODAL ===================================== -->
+<div id="upgradeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:16px; padding:32px; max-width:640px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+        <div style="text-align:center; margin-bottom:24px;">
+            <div style="font-size:48px; margin-bottom:16px;">📊</div>
+            <h2 style="margin:0 0 8px; font-size:24px; font-weight:700;">Post Generation Limit Reached</h2>
+            <p style="margin:0; color:#6b7280; font-size:14px;">You've used all posts for this month. Upgrade to continue creating content.</p>
+        </div>
+
+        <!-- Current Plan Info -->
+        <div id="currentPlanInfo" style="background:#f3f4f6; border-radius:12px; padding:16px; margin-bottom:24px;">
+            <p style="margin:0 0 8px; font-size:12px; text-transform:uppercase; color:#9ca3af; font-weight:600;">Your Current Plan</p>
+            <p style="margin:0; font-size:18px; font-weight:600;" id="modalCurrentPlan">Free Plan</p>
+            <p style="margin:4px 0 0; font-size:13px; color:#6b7280;" id="modalCurrentQuota">1 post per month</p>
+        </div>
+
+        <!-- Upgrade Plans -->
+        <div style="margin-bottom:24px;">
+            <p style="margin:0 0 16px; font-size:12px; text-transform:uppercase; color:#9ca3af; font-weight:600;">Upgrade Options</p>
+            <div id="upgradePlansContainer" style="display:grid; gap:12px;">
+                <!-- Plans will be populated here -->
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:12px; margin-top:24px;">
+            <button onclick="closeUpgradeModal()" style="flex:1; padding:12px; border:1px solid #e5e7eb; background:white; color:#374151; border-radius:8px; font-weight:600; cursor:pointer;">Continue Free</button>
+            <button id="upgradeBtn" onclick="proceedWithUpgrade()" style="flex:1; padding:12px; background:#7c3aed; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Choose Plan</button>
+        </div>
+
+        <!-- Close button -->
+        <button onclick="closeUpgradeModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; font-size:24px; cursor:pointer; color:#9ca3af;">×</button>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// QUOTA & UPGRADE MODAL MANAGEMENT
+// ============================================================
+
+let selectedUpgradePlan = null;
+
+async function showUpgradeModal() {
+    try {
+        const response = await fetch('/api/quota-exceeded-modal');
+        const data = await response.json();
+        
+        if (!data.success) return;
+        
+        //  Update current plan info
+        document.getElementById('modalCurrentPlan').textContent = (data.current_plan || 'Free').toUpperCase() + ' Plan';
+        document.getElementById('modalCurrentQuota').textContent = data.quota_info.message || '1 post per month';
+        
+        // Populate upgrade plans
+        const container = document.getElementById('upgradePlansContainer');
+        container.innerHTML = '';
+        
+        if (data.upgrade_plans && data.upgrade_plans.length > 0) {
+            data.upgrade_plans.forEach(plan => {
+                if (plan.plan_name === data.current_plan) return; // Skip current plan
+                
+                const planEl = document.createElement('div');
+                planEl.style.cssText = 'border:2px solid #e5e7eb; border-radius:12px; padding:12px; cursor:pointer; transition:all 0.2s;';
+                planEl.onmouseover = () => planEl.style.borderColor = '#7c3aed';
+                planEl.onmouseout = () => planEl.style.borderColor = '#e5e7eb';
+                planEl.onclick = () => selectUpgradePlan(plan);
+                
+                planEl.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <p style="margin:0; font-weight:600; color:#374151;">${plan.display_name || plan.plan_name}</p>
+                            <p style="margin:4px 0 0; font-size:12px; color:#6b7280;">${plan.description || ''}</p>
+                        </div>
+                        <p style="margin:0; font-weight:700; color:#7c3aed; font-size:16px;">₹${plan.monthly_price_inr}/mo</p>
+                    </div>
+                `;
+                
+                container.appendChild(planEl);
+            });
+        }
+        
+        // Show modal
+        document.getElementById('upgradeModal').style.display = 'flex';
+    } catch (error) {
+        console.error('Failed to show upgrade modal:', error);
+    }
+}
+
+function selectUpgradePlan(plan) {
+    selectedUpgradePlan = plan;
+    document.getElementById('upgradeBtn').textContent = `Upgrade to ${plan.display_name || plan.plan_name}`;
+}
+
+function closeUpgradeModal() {
+    document.getElementById('upgradeModal').style.display = 'none';
+    selectedUpgradePlan = null;
+}
+
+async function proceedWithUpgrade() {
+    if (!selectedUpgradePlan) {
+        alert('Please select a plan to upgrade');
+        return;
+    }
+    
+    // For now, redirect to checkout/payment page
+    // In production, this would initiate Razorpay payment
+    window.location.href = `/checkout?plan=${selectedUpgradePlan.plan_name}`;
+}
+
+// Check quota before generating posts
+async function checkQuotaBeforeGenerate() {
+    try {
+        const response = await fetch('/api/user/quota-status');
+        const data = response.json();
+        
+        if (!data.success) {
+            alert('Failed to check quota');
+            return false;
+        }
+        
+        if (!data.can_generate_posts) {
+            showUpgradeModal();
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Quota check failed:', error);
+        return true; // Allow generation if check fails (backend will enforce)
+    }
+}
+
+// Add this to the post generation button click handler:
+// if (!await checkQuotaBeforeGenerate()) return;
+</script>
