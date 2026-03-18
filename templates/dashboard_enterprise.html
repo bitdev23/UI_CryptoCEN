@@ -485,8 +485,9 @@
         ::selection { background: rgba(102,126,234,0.2); color: inherit; }
         .main-content {
             flex: 1;
-            padding: 2rem;
+            padding: 0;
             overflow-y: auto;
+            min-width: 0;
         }
         /* TABS */
         .tab-navigation {
@@ -819,8 +820,8 @@
         }
         .dashboard-main-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 320px;
-            gap: 1rem;
+            grid-template-columns: minmax(0, 1fr) clamp(280px, 25%, 380px);
+            gap: 1.25rem;
             align-items: start;
         }
         .dashboard-left-rail,
@@ -2662,8 +2663,8 @@
         }
         .sched-v2-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 360px;
-            gap: 1rem;
+            grid-template-columns: minmax(0, 1fr) clamp(300px, 28%, 400px);
+            gap: 1.25rem;
             align-items: start;
         }
         .sched-v2-right {
@@ -6945,7 +6946,12 @@
 
         /* ── Main content area ──────────────────────────────────────── */
         main { background: var(--page-bg); }
-        .tab-content { padding: 2rem 2.25rem !important; max-width: 1280px; }
+        .tab-content {
+            padding: 2rem clamp(1.25rem, 2.5vw, 3rem) !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
 
         /* ── Cards ──────────────────────────────────────────────────── */
         .card {
@@ -7157,13 +7163,13 @@
         }
 
         /* --- Tab Container --- */
-        #style-clone { padding: 0 !important; }
+        /* padding inherited from .tab-content — matches Dashboard breathing room */
 
         /* --- Hero Banner --- */
         .sc-hero {
             display: flex; align-items: center; justify-content: space-between;
             background: linear-gradient(135deg, #0f0a2e 0%, #1e1b4b 30%, #312e81 60%, #4c1d95 100%);
-            border-radius: 16px; padding: 2rem 2.25rem;
+            border-radius: 20px; padding: 2rem 2.25rem;
             margin: 0 0 1.5rem; gap: 1.25rem; flex-wrap: wrap;
             position: relative; overflow: hidden;
             box-shadow: 0 4px 24px rgba(30,27,75,0.35), 0 0 0 1px rgba(139,92,246,0.15);
@@ -7829,15 +7835,15 @@
         .dashboard-row-2 {
             display: grid;
             grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-            gap: 1.1rem;
-            margin-top: 1.15rem;
+            gap: 1.25rem;
+            margin-top: 1.25rem;
             animation: dbFadeSlideUp 0.45s ease-out 0.18s both;
         }
         .dashboard-row-3 {
             display: grid;
             grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-            gap: 1.1rem;
-            margin-top: 1.15rem;
+            gap: 1.25rem;
+            margin-top: 1.25rem;
             animation: dbFadeSlideUp 0.45s ease-out 0.24s both;
         }
         .dashboard-row-2 > .next-post-card { margin-top: 0 !important; }
@@ -7873,6 +7879,7 @@
             border-bottom: 1px solid rgba(139,92,246,0.12) !important;
             padding: 1.15rem 1.25rem 0.85rem !important;
             background: transparent !important;
+            display: flex; align-items: center; justify-content: space-between;
         }
         .next-post-head h2 {
             font-size: 1.05rem !important;
@@ -7883,11 +7890,17 @@
             margin: 0 !important;
         }
         .next-post-head-icon {
-            width: 34px; height: 34px; border-radius: 10px;
+            width: 36px; height: 36px; border-radius: 10px;
             background: rgba(99,102,241,0.12);
             color: #a5b4fc;
             display: inline-flex; align-items: center; justify-content: center;
-            font-size: 0.88rem; flex-shrink: 0;
+            font-size: 0.9rem; flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .next-post-card:hover .next-post-head-icon {
+            background: rgba(99,102,241,0.2);
+            transform: scale(1.06);
+            box-shadow: 0 0 16px rgba(99,102,241,0.2);
         }
         .next-post-card .status-badge {
             background: rgba(251,191,36,0.1) !important;
@@ -7905,13 +7918,14 @@
             position: relative; z-index: 1;
         }
         .next-post-empty-plus {
-            width: 62px; height: 62px;
-            border-radius: 16px;
+            width: 68px; height: 68px;
+            border-radius: 18px;
             border: 2px dashed rgba(139,92,246,0.35);
             background: rgba(99,102,241,0.08);
-            color: #a5b4fc; font-size: 1.5rem;
+            color: #a5b4fc; font-size: 1.6rem;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; margin-bottom: 1.2rem;
+            animation: nextPostPlusPulse 3s ease-in-out infinite;
             transition: all 0.3s ease;
         }
         .next-post-empty-plus:hover {
@@ -7943,9 +7957,16 @@
             letter-spacing: 0.01em;
         }
         .next-post-empty-cta:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 28px rgba(99,102,241,0.55);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 32px rgba(99,102,241,0.6), 0 0 0 4px rgba(99,102,241,0.08);
             background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        }
+        .next-post-empty-cta:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+        @keyframes nextPostPlusPulse {
+            0%, 100% { border-color: rgba(139,92,246,0.35); box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+            50% { border-color: rgba(139,92,246,0.55); box-shadow: 0 0 24px rgba(99,102,241,0.15); }
         }
 
         /* --- Filled State (dark theme) --- */
@@ -7992,48 +8013,144 @@
             color: #fca5a5 !important;
         }
 
-        /* --- Setup Card (right column, premium) --- */
+        /* --- Setup Card (dark gradient, glass-morphism) --- */
         .setup-card-featured {
-            border: 1px solid rgba(139,92,246,0.12) !important;
-            border-radius: 18px !important;
-            box-shadow: 0 4px 20px rgba(99,102,241,0.08) !important;
+            border: none !important;
+            border-radius: 20px !important;
+            box-shadow: 0 8px 36px rgba(99,102,241,0.14), 0 0 0 1px rgba(99,102,241,0.08) !important;
             animation: dbFadeSlideUp 0.45s ease-out 0.25s both;
             overflow: hidden !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #161244 45%, #1c185a 100%) !important;
+            color: #ffffff;
+            position: relative;
         }
-        .setup-card-featured .card-header {
-            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important;
-            padding: 1rem 1.2rem !important;
-            position: relative; overflow: hidden;
+        .setup-card-featured::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; z-index: 2;
+            background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7, #10b981);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
         }
-        .setup-card-featured .card-header::after {
-            content: ''; position: absolute; top: -50%; right: -15%;
-            width: 130px; height: 130px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%);
+        .setup-card-featured::after {
+            content: ''; position: absolute; bottom: -15%; left: -8%;
+            width: 180px; height: 180px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
             pointer-events: none;
         }
-        .setup-card-featured .card-header h3 { position: relative; z-index: 1; font-size: 1rem !important; }
+        .setup-card-featured .card-header {
+            background: transparent !important;
+            border-bottom: 1px solid rgba(139,92,246,0.12) !important;
+            padding: 1.15rem 1.25rem 0.85rem !important;
+            margin: 0 !important;
+            position: relative; overflow: hidden;
+        }
+        .setup-card-featured .card-header h3 {
+            position: relative; z-index: 1;
+            font-size: 1.05rem !important;
+            font-weight: 700 !important;
+            color: #e0e7ff !important;
+            -webkit-text-fill-color: #e0e7ff !important;
+            background: none !important;
+        }
         .setup-card-featured .setup-badge {
             position: relative; z-index: 1;
-            background: rgba(255,255,255,0.12) !important;
-            border-color: rgba(255,255,255,0.3) !important;
-            backdrop-filter: blur(4px);
+            background: rgba(16,185,129,0.12) !important;
+            border: 1px solid rgba(52,211,153,0.25) !important;
+            color: #6ee7b7 !important;
+            backdrop-filter: blur(8px);
+            font-size: 0.72rem !important;
+            padding: 0.32rem 0.75rem !important;
+        }
+        .setup-card-featured .setup-checklist {
+            padding: 0 1.15rem 1.1rem !important;
+            margin-top: 0.8rem !important;
+            position: relative; z-index: 1;
         }
         .setup-item {
-            border: 1px solid rgba(99,102,241,0.06) !important;
-            border-radius: 11px !important;
-            transition: all 0.2s ease;
+            border: 1px solid rgba(139,92,246,0.1) !important;
+            border-radius: 12px !important;
+            background: rgba(255,255,255,0.03) !important;
+            padding: 0.72rem 0.85rem !important;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
         }
         .setup-item:hover {
-            border-color: rgba(99,102,241,0.15) !important;
-            background: #faf8ff !important;
+            border-color: rgba(139,92,246,0.22) !important;
+            background: rgba(255,255,255,0.06) !important;
+            transform: translateX(3px);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.1);
         }
         .setup-state {
-            border: 1.5px solid rgba(99,102,241,0.15) !important;
-            transition: all 0.2s ease;
+            border: 1.5px solid rgba(139,92,246,0.2) !important;
+            background: rgba(99,102,241,0.06) !important;
+            color: rgba(255,255,255,0.4) !important;
+            transition: all 0.35s ease;
         }
         .setup-item.complete .setup-state {
-            border-color: #86efac !important; background: #ecfdf5 !important;
-            box-shadow: 0 0 6px rgba(16,163,127,0.12);
+            border-color: rgba(52,211,153,0.4) !important;
+            background: rgba(16,185,129,0.15) !important;
+            color: #34d399 !important;
+            box-shadow: 0 0 12px rgba(16,185,129,0.2);
+        }
+        .setup-text {
+            color: rgba(255,255,255,0.7) !important;
+            font-size: 0.82rem !important;
+        }
+        .setup-item.complete .setup-text {
+            color: rgba(52,211,153,0.85) !important;
+        }
+        .setup-card-featured .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+            border: none !important;
+            color: #fff !important;
+            box-shadow: 0 3px 12px rgba(99,102,241,0.35);
+            transition: all 0.25s ease;
+        }
+        .setup-card-featured .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99,102,241,0.5);
+        }
+        .setup-card-featured .btn-secondary {
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(139,92,246,0.18) !important;
+            color: #c7d2fe !important;
+        }
+        .setup-card-featured .btn-secondary:hover {
+            background: rgba(255,255,255,0.1) !important;
+        }
+        /* Setup KB stats (all-configured state) */
+        .setup-card-featured .setup-kb-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 0.75rem !important;
+        }
+        .setup-card-featured .setup-kb-stat {
+            background: rgba(255,255,255,0.03) !important;
+            border: 1px solid rgba(139,92,246,0.1) !important;
+            border-radius: 12px !important;
+            padding: 0.9rem 0.85rem !important;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .setup-card-featured .setup-kb-stat:hover {
+            border-color: rgba(139,92,246,0.22) !important;
+            background: rgba(255,255,255,0.06) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99,102,241,0.12);
+        }
+        .setup-card-featured .setup-kb-label {
+            color: rgba(255,255,255,0.45) !important;
+            font-size: 0.68rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .setup-card-featured .setup-kb-value {
+            color: #e0e7ff !important;
+            font-size: 1.6rem !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #c7d2fe, #a78bfa) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
         }
 
         /* --- Quick Actions (gradient icons, tighter) --- */
@@ -8088,38 +8205,161 @@
             position: relative; z-index: 1;
         }
 
-        /* --- Usage Card (refined meters) --- */
+        /* --- Usage Card (dark gradient, glowing meters) --- */
         .usage-card {
-            border: 1px solid rgba(99,102,241,0.08) !important;
-            border-radius: 18px !important;
-            box-shadow: 0 2px 12px rgba(99,102,241,0.05) !important;
+            border: none !important;
+            border-radius: 20px !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #161244 45%, #1c185a 100%) !important;
+            box-shadow: 0 8px 36px rgba(99,102,241,0.14), 0 0 0 1px rgba(99,102,241,0.08) !important;
             animation: dbFadeSlideUp 0.45s ease-out 0.32s both;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+        .usage-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; z-index: 2;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1, #a78bfa, #8b5cf6);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+        }
+        .usage-card::after {
+            content: ''; position: absolute; top: -20%; right: -10%;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .usage-card .card-header {
+            background: transparent !important;
+            border-bottom: 1px solid rgba(139,92,246,0.12) !important;
+            padding: 1.15rem 1.25rem 0.85rem !important;
+            margin: 0 !important;
+            position: relative; z-index: 1;
+        }
+        .usage-card .card-header h3 {
+            color: #e0e7ff !important;
+            -webkit-text-fill-color: #e0e7ff !important;
+            background: none !important;
+            font-size: 1.05rem !important;
+            font-weight: 700 !important;
         }
         .usage-plan-pill {
-            background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
-            border: 1px solid rgba(99,102,241,0.18) !important;
-            color: #4f46e5 !important; font-weight: 800 !important;
+            background: rgba(99,102,241,0.12) !important;
+            border: 1px solid rgba(139,92,246,0.25) !important;
+            color: #a5b4fc !important;
+            font-weight: 800 !important;
+            backdrop-filter: blur(8px);
+            font-size: 0.72rem !important;
+            padding: 0.32rem 0.75rem !important;
+        }
+        .usage-card .usage-row {
+            position: relative; z-index: 1;
+        }
+        .usage-card .usage-row:first-of-type {
+            margin-top: 0.25rem;
         }
         .usage-meter {
-            height: 7px !important;
-            background: rgba(99,102,241,0.06) !important;
+            height: 8px !important;
+            background: rgba(255,255,255,0.06) !important;
             border-radius: 999px !important;
+            position: relative;
+            overflow: hidden;
         }
         .usage-meter > span {
             background: linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa) !important;
             position: relative; overflow: hidden;
+            border-radius: 999px;
+            box-shadow: 0 0 12px rgba(99,102,241,0.4);
         }
         .usage-meter > span::after {
             content: ''; position: absolute; inset: 0;
-            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
             background-size: 200% 100%;
             animation: dbShimmer 2.5s ease-in-out infinite;
         }
-        .usage-label { font-weight: 700 !important; color: #1e293b !important; font-size: 0.8rem !important; }
-        .usage-value { font-weight: 800 !important; color: #312e81 !important; }
+        .usage-label {
+            font-weight: 600 !important;
+            color: rgba(255,255,255,0.55) !important;
+            font-size: 0.8rem !important;
+        }
+        .usage-value {
+            font-weight: 800 !important;
+            color: #c7d2fe !important;
+            font-size: 0.78rem !important;
+        }
         .usage-reset {
-            border-top: 1px solid rgba(99,102,241,0.06) !important;
-            color: #6366f1 !important; font-weight: 700 !important; font-size: 0.73rem !important;
+            border-top: 1px solid rgba(139,92,246,0.1) !important;
+            color: rgba(255,255,255,0.35) !important;
+            font-weight: 600 !important;
+            font-size: 0.73rem !important;
+            position: relative; z-index: 1;
+        }
+        /* Usage free plan upgrade card inside dark usage */
+        .usage-card #usage-free-plan-card {
+            background: rgba(255,255,255,0.03) !important;
+            border: 1px solid rgba(139,92,246,0.12) !important;
+            border-radius: 10px !important;
+        }
+        .usage-card .setup-kb-label {
+            color: rgba(255,255,255,0.45) !important;
+        }
+        .usage-card .setup-kb-value {
+            color: #e0e7ff !important;
+        }
+        .usage-card .btn-upgrade-gradient {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+            border: none !important;
+            color: #fff !important;
+            box-shadow: 0 3px 14px rgba(99,102,241,0.4);
+        }
+        /* --- Icon accents for dark card headers --- */
+        .setup-head-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: rgba(16,185,129,0.12);
+            color: #6ee7b7;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.88rem; flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .setup-card-featured:hover .setup-head-icon {
+            background: rgba(16,185,129,0.2);
+            transform: scale(1.06);
+            box-shadow: 0 0 16px rgba(16,185,129,0.2);
+        }
+        .usage-head-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: rgba(99,102,241,0.12);
+            color: #a5b4fc;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.88rem; flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .usage-card:hover .usage-head-icon {
+            background: rgba(99,102,241,0.2);
+            transform: scale(1.06);
+            box-shadow: 0 0 16px rgba(99,102,241,0.2);
+        }
+        .usage-rows-wrap {
+            padding: 0.5rem 1.25rem 0.25rem !important;
+            position: relative; z-index: 1;
+        }
+        .usage-row-icon {
+            color: rgba(165,180,252,0.5);
+            font-size: 0.72rem;
+            margin-right: 0.25rem;
+        }
+        .usage-card .usage-row {
+            padding: 0.5rem 0;
+            margin-bottom: 0 !important;
+            border-bottom: 1px solid rgba(139,92,246,0.06);
+        }
+        .usage-card .usage-row:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0 !important;
+        }
+        .usage-card .usage-reset {
+            margin: 0 1.25rem !important;
+            padding: 0.65rem 0 0.75rem !important;
         }
 
         /* --- Dashboard + Next Post Add Button --- */
@@ -8163,6 +8403,1216 @@
             .dashboard-kpi-card { padding: 1.1rem 1rem 1rem !important; }
             .next-post-empty-state { padding: 2rem 1rem 1.8rem; }
             .next-post-empty-plus { width: 52px; height: 52px; font-size: 1.2rem; }
+        }
+
+
+
+
+        /* ═══ DATABASE TAB — PREMIUM V2 ═══════════════════════════════ */
+
+        /* --- Override base tokens to match indigo system --- */
+        .kb-v4 {
+            --kb-sidebar-start: #4f46e5;
+            --kb-sidebar-end: #7c3aed;
+            --kb-surface-soft: linear-gradient(180deg, rgba(99,102,241,0.04) 0%, rgba(139,92,246,0.03) 100%);
+            --kb-border-soft: rgba(99,102,241,0.15);
+        }
+
+        /* --- Topbar (elevated, dashboard-matching) --- */
+        .kb-v4 .kb4-topbar {
+            margin-bottom: 1.15rem;
+            animation: dbFadeSlideUp 0.45s ease-out;
+        }
+        .kb-v4 .kb4-top-head {
+            gap: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+        .kb-v4 .kb4-top-head h2 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+        .kb-v4 .kb4-top-head p {
+            color: #64748b;
+            font-size: 0.88rem;
+            max-width: 680px;
+        }
+        .kb-v4 .kb4-storage-chip {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5) !important;
+            border: 1px solid rgba(16,185,129,0.2) !important;
+            color: #047857 !important;
+            font-weight: 800 !important;
+            box-shadow: 0 2px 8px rgba(16,185,129,0.1) !important;
+        }
+        .kb-v4 .kb4-storage-chip .dot-amber {
+            background: #10b981 !important;
+        }
+        .kb-v4 .kb4-chip-row {
+            gap: 0.55rem;
+        }
+        .kb-v4 .kb4-chip {
+            background: #ffffff !important;
+            border: 1px solid rgba(99,102,241,0.12) !important;
+            color: #475569 !important;
+            font-size: 0.82rem !important;
+            font-weight: 700 !important;
+            padding: 0.4rem 0.78rem !important;
+            box-shadow: 0 1px 4px rgba(99,102,241,0.06) !important;
+            border-radius: 12px !important;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb4-chip:hover {
+            border-color: rgba(99,102,241,0.22) !important;
+            box-shadow: 0 3px 10px rgba(99,102,241,0.1) !important;
+        }
+        .kb-v4 .dot-blue { background: #6366f1 !important; }
+        .kb-v4 .dot-green { background: #10b981 !important; }
+        .kb-v4 .dot-purple { background: #8b5cf6 !important; }
+        .kb-v4 .dot-amber { background: #f59e0b !important; }
+
+        /* --- Main Grid (upload + status) --- */
+        .kb-v4 .kb4-main-grid {
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            animation: dbFadeSlideUp 0.45s ease-out 0.08s both;
+        }
+
+        /* --- Upload Card (dark premium, matching Next Post vibe) --- */
+        .kb-v4 .kb4-upload-card {
+            border: none !important;
+            border-radius: 24px !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #161244 45%, #1c185a 100%) !important;
+            color: #ffffff;
+            padding: 2rem 1.8rem 1.8rem !important;
+            box-shadow: 0 12px 48px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.1) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .kb-v4 .kb4-upload-card::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            height: 3px !important;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #c084fc, #6366f1) !important;
+            background-size: 200% 100% !important;
+            animation: dbShimmer 3s ease-in-out infinite !important;
+            opacity: 1 !important;
+            z-index: 2 !important;
+            inset: auto !important;
+            bottom: auto !important;
+        }
+        .kb-v4 .kb4-upload-card::after {
+            content: '';
+            position: absolute; bottom: -20%; right: -10%;
+            width: 220px; height: 220px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .kb-v4 .kb4-step-clue {
+            border: 1px solid rgba(165,180,252,0.2) !important;
+            background: rgba(99,102,241,0.1) !important;
+            color: #c7d2fe !important;
+            font-size: 0.76rem !important;
+            padding: 0.32rem 0.75rem !important;
+            border-radius: 20px !important;
+            margin-bottom: 0.4rem !important;
+        }
+        .kb-v4 .kb4-upload-card-head {
+            margin-bottom: 0.6rem !important;
+        }
+        .kb-v4 .kb4-upload-card-head h3 {
+            color: #e0e7ff !important;
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+            margin-top: 0.35rem !important;
+            letter-spacing: -0.01em !important;
+        }
+        .kb-v4 .kb4-upload-card-head p {
+            color: rgba(199,210,254,0.65) !important;
+            font-size: 0.88rem !important;
+            margin-top: 0.2rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-drop {
+            border: 1.5px dashed rgba(165,180,252,0.3) !important;
+            border-radius: 18px !important;
+            padding: 1.8rem 1.2rem !important;
+            background: rgba(255,255,255,0.04) !important;
+            transition: all 0.25s ease !important;
+            margin-bottom: 0.3rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-drop:hover {
+            border-color: rgba(165,180,252,0.5) !important;
+            background: rgba(255,255,255,0.08) !important;
+            box-shadow: 0 0 24px rgba(99,102,241,0.15);
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-drop i {
+            color: #a5b4fc !important;
+            font-size: 2rem !important;
+            margin-bottom: 0.3rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-drop h4 {
+            color: #e0e7ff !important;
+            font-size: 1.15rem !important;
+            font-weight: 700 !important;
+            margin-top: 0.2rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-drop p {
+            color: rgba(199,210,254,0.6) !important;
+            margin-top: 0.15rem !important;
+            font-size: 0.86rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-file-picker-row .btn-secondary {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(165,180,252,0.25) !important;
+            color: #c7d2fe !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-file-picker-row .btn-secondary:hover {
+            background: rgba(255,255,255,0.14) !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-actions {
+            margin-top: 0.5rem !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-actions .btn.btn-primary {
+            background: #ffffff !important;
+            color: #1e1b4b !important;
+            border: none !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
+            font-weight: 700 !important;
+            border-radius: 14px !important;
+            min-height: 48px !important;
+            font-size: 0.92rem !important;
+            padding: 0.65rem 1.5rem !important;
+            transition: all 0.25s ease !important;
+        }
+        .kb-v4 .kb4-upload-card .kb4-upload-actions .btn.btn-primary:hover {
+            background: #f1f5f9 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3) !important;
+        }
+        .kb-v4 .kb4-action-with-help .help-tip {
+            color: rgba(165,180,252,0.7) !important;
+        }
+        .kb-v4 .kb4-action-with-help .help-tip:hover {
+            color: #c7d2fe !important;
+        }
+
+        /* --- Status Card (dark premium, matching Upload Card) --- */
+        .kb-v4 .kb4-status-card {
+            border: none !important;
+            border-radius: 24px !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #131040 45%, #19164e 100%) !important;
+            box-shadow: 0 12px 48px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.1) !important;
+            overflow: hidden !important;
+            transition: all 0.3s ease;
+            position: relative;
+            color: #ffffff;
+        }
+        .kb-v4 .kb4-status-card::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            height: 3px !important;
+            background: linear-gradient(90deg, #10b981, #6ee7b7, #34d399, #10b981) !important;
+            background-size: 200% 100% !important;
+            animation: dbShimmer 3s ease-in-out infinite !important;
+            z-index: 2 !important;
+        }
+        .kb-v4 .kb4-status-card::after {
+            content: '';
+            position: absolute; top: -20%; left: -10%;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .kb-v4 .kb4-status-card:hover {
+            box-shadow: 0 12px 44px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.12) !important;
+        }
+        .kb-v4 .kb4-status-head {
+            padding: 1.6rem 1.6rem 1.2rem !important;
+            border-bottom: 1px solid rgba(165,180,252,0.08) !important;
+            background: transparent !important;
+        }
+        .kb-v4 .kb4-status-head .kb4-step-clue {
+            border-color: rgba(16,185,129,0.25) !important;
+            background: rgba(16,185,129,0.1) !important;
+            color: #6ee7b7 !important;
+        }
+        .kb-v4 .kb4-status-label {
+            color: #a5b4fc !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.06em !important;
+        }
+        .kb-v4 .kb4-status-head #kb-status {
+            color: #e0e7ff !important;
+            font-size: 1.5rem !important;
+            font-weight: 800 !important;
+            margin-top: 0.15rem !important;
+            letter-spacing: -0.01em !important;
+        }
+        .kb-v4 .kb4-status-updated,
+        .kb-v4 .kb4-status-head #kb-last-updated {
+            color: rgba(165,180,252,0.5) !important;
+            font-size: 0.8rem !important;
+        }
+        .kb-v4 .kb4-status-metrics {
+            gap: 0.85rem !important;
+            padding: 1.2rem 1.5rem !important;
+        }
+        .kb-v4 .kb4-stat {
+            border: 1px solid rgba(165,180,252,0.1) !important;
+            border-radius: 16px !important;
+            background: rgba(255,255,255,0.04) !important;
+            padding: 1.1rem 0.9rem !important;
+            transition: all 0.25s ease;
+            text-align: center !important;
+        }
+        .kb-v4 .kb4-stat:hover {
+            border-color: rgba(165,180,252,0.22) !important;
+            background: rgba(255,255,255,0.07) !important;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.12);
+            transform: translateY(-2px);
+        }
+        .kb-v4 .kb4-stat-value {
+            font-size: 2.1rem !important;
+            font-weight: 800 !important;
+            line-height: 1.1 !important;
+        }
+        .kb-v4 .kb4-stat-blue .kb4-stat-value { color: #a5b4fc !important; }
+        .kb-v4 .kb4-stat-green .kb4-stat-value { color: #6ee7b7 !important; }
+        .kb-v4 .kb4-stat-amber .kb4-stat-value { color: #fbbf24 !important; }
+        .kb-v4 .kb4-stat-label {
+            color: rgba(199,210,254,0.65) !important;
+            font-weight: 800 !important;
+            font-size: 0.75rem !important;
+            margin-top: 0.25rem !important;
+            letter-spacing: 0.03em !important;
+        }
+        .kb-v4 .kb4-stat-meta {
+            color: rgba(165,180,252,0.4) !important;
+            font-size: 0.76rem !important;
+            margin-top: 0.15rem !important;
+        }
+        .kb-v4 .kb4-status-footer {
+            padding: 0.9rem 1.5rem !important;
+            border-top: 1px solid rgba(165,180,252,0.06) !important;
+            background: rgba(255,255,255,0.02) !important;
+            color: rgba(199,210,254,0.55) !important;
+            font-size: 0.82rem !important;
+        }
+        .kb-v4 .kb-ready-banner {
+            border-color: rgba(16,185,129,0.3) !important;
+            background: rgba(16,185,129,0.1) !important;
+            color: #6ee7b7 !important;
+        }
+
+        /* --- Uploaded Files Panel (dark premium) --- */
+        .kb-v4 .kb-files-panel {
+            border: none !important;
+            border-radius: 24px !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #131040 45%, #19164e 100%) !important;
+            box-shadow: 0 12px 48px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.1) !important;
+            padding: 1.6rem 1.6rem !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.14s both;
+            position: relative;
+            overflow: hidden;
+            color: #ffffff;
+        }
+        .kb-v4 .kb-files-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc, #818cf8);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+            z-index: 2;
+        }
+        .kb-v4 .kb-files-panel::after {
+            content: '';
+            position: absolute; bottom: -15%; right: -8%;
+            width: 200px; height: 200px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .kb-v4 .kb-files-header {
+            margin-bottom: 0.75rem !important;
+            position: relative;
+            z-index: 1;
+        }
+        .kb-v4 .kb-files-title {
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+            color: #e0e7ff !important;
+            letter-spacing: -0.01em !important;
+        }
+        .kb-v4 .kb-files-header .form-hint {
+            color: rgba(165,180,252,0.5) !important;
+            font-size: 0.82rem !important;
+        }
+        .kb-v4 .kb-files-header-actions .kb-train-btn {
+            border: none !important;
+            background: #ffffff !important;
+            color: #1e1b4b !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+            padding: 0.5rem 1rem !important;
+            transition: all 0.25s ease !important;
+        }
+        .kb-v4 .kb-files-header-actions .kb-train-btn:hover {
+            background: #f1f5f9 !important;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3) !important;
+            transform: translateY(-1px);
+        }
+        .kb-v4 .kb-files-header-actions .help-tip {
+            color: rgba(165,180,252,0.6) !important;
+        }
+        .kb-v4 .kb-files-toolbar {
+            margin-bottom: 0.85rem !important;
+            position: relative;
+            z-index: 1;
+        }
+        .kb-v4 .kb-files-toolbar input,
+        .kb-v4 .kb-files-toolbar select {
+            border: 1px solid rgba(165,180,252,0.12) !important;
+            border-radius: 14px !important;
+            background: rgba(255,255,255,0.05) !important;
+            color: #e0e7ff !important;
+            font-size: 0.86rem !important;
+            padding: 0.6rem 0.9rem !important;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-files-toolbar input::placeholder {
+            color: rgba(165,180,252,0.4) !important;
+        }
+        .kb-v4 .kb-files-toolbar input:focus,
+        .kb-v4 .kb-files-toolbar select:focus {
+            border-color: rgba(165,180,252,0.35) !important;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+            background: rgba(255,255,255,0.08) !important;
+        }
+        .kb-v4 .kb-files-toolbar select option {
+            background: #1e1b4b;
+            color: #e0e7ff;
+        }
+        .kb-v4 .kb-file-list {
+            position: relative;
+            z-index: 1;
+        }
+        .kb-v4 .kb-file-item {
+            border: 1px solid rgba(165,180,252,0.08) !important;
+            border-radius: 18px !important;
+            padding: 0.9rem 1rem !important;
+            background: rgba(255,255,255,0.035) !important;
+            box-shadow: none !important;
+            min-height: 92px !important;
+            transition: all 0.25s ease !important;
+        }
+        .kb-v4 .kb-file-item:hover {
+            border-color: rgba(165,180,252,0.2) !important;
+            background: rgba(255,255,255,0.07) !important;
+            box-shadow: 0 6px 20px rgba(99,102,241,0.12) !important;
+            transform: translateY(-2px) !important;
+        }
+        .kb-v4 .kb-file-item::before {
+            width: 3.5px !important;
+            background: linear-gradient(180deg, #818cf8, #c084fc) !important;
+            border-radius: 0 3px 3px 0 !important;
+        }
+        .kb-v4 .kb-file-icon {
+            color: #fca5a5 !important;
+            font-size: 1.1rem !important;
+        }
+        .kb-v4 .kb-file-name {
+            color: #e0e7ff !important;
+        }
+        .kb-v4 .kb-file-sub {
+            color: rgba(165,180,252,0.5) !important;
+        }
+        .kb-v4 .kb4-mini-chip {
+            font-size: 0.62rem !important;
+            font-weight: 800 !important;
+            border-radius: 8px !important;
+            padding: 0.13rem 0.42rem !important;
+            border: 1px solid rgba(165,180,252,0.18) !important;
+            background: rgba(99,102,241,0.1) !important;
+            color: #a5b4fc !important;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .kb-v4 .kb4-mini-chip.ok {
+            background: rgba(16,185,129,0.12) !important;
+            border-color: rgba(16,185,129,0.25) !important;
+            color: #6ee7b7 !important;
+        }
+        .kb-v4 .kb4-chunk-box {
+            border: 1px solid rgba(165,180,252,0.12) !important;
+            background: rgba(99,102,241,0.08) !important;
+            border-radius: 12px !important;
+            padding: 0.32rem 0.5rem !important;
+            min-width: 62px !important;
+        }
+        .kb-v4 .kb4-chunk-value {
+            color: #a5b4fc !important;
+            font-size: 0.9rem !important;
+            font-weight: 800 !important;
+        }
+        .kb-v4 .kb4-chunk-label {
+            font-size: 0.56rem !important;
+            color: rgba(165,180,252,0.45) !important;
+            font-weight: 700 !important;
+        }
+        .kb-v4 .kb-file-item .btn-danger {
+            background: rgba(239,68,68,0.1) !important;
+            border: 1px solid rgba(239,68,68,0.2) !important;
+            color: #fca5a5 !important;
+            border-radius: 10px !important;
+            transition: all 0.2s ease !important;
+        }
+        .kb-v4 .kb-file-item .btn-danger:hover {
+            background: rgba(239,68,68,0.2) !important;
+            border-color: rgba(239,68,68,0.35) !important;
+        }
+        .kb-v4 .kb-empty {
+            color: rgba(165,180,252,0.5) !important;
+            border-color: rgba(165,180,252,0.12) !important;
+            background: rgba(255,255,255,0.03) !important;
+        }
+
+        /* --- Templates Panel (dark premium, matching upload card) --- */
+        .kb-v4 .kb-template-panel {
+            border: none !important;
+            border-radius: 24px !important;
+            background: linear-gradient(160deg, #0e0c28 0%, #131040 45%, #19164e 100%) !important;
+            box-shadow: 0 12px 48px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.1) !important;
+            overflow: hidden !important;
+            animation: dbFadeSlideUp 0.45s ease-out 0.2s both;
+            position: relative;
+            color: #ffffff;
+        }
+        .kb-v4 .kb-template-shell {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+        }
+        .kb-v4 .kb-template-shell * {
+            /* Ensure no stray white backgrounds from base/kb-v3 leak through */
+        }
+        .kb-v4 .kb-template-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #c084fc, #a78bfa, #818cf8, #c084fc);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+            z-index: 2;
+        }
+        .kb-v4 .kb-template-header {
+            padding: 1.5rem 1.6rem !important;
+            border-bottom: 1px solid rgba(165,180,252,0.08) !important;
+            background: transparent !important;
+            position: relative;
+            z-index: 1;
+        }
+        .kb-v4 .kb-template-header h3 {
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+            color: #e0e7ff !important;
+            letter-spacing: -0.01em !important;
+        }
+        .kb-v4 .kb-template-header .form-hint {
+            color: rgba(165,180,252,0.5) !important;
+        }
+        .kb-v4 .kb-template-header .btn-primary {
+            border: none !important;
+            background: #ffffff !important;
+            color: #1e1b4b !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            transition: all 0.25s ease !important;
+        }
+        .kb-v4 .kb-template-header .btn-primary:hover {
+            background: #f1f5f9 !important;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3) !important;
+            transform: translateY(-1px);
+        }
+
+        .kb-v4 .kb-template-body {
+            position: relative;
+            z-index: 1;
+            background: transparent !important;
+            grid-template-columns: 1fr !important;
+        }
+        .kb-v4 .kb-template-sidebar {
+            background: transparent !important;
+            border: none !important;
+            border-right: none !important;
+            border-radius: 0 !important;
+            padding: 1.4rem 1.6rem 1.6rem !important;
+        }
+        .kb-v4 .kb-template-list-label {
+            color: #a5b4fc !important;
+            font-size: 0.72rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.06em !important;
+        }
+        .kb-v4 .kb-template-list-ui {
+            gap: 1rem !important;
+        }
+        .kb-v4 .kb-template-card {
+            border: 1px solid rgba(165,180,252,0.1) !important;
+            border-radius: 20px !important;
+            background: rgba(255,255,255,0.04) !important;
+            box-shadow: none !important;
+            padding: 1.2rem 1.15rem 1.1rem !important;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+            min-height: 250px !important;
+        }
+        .kb-v4 .kb-template-card:hover {
+            border-color: rgba(165,180,252,0.22) !important;
+            background: rgba(255,255,255,0.07) !important;
+            box-shadow: 0 8px 28px rgba(99,102,241,0.15) !important;
+            transform: translateY(-3px) !important;
+        }
+        .kb-v4 .kb-template-card.active {
+            border-color: rgba(165,180,252,0.3) !important;
+            background: rgba(99,102,241,0.08) !important;
+            box-shadow: 0 0 0 1px rgba(165,180,252,0.15), 0 10px 28px rgba(99,102,241,0.15) !important;
+        }
+        .kb-v4 .kb-template-card.active::before {
+            background: linear-gradient(90deg, #818cf8 0%, #c084fc 100%) !important;
+            height: 3px !important;
+        }
+        .kb-v4 .kb-template-icon {
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 12px !important;
+            background: rgba(99,102,241,0.12) !important;
+            color: #a5b4fc !important;
+            font-size: 0.92rem !important;
+        }
+        .kb-v4 .kb-template-state {
+            font-size: 0.66rem !important;
+            font-weight: 800 !important;
+            border-radius: 8px !important;
+            padding: 0.16rem 0.5rem !important;
+        }
+        .kb-v4 .kb-template-state.active {
+            background: rgba(16,185,129,0.12) !important;
+            color: #6ee7b7 !important;
+            border-color: rgba(16,185,129,0.25) !important;
+        }
+        .kb-v4 .kb-template-name {
+            font-size: 1.1rem !important;
+            font-weight: 800 !important;
+            color: #e0e7ff !important;
+        }
+        .kb-v4 .kb-template-sub {
+            color: rgba(165,180,252,0.5) !important;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+        }
+        .kb-v4 .kb-template-file-row {
+            background: rgba(99,102,241,0.06) !important;
+            border-radius: 10px !important;
+            padding: 0.28rem 0.55rem !important;
+            font-size: 0.84rem !important;
+            color: rgba(199,210,254,0.7) !important;
+        }
+        .kb-v4 .kb-template-file-row .dot {
+            background: #818cf8 !important;
+        }
+        .kb-v4 .kb-template-footer {
+            border-top: 1px solid rgba(165,180,252,0.08) !important;
+            padding-top: 0.7rem !important;
+            color: rgba(199,210,254,0.6) !important;
+        }
+        .kb-v4 .kb-template-type {
+            color: #a5b4fc !important;
+            font-weight: 800 !important;
+        }
+        .kb-v4 .kb-template-edit-btn {
+            color: #a5b4fc !important;
+            border-color: rgba(165,180,252,0.15) !important;
+            background: rgba(99,102,241,0.06) !important;
+            border-radius: 10px !important;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-template-edit-btn:hover {
+            background: rgba(99,102,241,0.15) !important;
+            border-color: rgba(165,180,252,0.3) !important;
+        }
+        .kb-v4 .kb-template-delete-btn {
+            border-radius: 10px !important;
+            background: rgba(239,68,68,0.08) !important;
+            border-color: rgba(239,68,68,0.18) !important;
+            color: #fca5a5 !important;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-template-delete-btn:hover {
+            background: rgba(239,68,68,0.18) !important;
+            border-color: rgba(239,68,68,0.3) !important;
+        }
+        .kb-v4 .kb-template-use-btn {
+            border-radius: 10px !important;
+            background: #ffffff !important;
+            color: #1e1b4b !important;
+            border: none !important;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.2) !important;
+            font-weight: 700 !important;
+            transition: all 0.25s ease !important;
+        }
+        .kb-v4 .kb-template-use-btn:hover {
+            background: #f1f5f9 !important;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3) !important;
+            transform: translateY(-1px);
+        }
+        .kb-v4 .kb-create-tile {
+            border: 1.5px dashed rgba(165,180,252,0.15) !important;
+            background: rgba(255,255,255,0.02) !important;
+            border-radius: 20px !important;
+            color: rgba(165,180,252,0.5) !important;
+            transition: all 0.25s ease !important;
+            min-height: 250px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.5rem !important;
+        }
+        .kb-v4 .kb-create-tile:hover {
+            border-color: rgba(165,180,252,0.35) !important;
+            border-style: dashed !important;
+            background: rgba(255,255,255,0.05) !important;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.12);
+            transform: translateY(-2px) !important;
+        }
+        .kb-v4 .kb-create-tile i {
+            color: rgba(165,180,252,0.6) !important;
+        }
+        .kb-v4 .kb-create-tile span {
+            color: rgba(199,210,254,0.7) !important;
+        }
+        .kb-v4 .kb-create-tile small {
+            color: rgba(165,180,252,0.4) !important;
+        }
+        .kb-v4 .kb-inline-feedback {
+            color: rgba(165,180,252,0.6) !important;
+        }
+        .kb-v4 .kb-inline-feedback.success {
+            color: #6ee7b7 !important;
+        }
+
+        /* --- Template Modal (premium overlay) --- */
+        .kb-template-modal .modal-content {
+            border: 1px solid rgba(99,102,241,0.15) !important;
+            border-radius: 22px !important;
+            box-shadow: 0 24px 56px rgba(15,23,42,0.45) !important;
+        }
+        .kb-template-modal .modal-header {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important;
+        }
+        .kb-template-modal .modal-body {
+            background: #ffffff !important;
+        }
+        .kb-template-modal .form-group {
+            border: 1px solid rgba(99,102,241,0.1) !important;
+            border-radius: 14px !important;
+            background: #fafbff !important;
+        }
+        .kb-template-modal #kb-template-modal-name:focus {
+            border-color: #818cf8 !important;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1) !important;
+        }
+        .kb-template-modal #kb-template-modal-save-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.35) !important;
+            border-radius: 12px !important;
+        }
+        .kb-template-modal #kb-template-modal-save-btn:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%) !important;
+            box-shadow: 0 6px 22px rgba(99,102,241,0.45) !important;
+        }
+        .kb-template-modal .checkbox-wrapper {
+            border-radius: 14px !important;
+        }
+        .kb-template-modal .checkbox-wrapper:hover {
+            border-color: rgba(99,102,241,0.25) !important;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.08) !important;
+        }
+        .kb-template-modal .checkbox-wrapper.selected,
+        .kb-template-modal .checkbox-wrapper:has(input[type="checkbox"]:checked) {
+            border-color: rgba(99,102,241,0.35) !important;
+            background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.05)) !important;
+        }
+
+        /* --- KB Progress bar --- */
+        .kb-v4 .kb-progress-wrap {
+            padding: 1rem;
+        }
+        .kb-v4 .kb-progress-wrap p {
+            color: rgba(199,210,254,0.8) !important;
+        }
+
+        /* Ready banner now in status card dark block */
+
+        /* --- btn overrides for the tab-level (dark context) --- */
+        .kb-v4 .btn-primary {
+            background: #ffffff !important;
+            color: #1e1b4b !important;
+            border: none !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25) !important;
+            font-weight: 700 !important;
+        }
+        .kb-v4 .btn-primary:hover {
+            background: #f1f5f9 !important;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3) !important;
+        }
+        .kb-v4 .btn-secondary {
+            border: 1px solid rgba(165,180,252,0.2) !important;
+            color: #c7d2fe !important;
+            background: rgba(255,255,255,0.06) !important;
+        }
+        .kb-v4 .btn-secondary:hover {
+            background: rgba(255,255,255,0.1) !important;
+            border-color: rgba(165,180,252,0.35) !important;
+        }
+
+        /* --- Drag & Drop active state --- */
+        .kb-v4 .kb4-upload-drop.drag-active {
+            border-color: #818cf8 !important;
+            border-style: solid !important;
+            background: rgba(99,102,241,0.12) !important;
+            box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 40px rgba(99,102,241,0.2) !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease !important;
+        }
+        .kb-v4 .kb4-upload-drop.drag-active i {
+            color: #c7d2fe !important;
+            animation: dbFloat 1.2s ease-in-out infinite !important;
+        }
+        .kb-v4 .kb4-upload-drop.drag-active h4 {
+            color: #ffffff !important;
+        }
+        .kb-v4 .kb4-upload-drop.drag-active p {
+            color: rgba(199,210,254,0.9) !important;
+        }
+
+        /* --- Accepted formats chips --- */
+        .kb-v4 .kb-format-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            justify-content: center;
+            margin-top: 0.55rem;
+        }
+        .kb-v4 .kb-format-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.18rem 0.52rem;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border: 1px solid rgba(165,180,252,0.2);
+            background: rgba(99,102,241,0.08);
+            color: #c7d2fe;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-format-chip:hover {
+            background: rgba(99,102,241,0.15);
+            border-color: rgba(165,180,252,0.35);
+        }
+        .kb-v4 .kb-format-chip i {
+            font-size: 0.58rem;
+            opacity: 0.7;
+        }
+
+        /* --- File selected preview --- */
+        .kb-v4 .kb-file-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 12px;
+            background: rgba(99,102,241,0.08);
+            border: 1px solid rgba(165,180,252,0.2);
+            margin-top: 0.55rem;
+            animation: dbFadeSlideUp 0.3s ease-out;
+        }
+        .kb-v4 .kb-file-preview-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .kb-v4 .kb-file-preview-icon.pdf {
+            background: rgba(239,68,68,0.15);
+            color: #fca5a5;
+        }
+        .kb-v4 .kb-file-preview-icon.docx {
+            background: rgba(59,130,246,0.15);
+            color: #93c5fd;
+        }
+        .kb-v4 .kb-file-preview-icon.txt,
+        .kb-v4 .kb-file-preview-icon.md,
+        .kb-v4 .kb-file-preview-icon.csv {
+            background: rgba(16,185,129,0.15);
+            color: #6ee7b7;
+        }
+        .kb-v4 .kb-file-preview-icon.pptx {
+            background: rgba(249,115,22,0.15);
+            color: #fdba74;
+        }
+        .kb-v4 .kb-file-preview-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .kb-v4 .kb-file-preview-name {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #e0e7ff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .kb-v4 .kb-file-preview-meta {
+            font-size: 0.72rem;
+            color: rgba(165,180,252,0.7);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .kb-v4 .kb-file-preview-remove {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            border: 1px solid rgba(239,68,68,0.2);
+            background: rgba(239,68,68,0.08);
+            color: #fca5a5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-file-preview-remove:hover {
+            background: rgba(239,68,68,0.18);
+            border-color: rgba(239,68,68,0.4);
+        }
+
+        /* --- Upload progress bar --- */
+        .kb-v4 .kb-upload-progress-wrap {
+            margin-top: 0.7rem;
+            animation: dbFadeSlideUp 0.3s ease-out;
+        }
+        .kb-v4 .kb-upload-progress-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+        }
+        .kb-v4 .kb-upload-progress-label span:first-child {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #c7d2fe;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .kb-v4 .kb-upload-progress-label span:first-child i {
+            animation: dbPulseGlow 1.5s ease-in-out infinite;
+        }
+        .kb-v4 .kb-upload-progress-label span:last-child {
+            font-size: 0.72rem;
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+        .kb-v4 .kb-upload-progress-track {
+            height: 6px;
+            border-radius: 100px;
+            background: rgba(255,255,255,0.08);
+            overflow: hidden;
+            position: relative;
+        }
+        .kb-v4 .kb-upload-progress-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc);
+            background-size: 200% 100%;
+            animation: dbShimmer 2s ease-in-out infinite;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+        .kb-v4 .kb-upload-progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.45rem;
+        }
+        .kb-v4 .kb-upload-progress-step {
+            font-size: 0.66rem;
+            color: rgba(165,180,252,0.5);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        .kb-v4 .kb-upload-progress-step.active {
+            color: #c7d2fe;
+        }
+        .kb-v4 .kb-upload-progress-step.done {
+            color: #6ee7b7;
+        }
+
+        /* --- Upload success celebration --- */
+        .kb-v4 .kb-upload-success {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            animation: dbFadeSlideUp 0.4s ease-out;
+        }
+        .kb-v4 .kb-upload-success-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #059669, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: #ffffff;
+            box-shadow: 0 0 0 6px rgba(16,185,129,0.15), 0 0 24px rgba(16,185,129,0.3);
+            animation: kbSuccessPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes kbSuccessPop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .kb-v4 .kb-upload-success-text {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #6ee7b7;
+        }
+        .kb-v4 .kb-upload-success-sub {
+            font-size: 0.76rem;
+            color: rgba(165,180,252,0.7);
+        }
+
+        /* --- Rich empty state (files panel, dark) --- */
+        .kb-v4 .kb-empty-rich {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        .kb-v4 .kb-empty-rich-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(99,102,241,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: #818cf8;
+            margin-bottom: 0.25rem;
+        }
+        .kb-v4 .kb-empty-rich h4 {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #e0e7ff;
+            margin: 0;
+        }
+        .kb-v4 .kb-empty-rich p {
+            font-size: 0.82rem;
+            color: rgba(165,180,252,0.5);
+            max-width: 320px;
+            line-height: 1.45;
+            margin: 0;
+        }
+        .kb-v4 .kb-empty-rich .btn {
+            margin-top: 0.35rem;
+        }
+
+        /* --- Stat countUp pulse --- */
+        .kb-v4 .kb4-stat-value.counting {
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- Inline delete confirm --- */
+        .kb-v4 .kb-inline-confirm {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            animation: dbFadeSlideUp 0.25s ease-out;
+        }
+        .kb-v4 .kb-inline-confirm span {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #fca5a5;
+        }
+        .kb-v4 .kb-inline-confirm .btn-confirm-yes {
+            padding: 0.2rem 0.55rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: #dc2626;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-inline-confirm .btn-confirm-yes:hover {
+            background: #b91c1c;
+        }
+        .kb-v4 .kb-inline-confirm .btn-confirm-no {
+            padding: 0.2rem 0.55rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: transparent;
+            color: rgba(165,180,252,0.6);
+            border: 1px solid rgba(165,180,252,0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .kb-v4 .kb-inline-confirm .btn-confirm-no:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(165,180,252,0.35);
+        }
+
+        /* --- Workflow step badge --- */
+        .kb-v4 .kb4-step-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 0.68rem;
+            font-weight: 800;
+            margin-right: 0.35rem;
+            flex-shrink: 0;
+        }
+        .kb-v4 .kb4-upload-card .kb4-step-badge {
+            background: rgba(165,180,252,0.2);
+            color: #c7d2fe;
+        }
+        .kb-v4 .kb4-status-card .kb4-step-badge {
+            background: rgba(16,185,129,0.15);
+            color: #6ee7b7;
+        }
+
+        /* --- Database responsive overrides --- */
+        @media (max-width: 1100px) {
+            .kb-v4 .kb4-main-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .kb-v4 .kb-template-list-ui {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+        }
+        @media (max-width: 768px) {
+            .kb-v4 .kb-template-list-ui {
+                grid-template-columns: 1fr !important;
+            }
+            .kb-v4 .kb4-chip-row {
+                gap: 0.4rem !important;
+            }
+        }
+
+        /* ═══ GLOBAL RESPONSIVE — Full-width & Multi-screen ═══════════════ */
+
+        /* Ultra-wide (2K/4K monitors, 1600px+) — generous breathing room */
+        @media (min-width: 1600px) {
+            .tab-content {
+                padding: 2.25rem 3.5rem !important;
+            }
+            .dashboard-kpi-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            }
+            .dashboard-row-2,
+            .dashboard-row-3 {
+                gap: 1.5rem;
+            }
+            .post-history-list.grid-2 {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+            .sched-v2-stats {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+            .kb-v4 .kb-template-list-ui {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            }
+        }
+
+        /* Large desktop (1280–1599px) — default target, comfortable density */
+        @media (min-width: 1280px) and (max-width: 1599px) {
+            .tab-content {
+                padding: 2rem 2.5rem !important;
+            }
+        }
+
+        /* Medium desktop / small laptop (1024-1279px) — tighten up */
+        @media (max-width: 1279px) {
+            .tab-content {
+                padding: 1.5rem 1.75rem !important;
+            }
+            .dashboard-row-2,
+            .dashboard-row-3 {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 1rem;
+            }
+        }
+
+        /* Tablet landscape (768-1023px) — stack 2-col grids */
+        @media (max-width: 1023px) {
+            .tab-content {
+                padding: 1.25rem 1.25rem !important;
+            }
+            .dashboard-main-layout {
+                grid-template-columns: 1fr !important;
+            }
+            .sched-v2-layout {
+                grid-template-columns: 1fr !important;
+            }
+            .settings-v2-layout {
+                grid-template-columns: 1fr !important;
+            }
+            .settings-v2-nav {
+                position: static !important;
+            }
+            .creator-v4 .creator-v4-layout {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Tablet portrait (768px) — already handled in base responsive */
+
+        /* Small phone (480px and below) */
+        @media (max-width: 480px) {
+            .tab-content {
+                padding: 0.75rem 0.75rem !important;
+            }
         }
 
 
@@ -8415,7 +9865,10 @@
 
                     <div class="card setup-card setup-card-featured">
                         <div class="card-header">
-                            <h3 id="setup-card-title">🚀 Setup Complete</h3>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <span class="setup-head-icon"><i class="fas fa-rocket"></i></span>
+                                <h3 id="setup-card-title">Setup Complete</h3>
+                            </div>
                             <span id="setup-progress-badge" class="setup-badge">0/3 completed</span>
                         </div>
                         <div id="setup-checklist" class="setup-checklist">
@@ -8462,32 +9915,37 @@
 
                     <div class="card usage-card">
                         <div class="card-header usage-head">
-                            <h3>📊 Usage This Month</h3>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <span class="usage-head-icon"><i class="fas fa-chart-pie"></i></span>
+                                <h3>Usage This Month</h3>
+                            </div>
                             <span id="usage-plan-pill" class="usage-plan-pill">Pro Plan</span>
                         </div>
 
-                        <div class="usage-row">
-                            <div class="usage-label-line">
-                                <span class="usage-label">Posts Generated</span>
-                                <span id="usage-posts-value" class="usage-value">0 / 100</span>
+                        <div class="usage-rows-wrap">
+                            <div class="usage-row">
+                                <div class="usage-label-line">
+                                    <span class="usage-label"><i class="fas fa-pen-fancy usage-row-icon"></i> Posts Generated</span>
+                                    <span id="usage-posts-value" class="usage-value">0 / 100</span>
+                                </div>
+                                <div class="usage-meter"><span id="usage-posts-progress" style="width: 0%;"></span></div>
                             </div>
-                            <div class="usage-meter"><span id="usage-posts-progress" style="width: 0%;"></span></div>
-                        </div>
 
-                        <div class="usage-row">
-                            <div class="usage-label-line">
-                                <span class="usage-label">KB Storage</span>
-                                <span id="usage-kb-value" class="usage-value">0 MB / 500 MB</span>
+                            <div class="usage-row">
+                                <div class="usage-label-line">
+                                    <span class="usage-label"><i class="fas fa-database usage-row-icon"></i> KB Storage</span>
+                                    <span id="usage-kb-value" class="usage-value">0 MB / 500 MB</span>
+                                </div>
+                                <div class="usage-meter"><span id="usage-kb-progress" style="width: 0%;"></span></div>
                             </div>
-                            <div class="usage-meter"><span id="usage-kb-progress" style="width: 0%;"></span></div>
-                        </div>
 
-                        <div class="usage-row">
-                            <div class="usage-label-line">
-                                <span class="usage-label">Scheduled Posts</span>
-                                <span id="usage-scheduled-value" class="usage-value">0 / 30 queued</span>
+                            <div class="usage-row">
+                                <div class="usage-label-line">
+                                    <span class="usage-label"><i class="fas fa-calendar-check usage-row-icon"></i> Scheduled Posts</span>
+                                    <span id="usage-scheduled-value" class="usage-value">0 / 30 queued</span>
+                                </div>
+                                <div class="usage-meter"><span id="usage-scheduled-progress" style="width: 0%;"></span></div>
                             </div>
-                            <div class="usage-meter"><span id="usage-scheduled-progress" style="width: 0%;"></span></div>
                         </div>
 
                         <div id="usage-free-plan-card" class="setup-kb-stat" style="display:none; margin-top:0.25rem;">
@@ -8991,35 +10449,54 @@
                 <section class="kb4-main-grid">
                     <div class="kb4-upload-card">
                         <div class="kb4-upload-card-head">
-                            <div class="kb4-step-clue">Step 1 · Upload your source files</div>
+                            <div class="kb4-step-clue"><span class="kb4-step-badge">1</span> Upload your source files</div>
                             <h3>Add files to your Database</h3>
-                            <p>PDF or DOCX · max 50 MB each · indexed automatically</p>
+                            <p>Max 50 MB each · auto-indexed on upload</p>
                         </div>
-                        <div class="kb4-upload-drop" onclick="document.getElementById('kb-file')?.click()">
-                            <i class="fas fa-folder-open"></i>
-                            <h4>Drop files here</h4>
-                            <p>or browse your computer</p>
-                            <input type="file" accept=".pdf,.docx,.txt,.md,.csv,.pptx" id="kb-file" onclick="event.stopPropagation();" onchange="const n=this.files?.[0]?.name||'No file selected';const el=document.getElementById('kb-file-name-label');if(el){el.textContent=n;}">
-                            <div class="kb4-file-picker-row" onclick="event.stopPropagation();">
-                                <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('kb-file')?.click()"><i class="fas fa-folder-open"></i> Choose File</button>
-                                <span id="kb-file-name-label">No file selected</span>
+                        <div class="kb4-upload-drop" id="kb-upload-dropzone" onclick="document.getElementById('kb-file')?.click()">
+                            <i class="fas fa-cloud-arrow-up"></i>
+                            <h4>Drag & drop files here</h4>
+                            <p>or click to browse your computer</p>
+                            <input type="file" accept=".pdf,.docx,.txt,.md,.csv,.pptx" id="kb-file" onclick="event.stopPropagation();" onchange="handleKbFileSelect(this)">
+                            <div class="kb-format-chips" onclick="event.stopPropagation();">
+                                <span class="kb-format-chip"><i class="fas fa-file-pdf"></i> PDF</span>
+                                <span class="kb-format-chip"><i class="fas fa-file-word"></i> DOCX</span>
+                                <span class="kb-format-chip"><i class="fas fa-file-lines"></i> TXT</span>
+                                <span class="kb-format-chip"><i class="fas fa-file-code"></i> MD</span>
+                                <span class="kb-format-chip"><i class="fas fa-file-csv"></i> CSV</span>
+                                <span class="kb-format-chip"><i class="fas fa-file-powerpoint"></i> PPTX</span>
                             </div>
                         </div>
+                        <div id="kb-file-preview-container"></div>
                         <div class="kb4-upload-actions" onclick="event.stopPropagation();">
                             <span class="kb4-action-with-help">
-                                <button class="btn btn-primary" onclick="uploadKnowledgeBase()"><i class="fas fa-upload"></i> Click to Upload Selected Document</button>
+                                <button class="btn btn-primary" id="kb-upload-btn" onclick="uploadKnowledgeBase()"><i class="fas fa-upload"></i> Upload & Index</button>
                                 <i class="fas fa-circle-info help-tip" data-tooltip="Uploads the selected file to your database and trains the model for retrieval."></i>
                             </span>
                         </div>
                         <div id="kb-progress" class="kb-progress-wrap" style="display: none;">
-                            <div class="kb-progress-spinner-wrap"><div class="loading-spinner"></div></div>
-                            <p class="text-center text-muted">Indexing in progress...</p>
+                            <div class="kb-upload-progress-wrap">
+                                <div class="kb-upload-progress-label">
+                                    <span><i class="fas fa-spinner fa-spin"></i> <span id="kb-progress-filename">Uploading...</span></span>
+                                    <span id="kb-progress-pct">0%</span>
+                                </div>
+                                <div class="kb-upload-progress-track">
+                                    <div class="kb-upload-progress-fill" id="kb-progress-fill"></div>
+                                </div>
+                                <div class="kb-upload-progress-steps">
+                                    <span class="kb-upload-progress-step active" id="kb-pstep-upload">Uploading</span>
+                                    <span class="kb-upload-progress-step" id="kb-pstep-process">Processing</span>
+                                    <span class="kb-upload-progress-step" id="kb-pstep-index">Indexing</span>
+                                    <span class="kb-upload-progress-step" id="kb-pstep-done">Done</span>
+                                </div>
+                            </div>
                         </div>
+                        <div id="kb-upload-success-container" style="display:none;"></div>
                     </div>
 
                     <div class="kb4-status-card">
                         <div class="kb4-status-head">
-                            <div class="kb4-step-clue">Step 2 · Verify training status</div>
+                            <div class="kb4-step-clue"><span class="kb4-step-badge">2</span> Verify training status</div>
                             <div class="kb4-status-label">Database Status</div>
                             <h3 id="kb-status">No files indexed yet</h3>
                             <div id="kb-files-ready-banner" class="kb-ready-banner" style="display:none;"></div>
@@ -9048,7 +10525,7 @@
                     </div>
                 </section>
 
-                <div class="card kb-panel kb-files-panel" style="margin-bottom: 1rem;">
+                <div class="card kb-panel kb-files-panel" style="margin-bottom: 1.5rem;">
                     <div class="kb-files-header">
                         <div>
                             <h3 class="kb-files-title">Uploaded Files</h3>
@@ -11198,8 +12675,11 @@
 
         const allConfigured = steps.every(step => step.done);
         if (allConfigured) {
-            title.textContent = '📚 Database Summary';
+            title.textContent = 'Database Summary';
             badge.textContent = 'Ready to Post';
+            /* Switch header icon to database icon */
+            const headIcon = document.querySelector('.setup-head-icon i');
+            if (headIcon) { headIcon.className = 'fas fa-database'; }
             container.innerHTML = `
                 <div class="setup-kb-grid">
                     <div class="setup-kb-stat">
@@ -11220,7 +12700,7 @@
         }
 
         const completed = steps.filter(step => step.done).length;
-        title.textContent = '🚀 Setup Complete';
+        title.textContent = 'Setup Progress';
         badge.textContent = `${completed}/3 completed`;
 
         container.innerHTML = steps.map(step => `
@@ -14407,13 +15887,22 @@
         }
 
         if (!allFiles.length) {
-            listEl.innerHTML = '<div class="kb-empty">No uploaded files yet</div>';
+            listEl.innerHTML = `<div class="kb-empty-rich">
+                <div class="kb-empty-rich-icon"><i class="fas fa-folder-open"></i></div>
+                <h4>No files uploaded yet</h4>
+                <p>Upload your first document to start building your knowledge base for AI-powered post generation.</p>
+                <button class="btn btn-primary btn-sm" onclick="document.getElementById('kb-file')?.click()"><i class="fas fa-upload"></i> Upload Your First File</button>
+            </div>`;
             return;
         }
 
         const files = getFilteredKbUploadedFiles();
         if (!files.length) {
-            listEl.innerHTML = '<div class="kb-empty">No files match your filters</div>';
+            listEl.innerHTML = `<div class="kb-empty-rich">
+                <div class="kb-empty-rich-icon"><i class="fas fa-search"></i></div>
+                <h4>No files match your filters</h4>
+                <p>Try adjusting your search or filter criteria.</p>
+            </div>`;
             return;
         }
 
@@ -14450,7 +15939,7 @@
                             <div class="kb4-chunk-value">${chunkCount}</div>
                             <div class="kb4-chunk-label">chunks</div>
                         </div>
-                        <button class="btn btn-danger btn-sm kb-file-delete-btn" onclick="deleteKnowledgeBaseFile(decodeURIComponent('${encodedName}'))">
+                        <button class="btn btn-danger btn-sm kb-file-delete-btn" onclick="event.stopPropagation(); showKbInlineDeleteConfirm(this, decodeURIComponent('${encodedName}'))">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -14560,16 +16049,16 @@
             }
 
             if (statusFilesEl) {
-                statusFilesEl.textContent = String(totalFiles || 0);
+                animateKbStatCountUp('kb-status-files', totalFiles || 0);
             }
             if (statusFilesMetaEl) {
                 statusFilesMetaEl.textContent = `PDF ${pdfCount || 0} / DOCX ${docxCount || 0}`;
             }
             if (statusChunksEl) {
-                statusChunksEl.textContent = String(chunks || 0);
+                animateKbStatCountUp('kb-status-chunks', chunks || 0);
             }
             if (statusTrainedEl) {
-                statusTrainedEl.textContent = String(trainedFiles || 0);
+                animateKbStatCountUp('kb-status-trained', trainedFiles || 0);
             }
             if (statusQueueEl) {
                 statusQueueEl.textContent = `Queue: ${queueWarning ? 'Attention' : 'Healthy'} · ${statusLabel}`;
@@ -16200,15 +17689,304 @@
         applyPostHistoryFilters();
     }
 
-    function deleteKnowledgeBaseFile(filename) {
-        if (!filename) {
+    /* ═══ DATABASE TAB — UX ENHANCEMENTS ═══ */
+
+    // --- Drag & Drop ---
+    function initKbDragDrop() {
+        const dropzone = document.getElementById('kb-upload-dropzone');
+        if (!dropzone) return;
+        let dragCounter = 0;
+
+        dropzone.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounter++;
+            dropzone.classList.add('drag-active');
+        });
+
+        dropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        dropzone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounter--;
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                dropzone.classList.remove('drag-active');
+            }
+        });
+
+        dropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounter = 0;
+            dropzone.classList.remove('drag-active');
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+                const fileInput = document.getElementById('kb-file');
+                if (fileInput) {
+                    fileInput.files = files;
+                    handleKbFileSelect(fileInput);
+                }
+            }
+        });
+    }
+
+    // Init drag-drop when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initKbDragDrop, 500);
+    });
+
+    // --- File Select Preview ---
+    function handleKbFileSelect(input) {
+        const file = input.files?.[0];
+        const container = document.getElementById('kb-file-preview-container');
+        const successContainer = document.getElementById('kb-upload-success-container');
+        if (successContainer) successContainer.style.display = 'none';
+
+        if (!file || !container) {
+            if (container) container.innerHTML = '';
             return;
         }
 
-        if (!confirm(`Delete ${filename}? This cannot be undone.`)) {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const iconMap = {
+            pdf: 'fa-file-pdf', docx: 'fa-file-word', doc: 'fa-file-word',
+            txt: 'fa-file-lines', md: 'fa-file-code', csv: 'fa-file-csv',
+            pptx: 'fa-file-powerpoint', ppt: 'fa-file-powerpoint'
+        };
+        const iconClass = iconMap[ext] || 'fa-file';
+        const typeClass = ext || 'txt';
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+
+        container.innerHTML = `
+            <div class="kb-file-preview">
+                <div class="kb-file-preview-icon ${typeClass}">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <div class="kb-file-preview-info">
+                    <div class="kb-file-preview-name">${escapeHtml(file.name)}</div>
+                    <div class="kb-file-preview-meta">
+                        <span>${ext.toUpperCase()}</span>
+                        <span>·</span>
+                        <span>${sizeMB} MB</span>
+                    </div>
+                </div>
+                <div class="kb-file-preview-remove" onclick="clearKbFileSelection()" title="Remove selected file">
+                    <i class="fas fa-xmark"></i>
+                </div>
+            </div>
+        `;
+    }
+
+    function clearKbFileSelection() {
+        const fileInput = document.getElementById('kb-file');
+        const container = document.getElementById('kb-file-preview-container');
+        if (fileInput) fileInput.value = '';
+        if (container) container.innerHTML = '';
+    }
+
+    // --- Animated Progress Bar ---
+    function showKbProgress(fileName) {
+        const el = document.getElementById('kb-progress');
+        const fill = document.getElementById('kb-progress-fill');
+        const pct = document.getElementById('kb-progress-pct');
+        const nameEl = document.getElementById('kb-progress-filename');
+        if (!el) return;
+
+        if (nameEl) nameEl.textContent = fileName ? `Uploading ${fileName}` : 'Uploading...';
+        if (fill) fill.style.width = '0%';
+        if (pct) pct.textContent = '0%';
+        el.style.display = 'block';
+
+        // Reset step indicators
+        ['kb-pstep-upload','kb-pstep-process','kb-pstep-index','kb-pstep-done'].forEach(id => {
+            const s = document.getElementById(id);
+            if (s) { s.classList.remove('active','done'); }
+        });
+        const uploadStep = document.getElementById('kb-pstep-upload');
+        if (uploadStep) uploadStep.classList.add('active');
+
+        // Simulate progress phases
+        kbProgressTimer = setInterval(() => {
+            if (!fill) return;
+            const current = parseFloat(fill.style.width) || 0;
+            if (current < 30) {
+                updateKbProgressBar(current + Math.random() * 4 + 1);
+            } else if (current < 60) {
+                updateKbProgressBar(current + Math.random() * 2 + 0.5);
+                setKbProgressStep('process');
+            } else if (current < 85) {
+                updateKbProgressBar(current + Math.random() * 1.5 + 0.3);
+                setKbProgressStep('index');
+            }
+        }, 400);
+    }
+
+    var kbProgressTimer = null;
+
+    function updateKbProgressBar(value) {
+        const fill = document.getElementById('kb-progress-fill');
+        const pct = document.getElementById('kb-progress-pct');
+        const v = Math.min(value, 95);
+        if (fill) fill.style.width = v + '%';
+        if (pct) pct.textContent = Math.round(v) + '%';
+    }
+
+    function setKbProgressStep(step) {
+        const steps = ['upload','process','index','done'];
+        const idx = steps.indexOf(step);
+        steps.forEach((s, i) => {
+            const el = document.getElementById('kb-pstep-' + s);
+            if (!el) return;
+            el.classList.remove('active','done');
+            if (i < idx) el.classList.add('done');
+            else if (i === idx) el.classList.add('active');
+        });
+    }
+
+    function completeKbProgress() {
+        if (kbProgressTimer) { clearInterval(kbProgressTimer); kbProgressTimer = null; }
+        updateKbProgressBar(100);
+        setKbProgressStep('done');
+        const pct = document.getElementById('kb-progress-pct');
+        if (pct) pct.textContent = '100%';
+        setTimeout(() => {
+            const el = document.getElementById('kb-progress');
+            if (el) el.style.display = 'none';
+        }, 800);
+    }
+
+    function hideKbProgress() {
+        if (kbProgressTimer) { clearInterval(kbProgressTimer); kbProgressTimer = null; }
+        const el = document.getElementById('kb-progress');
+        if (el) el.style.display = 'none';
+    }
+
+    // --- Upload Success Celebration ---
+    function showKbUploadSuccess(fileName) {
+        const container = document.getElementById('kb-upload-success-container');
+        if (!container) return;
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div class="kb-upload-success">
+                <div class="kb-upload-success-icon"><i class="fas fa-check"></i></div>
+                <div class="kb-upload-success-text">Upload Successful!</div>
+                <div class="kb-upload-success-sub">${escapeHtml(fileName || 'File')} is now being indexed</div>
+            </div>
+        `;
+        setTimeout(() => {
+            container.style.display = 'none';
+            container.innerHTML = '';
+        }, 4000);
+    }
+
+    // --- Stat CountUp Animation ---
+    function animateKbStatCountUp(elementId, targetValue) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const target = parseInt(targetValue) || 0;
+        const current = parseInt(el.textContent) || 0;
+        if (current === target) return;
+
+        const duration = 600;
+        const start = performance.now();
+        el.classList.add('counting');
+
+        function tick(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            const val = Math.round(current + (target - current) * eased);
+            el.textContent = val;
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                el.textContent = target;
+                el.classList.remove('counting');
+            }
+        }
+        requestAnimationFrame(tick);
+    }
+
+    // --- Inline Delete Confirm (replaces native confirm) ---
+    function showKbInlineDeleteConfirm(btnEl, filename) {
+        if (!btnEl || !filename) return;
+        const parent = btnEl.parentElement;
+        if (!parent) return;
+
+        // Save original content
+        const originalHTML = btnEl.outerHTML;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'kb-inline-confirm';
+        wrapper.innerHTML = `
+            <span>Delete?</span>
+            <button class="btn-confirm-yes" onclick="confirmKbDeleteFile(this, '${encodeURIComponent(filename)}')">Yes</button>
+            <button class="btn-confirm-no" onclick="cancelKbDeleteConfirm(this)">No</button>
+        `;
+        wrapper.dataset.originalHtml = originalHTML;
+        btnEl.replaceWith(wrapper);
+
+        // Auto-cancel after 5 seconds
+        setTimeout(() => {
+            if (wrapper.parentElement) {
+                cancelKbDeleteConfirm(wrapper.querySelector('.btn-confirm-no'));
+            }
+        }, 5000);
+    }
+
+    function confirmKbDeleteFile(btnEl, encodedFilename) {
+        const filename = decodeURIComponent(encodedFilename);
+        const wrapper = btnEl.closest('.kb-inline-confirm');
+        if (wrapper) {
+            wrapper.innerHTML = '<span style="color:#a5b4fc;font-size:0.72rem;"><i class="fas fa-spinner fa-spin"></i> Deleting...</span>';
+        }
+        // Actually delete
+        authFetch('/api/delete-knowledge-base-file', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ filename })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', data.message || 'File deleted', 'fas fa-check');
+                refreshKnowledgeBaseStatus();
+                refreshKnowledgeBaseFiles();
+            } else {
+                showToast('error', data.message || 'Delete failed', 'fas fa-exclamation-circle');
+                refreshKnowledgeBaseFiles(); // re-render to restore button
+            }
+        })
+        .catch(e => {
+            showToast('error', e.message || 'Delete failed', 'fas fa-exclamation-circle');
+            refreshKnowledgeBaseFiles();
+        });
+    }
+
+    function cancelKbDeleteConfirm(btnEl) {
+        const wrapper = btnEl?.closest('.kb-inline-confirm');
+        if (!wrapper) return;
+        const originalHTML = wrapper.dataset.originalHtml;
+        if (originalHTML) {
+            const temp = document.createElement('div');
+            temp.innerHTML = originalHTML;
+            wrapper.replaceWith(temp.firstElementChild);
+        }
+    }
+
+    function deleteKnowledgeBaseFile(filename, btnEl) {
+        if (!filename) return;
+        // If called from inline confirm system, do direct delete
+        // If called from button click, trigger inline confirm
+        if (btnEl) {
+            showKbInlineDeleteConfirm(btnEl, filename);
             return;
         }
-
+        // Legacy fallback: direct delete with native confirm
+        if (!confirm(`Delete ${filename}? This cannot be undone.`)) return;
         authFetch('/api/delete-knowledge-base-file', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -16230,14 +18008,16 @@
     function uploadKnowledgeBase() {
         const file = document.getElementById('kb-file').files[0];
         if (!file) {
-            showToast('error', 'Select one file, then click Upload File (Auto-Index).', 'fas fa-exclamation-circle');
+            showToast('error', 'Select a file first, then click Upload & Index.', 'fas fa-exclamation-circle');
             return;
         }
         
         const formData = new FormData();
         formData.append('files', file);
+        const fileName = file.name;
         
-        document.getElementById('kb-progress').style.display = 'block';
+        // Show animated progress bar
+        showKbProgress(fileName);
         
         const uploadHeaders = {};
         const token = localStorage.getItem('access_token');
@@ -16252,14 +18032,16 @@
         })
         .then(r => r.json())
         .then(data => {
-            document.getElementById('kb-progress').style.display = 'none';
+            completeKbProgress();
             if (data.success) {
+                // Clear file selection and show success
+                clearKbFileSelection();
+                showKbUploadSuccess(fileName);
                 if (data.training_queued === false) {
-                    showToast('warning', data.message || 'File uploaded, but auto-index did not start. Click Reindex All Files (Advanced).', 'fas fa-exclamation-triangle');
+                    showToast('warning', data.message || 'File uploaded, but auto-index did not start. Click Train Your Database Again.', 'fas fa-exclamation-triangle');
                 } else {
-                    showToast('success', data.message || 'File uploaded. Auto-index started for this file.', 'fas fa-check');
+                    showToast('success', data.message || 'File uploaded & indexing started!', 'fas fa-check');
                 }
-                document.getElementById('kb-file').value = '';
                 refreshKnowledgeBaseStatus();
                 refreshKnowledgeBaseFiles();
             } else {
@@ -16267,7 +18049,7 @@
             }
         })
         .catch(e => {
-            document.getElementById('kb-progress').style.display = 'none';
+            hideKbProgress();
             showToast('error', e.message, 'fas fa-exclamation-circle');
         });
     }
@@ -16300,8 +18082,26 @@
     }
 
     function trainKnowledgeBase() {
-        if (!confirm('Rebuild all indexed files now? Use this after multiple updates/deletes.')) {
+        // Use showToast-based confirm instead of native confirm
+        const trainBtn = document.querySelector('.kb-train-btn');
+        if (trainBtn && !trainBtn.dataset.confirmed) {
+            trainBtn.dataset.confirmed = 'pending';
+            const origHTML = trainBtn.innerHTML;
+            trainBtn.innerHTML = '<i class="fas fa-question-circle"></i> Confirm Rebuild?';
+            trainBtn.style.background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)';
+            setTimeout(() => {
+                if (trainBtn.dataset.confirmed === 'pending') {
+                    trainBtn.innerHTML = origHTML;
+                    trainBtn.style.background = '';
+                    delete trainBtn.dataset.confirmed;
+                }
+            }, 3500);
             return;
+        }
+        if (trainBtn) {
+            delete trainBtn.dataset.confirmed;
+            trainBtn.innerHTML = '<i class="fas fa-arrows-rotate fa-spin"></i> Rebuilding...';
+            trainBtn.style.background = '';
         }
 
         document.getElementById('kb-progress').style.display = 'block';
@@ -16312,6 +18112,8 @@
         .then(r => parseJsonResponse(r))
         .then(data => {
             document.getElementById('kb-progress').style.display = 'none';
+            const tb = document.querySelector('.kb-train-btn');
+            if (tb) tb.innerHTML = '<i class="fas fa-arrows-rotate"></i> Train Your Database Again';
             if (data.success) {
                 showToast('success', data.message || 'Reindex started for all files', 'fas fa-check');
                 refreshKnowledgeBaseStatus();
@@ -16326,6 +18128,8 @@
         })
         .catch(e => {
             document.getElementById('kb-progress').style.display = 'none';
+            const tb = document.querySelector('.kb-train-btn');
+            if (tb) tb.innerHTML = '<i class="fas fa-arrows-rotate"></i> Train Your Database Again';
             showToast('error', e.message || 'Training failed', 'fas fa-exclamation-circle');
         });
     }
