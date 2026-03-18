@@ -8736,12 +8736,20 @@
             gap: 0.15rem !important;
         }
         .kb-v4 .kb4-status-label {
-            color: rgba(165,180,252,0.7) !important;
+            color: #e0e7ff !important;
             font-weight: 800 !important;
-            letter-spacing: 0.07em !important;
-            font-size: 0.68rem !important;
-            text-transform: uppercase !important;
-            margin-top: 0.2rem !important;
+            letter-spacing: -0.01em !important;
+            font-size: 1.05rem !important;
+            margin-top: 0.15rem !important;
+            text-transform: none !important;
+        }
+        .kb-v4 .kb4-status-head-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            margin-top: 0.1rem !important;
+            gap: 0.5rem !important;
         }
         .kb-v4 .kb4-status-head #kb-status {
             color: #e0e7ff !important;
@@ -8752,7 +8760,9 @@
             line-height: 1.3 !important;
         }
         .kb-v4 .kb4-status-head .kb-ready-banner {
-            margin-top: 0.15rem !important;
+            margin-top: 0 !important;
+            margin-left: auto !important;
+            flex-shrink: 0 !important;
         }
         .kb-v4 .kb4-status-updated,
         .kb-v4 .kb4-status-head #kb-last-updated {
@@ -8817,8 +8827,9 @@
             border-color: rgba(16,185,129,0.25) !important;
             background: rgba(16,185,129,0.08) !important;
             color: #6ee7b7 !important;
-            padding: 0.25rem 0.65rem !important;
-            font-size: 0.76rem !important;
+            padding: 0.2rem 0.55rem !important;
+            font-size: 0.68rem !important;
+            font-weight: 600 !important;
             border-radius: 999px !important;
         }
 
@@ -11027,11 +11038,12 @@
 
                     <div class="kb4-status-card">
                         <div class="kb4-status-head">
-                            <div class="kb4-step-clue"><span class="kb4-step-badge">2</span> Verify training status</div>
-                            <div class="kb4-status-label">Database Status</div>
-                            <h3 id="kb-status">No files indexed yet</h3>
-                            <div id="kb-files-ready-banner" class="kb-ready-banner" style="display:none;"></div>
-                            <div id="kb-last-updated" class="kb4-status-updated">Last updated: just now</div>
+                            <div class="kb4-step-clue"><span class="kb4-step-badge">2</span> Verify Database Status</div>
+                            <div class="kb4-status-label" id="kb-status">Database Trained</div>
+                            <div class="kb4-status-head-row">
+                                <div id="kb-last-updated" class="kb4-status-updated">Last updated: just now</div>
+                                <div id="kb-files-ready-banner" class="kb-ready-banner" style="display:none;"></div>
+                            </div>
                         </div>
                         <div class="kb4-status-metrics">
                             <div class="kb4-stat kb4-stat-blue">
@@ -16561,7 +16573,7 @@
 
             const statusHeading = trainingInProgress
                 ? 'Indexing in progress'
-                : (trained ? 'Training Complete' : (trainingStatus === 'failed' ? 'Indexing Failed' : 'Training Required'));
+                : (trained ? 'Database Trained' : (trainingStatus === 'failed' ? 'Indexing Failed' : 'Training Required'));
 
             kbStatusEl.textContent = statusHeading;
 
