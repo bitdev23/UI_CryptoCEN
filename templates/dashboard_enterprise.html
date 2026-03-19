@@ -69,11 +69,11 @@
         .app-container {
             min-height: 100vh;
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 280px minmax(0, 1fr);
             transition: grid-template-columns 0.3s ease;
         }
         .app-container.sidebar-collapsed {
-            grid-template-columns: 88px 1fr;
+            grid-template-columns: 88px minmax(0, 1fr);
         }
         /* SIDEBAR */
         .sidebar {
@@ -302,6 +302,8 @@
         .content-area {
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
         }
         .header {
             background: rgba(255, 255, 255, 0.92);
@@ -501,6 +503,7 @@
         .main-content {
             flex: 1;
             padding: 0;
+            overflow-x: hidden;
             overflow-y: auto;
             min-width: 0;
         }
@@ -3025,7 +3028,7 @@
                 margin-left: 0;
             }
             .app-container {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .sidebar {
                 position: fixed;
@@ -5652,6 +5655,8 @@
             --kb-border-soft: rgba(102, 126, 234, 0.30);
             font-size: 0.96rem;
             line-height: 1.45;
+            overflow-x: hidden;
+            min-width: 0;
         }
         .kb-v4 .kb4-hero {
             background: linear-gradient(135deg, var(--kb-sidebar-start) 0%, var(--kb-sidebar-end) 100%);
@@ -5857,7 +5862,7 @@
 
         .kb-v4 .kb4-main-grid {
             display: grid;
-            grid-template-columns: 1.06fr 1fr;
+            grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr);
             gap: 0.9rem;
             margin-bottom: 1rem;
         }
@@ -6824,13 +6829,13 @@
                 align-items: flex-start;
             }
             .kb-v4 .kb4-main-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .kb-overview-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
             .kb-main-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .kb-files-toolbar {
                 grid-template-columns: 1fr;
@@ -6966,6 +6971,7 @@
             max-width: 100% !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            overflow-x: hidden !important;
         }
 
         /* ── Cards ──────────────────────────────────────────────────── */
@@ -7146,16 +7152,16 @@
         }
         .ptool-grid-2 {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 1.5rem;
         }
-        @media (max-width: 900px) { .ptool-grid-2 { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .ptool-grid-2 { grid-template-columns: minmax(0, 1fr); } }
         .ptool-grid-3 {
             display: grid;
-            grid-template-columns: repeat(3,1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 1.25rem;
         }
-        @media (max-width: 1024px) { .ptool-grid-3 { grid-template-columns: 1fr; } }
+        @media (max-width: 1024px) { .ptool-grid-3 { grid-template-columns: minmax(0, 1fr); } }
 
         /* ═══ STYLE CLONE — PREMIUM V3 ═══ */
 
@@ -7183,32 +7189,33 @@
         /* --- Hero Banner --- */
         .sc-hero {
             display: flex; align-items: center; justify-content: space-between;
-            background: linear-gradient(135deg, #0f0a2e 0%, #1e1b4b 30%, #312e81 60%, #4c1d95 100%);
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
             border-radius: 20px; padding: 2rem 2.25rem;
             margin: 0 0 1.5rem; gap: 1.25rem; flex-wrap: wrap;
             position: relative; overflow: hidden;
-            box-shadow: 0 4px 24px rgba(30,27,75,0.35), 0 0 0 1px rgba(139,92,246,0.15);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
         }
         .sc-hero::before {
-            content: ''; position: absolute; inset: 0;
-            background:
-              radial-gradient(ellipse 600px 400px at 10% 80%, rgba(99,102,241,0.18) 0%, transparent 70%),
-              radial-gradient(ellipse 500px 300px at 90% 20%, rgba(167,139,250,0.22) 0%, transparent 60%),
-              radial-gradient(circle at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 40%);
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
             pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
         }
         .sc-hero::after {
-            content: ''; position: absolute; top: -40%; right: -10%; width: 340px; height: 340px;
-            border-radius: 50%; border: 1px solid rgba(255,255,255,0.04);
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
             pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
         }
         .sc-hero-left { display: flex; align-items: center; gap: 1.1rem; position: relative; z-index: 1; flex: 1 1 280px; min-width: 0; }
         .sc-hero-icon {
             width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(16px);
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.35rem; color: #c4b5fd;
-            border: 1px solid rgba(255,255,255,0.12);
+            font-size: 1.35rem; color: #a78bfa;
             box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             animation: scFloat 4s ease-in-out infinite;
         }
@@ -7504,44 +7511,194 @@
             .sc-empty-features { grid-template-columns: 1fr; }
         }
 
-        /* ═══ REPURPOSE ═══ */
+        /* ═══ REPURPOSE — PREMIUM V2 ═══ */
+        /* Hero */
+        .rp-hero {
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; gap: 1.25rem; flex-wrap: wrap;
+            position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+        }
+        .rp-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .rp-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .rp-hero-left { display: flex; align-items: center; gap: 1rem; position: relative; z-index: 1; flex: 1 1 280px; min-width: 0; }
+        .rp-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: rgba(255,255,255,0.08); backdrop-filter: blur(16px);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: #a5b4fc;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: scFloat 4s ease-in-out infinite;
+        }
+        .rp-hero-title { font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 0.15rem; letter-spacing: -0.01em; }
+        .rp-hero-desc { font-size: 0.78rem; color: rgba(255,255,255,0.5); max-width: 380px; line-height: 1.5; }
+        .rp-hero-badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            background: rgba(99,102,241,0.25); border: 1px solid rgba(99,102,241,0.3);
+            color: #a5b4fc; font-size: 0.65rem; font-weight: 800;
+            padding: 0.18rem 0.6rem; border-radius: 100px;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            margin-top: 0.4rem; display: inline-flex;
+        }
+
+        /* Source card */
+        .rp-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            animation: dbFadeSlideUp 0.45s ease-out 0.1s both;
+        }
+        .rp-card-title {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
         .rp-source-toggle {
-            display: flex; gap: 0.5rem; margin-bottom: 1rem;
+            display: flex; gap: 4px; margin-bottom: 1.25rem;
+            background: var(--card-border); padding: 4px; border-radius: 12px;
         }
         .rp-source-btn {
-            flex: 1; padding: 0.6rem;
-            border: 1.5px solid var(--card-border);
-            background: var(--card-bg); border-radius: var(--radius-sm);
-            font-size: 0.83rem; font-weight: 600; color: var(--text-2);
-            cursor: pointer; transition: all 0.15s;
+            flex: 1; padding: 0.55rem 0.75rem;
+            background: transparent; border: none; border-radius: 9px;
+            font-size: 0.82rem; font-weight: 600; color: var(--text-3);
+            cursor: pointer; transition: all 0.18s;
             display: flex; align-items: center; justify-content: center; gap: 0.4rem;
         }
         .rp-source-btn.active {
-            border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+            background: white; color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .rp-insight-chips {
-            display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0;
+        @media (prefers-color-scheme: dark) {
+            .rp-source-btn.active { background: rgba(99,102,241,0.15); }
         }
+
+        /* Polished input field */
+        .rp-input-field {
+            width: 100%; box-sizing: border-box;
+            background: var(--card-bg); border: 1.5px solid var(--card-border);
+            border-radius: 12px; padding: 0.75rem 1rem;
+            font-size: 0.875rem; font-family: inherit; color: var(--text-1);
+            outline: none; transition: all 0.2s;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .rp-input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12), inset 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .rp-input-field::placeholder { color: var(--text-3); }
+        .rp-input-wrap { position: relative; margin-bottom: 1.25rem; }
+        .rp-input-prefix {
+            position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-3); font-size: 0.85rem; pointer-events: none;
+        }
+        .rp-input-wrap .rp-input-field { padding-left: 2.25rem; }
+
+        /* Form row */
+        .rp-form-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        @media (max-width: 600px) { .rp-form-row { grid-template-columns: 1fr; } }
+        .rp-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.06em;
+            display: block; margin-bottom: 0.35rem;
+        }
+        .rp-select {
+            width: 100%; box-sizing: border-box;
+            background: var(--card-bg); border: 1.5px solid var(--card-border);
+            border-radius: 10px; padding: 0.65rem 0.9rem;
+            font-size: 0.83rem; font-family: inherit; color: var(--text-1);
+            outline: none; cursor: pointer; transition: border-color 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+        }
+        .rp-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+        /* Generate button */
+        .rp-generate-btn {
+            width: 100%; padding: 0.85rem 1.5rem;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; border-radius: 12px;
+            color: #fff; font-size: 0.9rem; font-weight: 700;
+            font-family: inherit; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+            letter-spacing: 0.01em;
+        }
+        .rp-generate-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(99,102,241,0.45);
+        }
+        .rp-generate-btn:active { transform: none; }
+        .rp-generate-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        /* Progress steps */
+        .rp-progress { display: none; margin: 1rem 0 0; }
+        .rp-progress-steps {
+            display: flex; border-radius: 10px; overflow: hidden;
+            border: 1px solid var(--card-border);
+        }
+        .rp-step {
+            flex: 1; text-align: center; padding: 0.5rem 0.4rem;
+            font-size: 0.73rem; font-weight: 600; color: var(--text-3);
+            background: var(--card-bg); transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+        }
+        .rp-step + .rp-step { border-left: 1px solid var(--card-border); }
+        .rp-step.active { color: #6366f1; background: rgba(99,102,241,0.07); }
+        .rp-step.done { color: #059669; background: rgba(5,150,105,0.07); }
+
+        /* Insight chips */
+        .rp-insight-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
         .rp-insight-chip {
-            background: var(--accent-light); border: 1px solid rgba(99,102,241,0.2);
-            color: var(--accent); font-size: 0.78rem; font-weight: 500;
-            padding: 0.3rem 0.75rem; border-radius: 100px;
+            background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+            color: var(--accent); font-size: 0.76rem; font-weight: 500;
+            padding: 0.28rem 0.7rem; border-radius: 100px;
         }
+
+        /* Variant cards */
         .rp-variant-card {
             background: var(--card-bg); border: 1px solid var(--card-border);
-            border-radius: var(--radius-lg); padding: 1.25rem 1.35rem;
-            position: relative; transition: box-shadow 0.15s;
+            border-radius: 16px; padding: 1.25rem 1.35rem;
+            position: relative; transition: box-shadow 0.2s;
+            animation: dbFadeSlideUp 0.4s ease-out both;
         }
-        .rp-variant-card:hover { box-shadow: var(--card-shadow-hover); }
+        .rp-variant-card:hover { box-shadow: 0 8px 28px rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25); }
+        .rp-variant-num {
+            width: 22px; height: 22px; border-radius: 6px;
+            background: linear-gradient(135deg,#6366f1,#8b5cf6);
+            color: #fff; font-size: 0.7rem; font-weight: 800;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-right: 0.5rem; flex-shrink: 0;
+        }
         .rp-variant-angle {
             font-size: 0.68rem; font-weight: 700; color: var(--accent);
             text-transform: uppercase; letter-spacing: 0.07em;
-            margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.35rem;
+            margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;
         }
         .rp-variant-angle::before {
             content: ''; width: 24px; height: 2px;
-            background: linear-gradient(90deg,#6366f1,#8b5cf6);
-            border-radius: 2px;
+            background: linear-gradient(90deg,#6366f1,#8b5cf6); border-radius: 2px;
         }
         .rp-variant-text {
             font-size: 0.875rem; color: var(--text-1); line-height: 1.65;
@@ -7553,82 +7710,414 @@
             font-size: 0.72rem; font-weight: 600;
             padding: 0.2rem 0.5rem; border-radius: 100px;
         }
-        .rp-variant-actions { display: flex; gap: 0.5rem; }
-        .rp-progress {
-            display: none; margin: 1rem 0;
-        }
-        .rp-progress-steps {
-            display: flex; gap: 0;
-        }
-        .rp-step {
-            flex: 1; text-align: center; padding: 0.6rem 0.5rem 0.5rem;
-            font-size: 0.75rem; font-weight: 600; color: var(--text-3);
-            border-bottom: 2px solid var(--card-border);
-            transition: all 0.3s;
-        }
-        .rp-step.active { color: var(--accent); border-bottom-color: var(--accent); }
-        .rp-step.done { color: #059669; border-bottom-color: #059669; }
+        .rp-variant-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .rp-variant-actions .btn { font-size: 0.78rem; }
 
-        /* ═══ BEST TIME ═══ */
+        /* Empty right panel */
+        .rp-empty-panel {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 2.5rem 2rem;
+            text-align: center; animation: dbFadeSlideUp 0.45s ease-out 0.15s both;
+        }
+        .rp-empty-emoji { font-size: 2.75rem; margin-bottom: 0.85rem; }
+        .rp-empty-title { font-size: 1rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.45rem; }
+        .rp-empty-desc { font-size: 0.82rem; color: var(--text-3); line-height: 1.65; max-width: 280px; margin: 0 auto; }
+
+        /* Insights card */
+        .rp-insights-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 16px; padding: 1.1rem 1.25rem;
+            margin-bottom: 1rem; animation: dbFadeSlideUp 0.4s ease-out both;
+        }
+        .rp-insights-card-title {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem;
+        }
+        .rp-variants-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem;
+        }
+
+        /* ═══ BEST TIME — PREMIUM V2 ═══ */
+        /* Hero */
+        .bt-hero {
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; gap: 1.25rem; flex-wrap: wrap;
+            position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+        }
+        .bt-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .bt-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .bt-hero-left { display: flex; align-items: center; gap: 1rem; position: relative; z-index: 1; flex: 1 1 280px; min-width: 0; }
+        .bt-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: #a78bfa;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: scFloat 4.5s ease-in-out infinite;
+        }
+        .bt-hero-title { font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 0.15rem; letter-spacing: -0.01em; }
+        .bt-hero-desc { font-size: 0.78rem; color: rgba(255,255,255,0.55); max-width: 380px; line-height: 1.5; }
+        .bt-hero-badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            background: rgba(14,165,233,0.2); border: 1px solid rgba(14,165,233,0.3);
+            color: #7dd3fc; font-size: 0.65rem; font-weight: 800;
+            padding: 0.18rem 0.6rem; border-radius: 100px;
+            text-transform: uppercase; letter-spacing: 0.07em; margin-top: 0.4rem;
+        }
+
+        /* Info note */
+        .bt-note {
+            display: flex; align-items: center; gap: 0.6rem;
+            background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.14);
+            border-radius: 12px; padding: 0.7rem 1rem;
+            font-size: 0.8rem; color: var(--text-2);
+            margin-bottom: 1.5rem;
+            animation: dbFadeSlideUp 0.4s ease-out 0.05s both;
+        }
+        .bt-note i { color: var(--accent); flex-shrink: 0; }
+
+        /* Cards */
+        .bt-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            animation: dbFadeSlideUp 0.45s ease-out 0.1s both;
+        }
+        .bt-card + .bt-card { margin-top: 1.25rem; }
+        .bt-section-title {
+            font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
+
+        /* Day grid */
         .bt-heatmap-wrap { overflow-x: auto; }
         .bt-day-grid {
             display: grid; grid-template-columns: repeat(7,1fr); gap: 8px;
             margin-bottom: 1.25rem;
         }
         .bt-day-cell {
-            border-radius: var(--radius-sm);
-            padding: 0.75rem 0.5rem;
-            text-align: center;
-            transition: transform 0.15s;
+            border-radius: 12px; padding: 0.75rem 0.5rem;
+            text-align: center; transition: transform 0.15s; cursor: default;
         }
-        .bt-day-cell:hover { transform: scale(1.04); }
-        .bt-day-name { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
-        .bt-day-score { font-size: 1.3rem; font-weight: 800; }
+        .bt-day-cell:hover { transform: scale(1.05); }
+        .bt-day-name { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+        .bt-day-score { font-size: 1.25rem; font-weight: 800; }
+
+        /* Hour bars */
         .bt-hour-row {
-            display: flex; align-items: center; gap: 0.5rem;
-            margin-bottom: 0.45rem;
+            display: flex; align-items: center; gap: 0.65rem;
+            margin-bottom: 0.55rem;
         }
         .bt-hour-label {
-            width: 72px; flex-shrink: 0;
+            width: 70px; flex-shrink: 0;
             font-size: 0.72rem; font-weight: 600; color: var(--text-3);
             text-align: right;
         }
-        .bt-hour-bar-wrap { flex: 1; height: 20px; background: #f1f3f7; border-radius: 100px; overflow: hidden; }
-        .bt-hour-bar { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
-        .bt-hour-score-val { width: 34px; font-size: 0.72rem; font-weight: 700; color: var(--text-3); text-align: right; }
+        .bt-hour-bar-wrap { flex: 1; height: 22px; background: rgba(99,102,241,0.06); border-radius: 100px; overflow: hidden; }
+        .bt-hour-bar { height: 100%; border-radius: 100px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+        .bt-hour-score-val { width: 32px; font-size: 0.72rem; font-weight: 700; color: var(--text-3); text-align: right; }
+
+        /* Legend */
+        .bt-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.25rem; }
+        .bt-legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--text-3); }
+        .bt-legend-dot { width: 12px; height: 12px; border-radius: 4px; }
+
+        /* Slot cards */
         .bt-slot-card {
             background: var(--card-bg); border: 1px solid var(--card-border);
-            border-radius: var(--radius-lg); padding: 1.1rem 1.25rem;
+            border-radius: 14px; padding: 1rem 1.1rem;
             display: flex; align-items: flex-start; gap: 1rem;
+            transition: box-shadow 0.2s;
         }
+        .bt-slot-card:hover { box-shadow: 0 6px 20px rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.2); }
         .bt-slot-rank {
-            width: 36px; height: 36px; border-radius: 50%;
+            width: 34px; height: 34px; border-radius: 10px;
             background: linear-gradient(135deg,#6366f1,#8b5cf6);
-            color: #fff; font-weight: 800; font-size: 0.9rem;
+            color: #fff; font-weight: 800; font-size: 0.85rem;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
         .bt-slot-rank.rank-2 { background: linear-gradient(135deg,#0ea5e9,#6366f1); }
         .bt-slot-rank.rank-3 { background: linear-gradient(135deg,#10b981,#0ea5e9); }
-        .bt-slot-day { font-size: 1rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.15rem; }
-        .bt-slot-time { font-size: 0.82rem; color: var(--accent); font-weight: 600; margin-bottom: 0.25rem; }
-        .bt-slot-reason { font-size: 0.78rem; color: var(--text-3); }
-        .bt-note {
-            background: #f8f9ff; border: 1px solid rgba(99,102,241,0.15);
-            border-radius: var(--radius-md); padding: 0.7rem 1rem;
-            font-size: 0.78rem; color: var(--text-2);
-            display: flex; align-items: center; gap: 0.5rem;
-            margin-bottom: 1.25rem;
+        .bt-slot-day { font-size: 0.95rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.1rem; }
+        .bt-slot-time { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-bottom: 0.2rem; }
+        .bt-slot-reason { font-size: 0.76rem; color: var(--text-3); line-height: 1.5; }
+
+        /* Schedule button */
+        .bt-schedule-btn {
+            width: 100%; padding: 0.85rem 1.5rem;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            border: none; border-radius: 12px;
+            color: #fff; font-size: 0.88rem; font-weight: 700;
+            font-family: inherit; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(14,165,233,0.3);
         }
-        .bt-note i { color: var(--accent); }
-        .bt-section-title {
-            font-size: 0.78rem; font-weight: 700; color: var(--text-3);
-            text-transform: uppercase; letter-spacing: 0.07em;
-            margin-bottom: 0.75rem;
+        .bt-schedule-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(14,165,233,0.4); }
+        .bt-schedule-btn:active { transform: none; }
+
+        /* ═══ SCHEDULER TAB ═════════════════════════════════════════ */
+        .sc2-hero {
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            flex-wrap: wrap;
         }
-        .bt-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-        .bt-legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--text-3); }
-        .bt-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+        .sc2-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .sc2-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .sc2-hero-left { display: flex; align-items: center; gap: 1.1rem; position: relative; z-index: 1; }
+        .sc2-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #a78bfa; font-size: 1.3rem;
+            animation: scFloat 4s ease-in-out infinite;
+        }
+        .sc2-hero-title { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+        .sc2-hero-desc { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-top: 0.2rem; }
+        .sc2-hero-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; position: relative; z-index: 1; }
+        .sc2-hero-btn-outline {
+            padding: 0.55rem 1.1rem; border-radius: 10px; font-size: 0.82rem; font-weight: 600;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.75); cursor: pointer; font-family: inherit;
+            display: flex; align-items: center; gap: 0.45rem; transition: all 0.18s;
+        }
+        .sc2-hero-btn-outline:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .sc2-hero-btn-primary {
+            padding: 0.55rem 1.2rem; border-radius: 10px; font-size: 0.82rem; font-weight: 700;
+            background: linear-gradient(135deg, #7c3aed, #6366f1);
+            border: none; color: #fff; cursor: pointer; font-family: inherit;
+            display: flex; align-items: center; gap: 0.45rem; transition: all 0.18s;
+            box-shadow: 0 3px 12px rgba(99,102,241,0.4);
+        }
+        .sc2-hero-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(99,102,241,0.5); }
+        .sc2-stat-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+        @media (max-width: 768px) { .sc2-stat-row { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        .sc2-stat-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 16px; padding: 1rem 1.1rem;
+            display: flex; align-items: center; gap: 0.85rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            transition: box-shadow 0.18s;
+        }
+        .sc2-stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.28); }
+        .sc2-stat-icon {
+            width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        }
+        .sc2-stat-icon.amber { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .sc2-stat-icon.green { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .sc2-stat-icon.blue  { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .sc2-stat-icon.purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .sc2-stat-value { font-size: 1.35rem; font-weight: 700; color: var(--text-1); line-height: 1.1; }
+        .sc2-stat-label { font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        /* ═══ SETTINGS TAB ══════════════════════════════════════════ */
+        .st2-hero {
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+            display: flex; align-items: center; gap: 1.1rem;
+        }
+        .st2-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .st2-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .st2-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #a78bfa; font-size: 1.3rem;
+            animation: scFloat 5s ease-in-out infinite;
+            position: relative; z-index: 1;
+        }
+        .st2-hero-title { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; position: relative; z-index: 1; }
+        .st2-hero-desc { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-top: 0.2rem; position: relative; z-index: 1; }
+
+        /* ═══ POST HISTORY TAB ══════════════════════════════════════ */
+        .ph2-hero {
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .ph2-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .ph2-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .ph2-hero-left { display: flex; align-items: center; gap: 1.1rem; position: relative; z-index: 1; }
+        .ph2-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #a78bfa; font-size: 1.3rem;
+            animation: scFloat 4.5s ease-in-out infinite;
+        }
+        .ph2-hero-title { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+        .ph2-hero-desc { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-top: 0.2rem; }
+        .ph2-hero-actions { position: relative; z-index: 1; }
+        .ph2-export-btn {
+            padding: 0.55rem 1.1rem; border-radius: 10px; font-size: 0.82rem; font-weight: 600;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.75); cursor: pointer; font-family: inherit;
+            display: flex; align-items: center; gap: 0.45rem; transition: all 0.18s;
+        }
+        .ph2-export-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* ═══ LINKEDIN POST TAB ═════════════════════════════════════ */
+        .lip-hero {
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.5rem 2rem;
+            margin-bottom: 1.25rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .lip-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .lip-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .lip-hero-left { display: flex; align-items: center; gap: 1rem; position: relative; z-index: 1; }
+        .lip-hero-icon {
+            width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #a78bfa; font-size: 1.2rem;
+            animation: scFloat 4s ease-in-out infinite;
+        }
+        .lip-hero-title { font-size: 1.18rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+        .lip-hero-desc { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin-top: 0.15rem; }
+        .lip-hero-right { display: flex; align-items: center; gap: 0.75rem; position: relative; z-index: 1; flex-wrap: wrap; }
+        .lip-date-pill {
+            padding: 0.35rem 0.85rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+            background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.25);
+            color: rgba(255,255,255,0.65); font-family: inherit;
+        }
+
+        /* ═══ HELP TAB ══════════════════════════════════════════════ */
+        .hlp-hero {
+            background: linear-gradient(135deg, #0c0a1f 0%, #13103a 30%, #1e1660 60%, #2d2880 100%);
+            border-radius: 20px; padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem; position: relative; overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+            display: flex; align-items: center; gap: 1.1rem;
+        }
+        .hlp-hero::before {
+            content: ''; position: absolute; top: -45%; right: -8%;
+            width: 380px; height: 380px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
+        }
+        .hlp-hero::after {
+            content: ''; position: absolute; bottom: -35%; left: 15%;
+            width: 240px; height: 240px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 68%);
+            pointer-events: none;
+            animation: dbPulseGlow 6s ease-in-out infinite 1.5s;
+        }
+        .hlp-hero-icon {
+            width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
+            border: 1px solid rgba(139,92,246,0.25);
+            display: flex; align-items: center; justify-content: center;
+            color: #a78bfa; font-size: 1.3rem;
+            animation: scFloat 4.5s ease-in-out infinite;
+            position: relative; z-index: 1;
+        }
+        .hlp-hero-title { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: -0.01em; position: relative; z-index: 1; }
+        .hlp-hero-desc { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-top: 0.2rem; position: relative; z-index: 1; }
+        .hlp-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 1.35rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+        .hlp-card + .hlp-card { margin-top: 0; }
+        .hlp-card-title {
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-3);
+            margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .hlp-card-title::before {
+            content: ''; width: 3px; height: 14px; border-radius: 2px;
+            background: #a78bfa; display: block;
+        }
 
         /* ═══ DASHBOARD — PREMIUM V3 ═══════════════════════════════ */
 
@@ -7862,7 +8351,7 @@
             animation: dbFadeSlideUp 0.45s ease-out 0.24s both;
         }
         .dashboard-row-2 > .next-post-card { margin-top: 0 !important; }
-        .dashboard-row-2 > .setup-card-featured { align-self: stretch; }
+        .dashboard-row-2 > .setup-card-featured { align-self: start; }
         .dashboard-row-3 > .quick-actions-card { margin-top: 0 !important; }
         .dashboard-row-3 > .usage-card { margin-top: 0 !important; align-self: start; }
 
@@ -8513,8 +9002,6 @@
         .kb-v4 .dot-purple { background: #a78bfa !important; }
         .kb-v4 .dot-amber { background: #fbbf24 !important; }
 
-        /* --- Main Grid (upload + status) --- */\n        .kb-v4 .kb4-main-grid {\n            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);\n            gap: 1.25rem;\n            margin-bottom: 1.5rem;\n            animation: dbFadeSlideUp 0.45s ease-out 0.08s both;\n            align-items: stretch;\n        }
-
         /* --- Main Grid (upload + status) --- */
         .kb-v4 .kb4-main-grid {
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -8833,7 +9320,467 @@
             border-radius: 999px !important;
         }
 
-        /* --- Uploaded Files Panel (dark premium) --- */
+        /* ═══════════════════════════════════════════
+           CSS Variables for new Uploaded Files + Templates design
+        ═══════════════════════════════════════════ */
+        .kb-v4 {
+            --surface:  rgba(255,255,255,0.035);
+            --surface2: rgba(255,255,255,0.06);
+            --surface3: rgba(255,255,255,0.1);
+            --border:   rgba(165,180,252,0.1);
+            --border-active: rgba(124,92,255,0.35);
+            --text-primary:   #e0e7ff;
+            --text-secondary: #a5b4fc;
+            --text-tertiary:  rgba(165,180,252,0.5);
+            --purple:       #7c5cff;
+            --purple-light: #a78bfa;
+            --purple-dim:   rgba(124,92,255,0.12);
+            --red:    #ff5c7a;
+            --red-dim: rgba(239,68,68,0.12);
+            --green:  #10b981;
+            --blue:   #40a9ff;
+            --amber:       #ffb340;
+            --amber-dim:   rgba(255,179,64,0.12);
+            --font-head: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        }
+
+        /* ═══════════════════════════════════════════
+           UPLOADED FILES — CARD GRID DESIGN
+        ═══════════════════════════════════════════ */
+        .kb-v4 .files-section {
+            margin-bottom: 1.5rem;
+            border: none;
+            border-radius: 20px;
+            background: linear-gradient(160deg, #0e0c28 0%, #131040 45%, #19164e 100%);
+            box-shadow: 0 8px 32px rgba(99,102,241,0.16), 0 0 0 1px rgba(99,102,241,0.1);
+            padding: 1.4rem 1.5rem;
+            position: relative;
+            overflow: clip;
+            color: #ffffff;
+            animation: dbFadeSlideUp 0.45s ease-out 0.14s both;
+            min-width: 0;
+        }
+        .kb-v4 .files-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc, #818cf8);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+            z-index: 2;
+        }
+        .kb-v4 .section-eyebrow {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .kb-v4 .section-eyebrow-left {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .kb-v4 .section-title {
+            font-family: var(--font-head);
+            font-size: 13px; font-weight: 700;
+            letter-spacing: 1.4px; text-transform: uppercase;
+            color: var(--text-tertiary);
+        }
+        .kb-v4 .section-count-pill {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2px 10px; font-size: 11px; font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .kb-v4 .files-toolbar-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 16px;
+        }
+        .kb-v4 .search-wrap { position: relative; flex: 1; }
+        .kb-v4 .search-icon {
+            position: absolute; left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary); pointer-events: none;
+        }
+        .kb-v4 .search-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 9px 14px 9px 38px;
+            color: var(--text-primary); font-size: 13px;
+            font-family: var(--font-body); outline: none;
+            transition: border-color 0.2s;
+        }
+        .kb-v4 .search-input:focus { border-color: var(--purple); }
+        .kb-v4 .search-input::placeholder { color: var(--text-tertiary); }
+        .kb-v4 .filter-tabs {
+            display: flex; gap: 4px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 4px;
+        }
+        .kb-v4 .filter-tab {
+            padding: 5px 12px; border-radius: 7px;
+            font-size: 12px; font-weight: 500;
+            color: var(--text-tertiary); cursor: pointer;
+            transition: all 0.15s; border: none; background: none;
+        }
+        .kb-v4 .filter-tab.active {
+            background: var(--surface3); color: var(--text-primary);
+        }
+        .kb-v4 .filter-tab:hover:not(.active) { color: var(--text-secondary); }
+        .kb-v4 .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(165,180,252,0.25) transparent;
+        }
+        .kb-v4 .files-grid::-webkit-scrollbar { width: 5px; }
+        .kb-v4 .files-grid::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 6px; }
+        .kb-v4 .files-grid::-webkit-scrollbar-thumb { background: rgba(165,180,252,0.25); border-radius: 6px; }
+        .kb-v4 .files-grid::-webkit-scrollbar-thumb:hover { background: rgba(165,180,252,0.4); }
+        .kb-v4 .file-card {
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: 14px;
+            overflow: hidden; transition: all 0.22s;
+            cursor: pointer; position: relative;
+        }
+        .kb-v4 .file-card:hover {
+            border-color: rgba(124,92,255,0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(124,92,255,0.1);
+        }
+        .kb-v4 .file-card-stripe { height: 3px; width: 100%; }
+        .kb-v4 .stripe-pdf  { background: linear-gradient(90deg, #FF5C7A, #FF9060); }
+        .kb-v4 .stripe-docx { background: linear-gradient(90deg, #40A9FF, #7C5CFF); }
+        .kb-v4 .stripe-csv  { background: linear-gradient(90deg, #00E5A0, #40A9FF); }
+        .kb-v4 .file-card-body { padding: 16px 18px; }
+        .kb-v4 .file-card-top {
+            display: flex; align-items: flex-start; gap: 12px;
+            margin-bottom: 14px;
+        }
+        .kb-v4 .file-type-block {
+            width: 42px; height: 48px; border-radius: 8px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            flex-shrink: 0; gap: 2px;
+        }
+        .kb-v4 .file-type-block.pdf {
+            background: linear-gradient(145deg, rgba(255,92,122,0.18), rgba(255,92,122,0.06));
+            border: 1px solid rgba(255,92,122,0.25);
+        }
+        .kb-v4 .file-type-block.docx {
+            background: linear-gradient(145deg, rgba(64,169,255,0.18), rgba(64,169,255,0.06));
+            border: 1px solid rgba(64,169,255,0.25);
+        }
+        .kb-v4 .file-type-ext {
+            font-family: var(--font-head);
+            font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+        }
+        .kb-v4 .file-type-block.pdf  .file-type-ext { color: var(--red); }
+        .kb-v4 .file-type-block.docx .file-type-ext { color: var(--blue); }
+        .kb-v4 .file-type-lines {
+            display: flex; flex-direction: column; gap: 2px; align-items: center;
+        }
+        .kb-v4 .file-type-line {
+            height: 2px; border-radius: 2px; background: currentColor; opacity: 0.4;
+        }
+        .kb-v4 .file-card-meta { flex: 1; min-width: 0; }
+        .kb-v4 .file-card-name {
+            font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 4px;
+            color: var(--text-primary);
+            display: -webkit-box; -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .kb-v4 .file-card-size { font-size: 11px; color: var(--text-tertiary); }
+        .kb-v4 .file-progress-row {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .kb-v4 .file-progress-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
+        .kb-v4 .file-progress-val {
+            font-size: 12px; font-weight: 700;
+            font-family: var(--font-head); color: var(--purple-light);
+        }
+        .kb-v4 .file-progress-bar {
+            height: 4px; background: var(--surface3);
+            border-radius: 4px; overflow: hidden; margin-bottom: 14px;
+        }
+        .kb-v4 .file-progress-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg, var(--purple), var(--purple-light));
+            transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+        }
+        .kb-v4 .file-card-footer {
+            display: flex; align-items: center; gap: 8px;
+            padding-top: 12px; border-top: 1px solid var(--border);
+        }
+        .kb-v4 .status-dot-row { display: flex; align-items: center; gap: 5px; flex: 1; }
+        .kb-v4 .sdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .kb-v4 .sdot-green { background: var(--green); box-shadow: 0 0 5px var(--green); }
+        .kb-v4 .sdot-amber { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+        .kb-v4 .sdot-red { background: var(--red); box-shadow: 0 0 5px var(--red); }
+        .kb-v4 .status-text { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+        .kb-v4 .file-action-btn {
+            width: 28px; height: 28px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.18s;
+            border: 1px solid var(--border); background: var(--surface2);
+            color: var(--text-tertiary); flex-shrink: 0;
+        }
+        .kb-v4 .file-action-btn:hover { border-color: var(--purple); color: var(--purple-light); background: var(--purple-dim); }
+        .kb-v4 .file-action-btn.danger:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+        .kb-v4 .retrain-banner {
+            display: flex; align-items: center; gap: 14px;
+            background: linear-gradient(135deg, rgba(124,92,255,0.08), rgba(176,96,255,0.04));
+            border: 1px solid rgba(124,92,255,0.2);
+            border-radius: 12px; padding: 14px 18px; margin-top: 12px;
+        }
+        .kb-v4 .retrain-icon {
+            width: 36px; height: 36px;
+            background: var(--purple-dim);
+            border: 1px solid var(--border-active); border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; color: var(--purple-light);
+        }
+        .kb-v4 .retrain-text { flex: 1; }
+        .kb-v4 .retrain-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; color: var(--text-primary); }
+        .kb-v4 .retrain-sub { font-size: 11.5px; color: var(--text-tertiary); }
+        .kb-v4 .files-empty-state {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 3rem 1.5rem;
+            border: 1.5px dashed rgba(165,180,252,0.12); border-radius: 14px;
+            text-align: center; gap: 0.6rem;
+        }
+        .kb-v4 .files-empty-state i { font-size: 2rem; color: var(--text-tertiary); }
+        .kb-v4 .files-empty-state h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+        .kb-v4 .files-empty-state p { font-size: 12px; color: var(--text-tertiary); max-width: 340px; }
+        /* Outline + ghost btn overrides for dark context */
+        .kb-v4 .btn.btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-weight: 600;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .kb-v4 .btn.btn-outline:hover {
+            border-color: var(--purple);
+            color: var(--purple-light);
+            background: var(--purple-dim);
+        }
+        .kb-v4 .btn.btn-ghost {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .kb-v4 .btn.btn-ghost:hover {
+            border-color: var(--purple);
+            color: var(--purple-light);
+            background: var(--purple-dim);
+        }
+
+        /* ═══════════════════════════════════════════
+           TEMPLATES — HORIZONTAL TRACK DESIGN
+        ═══════════════════════════════════════════ */
+        .kb-v4 .templates-section {
+            margin-bottom: 1.5rem;
+            border: none;
+            border-radius: 20px;
+            background: linear-gradient(160deg, #0e0c28 0%, #131040 45%, #19164e 100%);
+            box-shadow: 0 8px 32px rgba(99,102,241,0.16), 0 0 0 1px rgba(99,102,241,0.1);
+            padding: 1.4rem 1.5rem;
+            position: relative;
+            overflow: clip;
+            color: #ffffff;
+            animation: dbFadeSlideUp 0.45s ease-out 0.2s both;
+        }
+        .kb-v4 .templates-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #c084fc, #a78bfa, #818cf8, #c084fc);
+            background-size: 200% 100%;
+            animation: dbShimmer 3s ease-in-out infinite;
+            z-index: 2;
+        }
+        .kb-v4 .templates-track-wrap {
+            display: flex; gap: 14px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(165,180,252,0.25) transparent;
+            /* Prevent macOS/browser back-gesture on horizontal swipe */
+            overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch;
+            /* Contain within parent */
+            max-width: 100%;
+            min-width: 0;
+            scroll-behavior: smooth;
+        }
+        .kb-v4 .templates-track-wrap::-webkit-scrollbar { height: 6px; }
+        .kb-v4 .templates-track-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 6px; }
+        .kb-v4 .templates-track-wrap::-webkit-scrollbar-thumb {
+            background: rgba(165,180,252,0.25); border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .kb-v4 .templates-track-wrap::-webkit-scrollbar-thumb:hover { background: rgba(165,180,252,0.4); }
+
+        /* Scroll arrow buttons */
+        .kb-v4 .track-scroll-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(15,12,40,0.85);
+            border: 1px solid rgba(165,180,252,0.2);
+            color: #a5b4fc; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 5; transition: all 0.2s;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            opacity: 0; pointer-events: none;
+        }
+        .kb-v4 .track-scroll-btn.visible {
+            opacity: 1; pointer-events: auto;
+        }
+        .kb-v4 .track-scroll-btn:hover {
+            background: rgba(124,92,255,0.3);
+            border-color: var(--purple);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(124,92,255,0.3);
+        }
+        .kb-v4 .track-scroll-btn.scroll-left  { left: -4px; }
+        .kb-v4 .track-scroll-btn.scroll-right { right: -4px; }
+        .kb-v4 .tpl-card {
+            flex-shrink: 0; width: 220px;
+            background: var(--surface);
+            border: 1px solid var(--border); border-radius: 16px;
+            overflow: hidden; cursor: pointer;
+            transition: all 0.22s; position: relative;
+        }
+        .kb-v4 .tpl-card:hover {
+            border-color: rgba(124,92,255,0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 16px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,92,255,0.15);
+        }
+        .kb-v4 .tpl-card.tpl-active {
+            border-color: var(--purple);
+            box-shadow: 0 0 0 1px rgba(124,92,255,0.3), 0 16px 50px rgba(124,92,255,0.15);
+        }
+        .kb-v4 .tpl-header {
+            height: 80px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .kb-v4 .tpl-header-default { background: linear-gradient(135deg, #1a1040, #2d1b6e); }
+        .kb-v4 .tpl-header-custom  { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); }
+        .kb-v4 .tpl-header-geo { position: absolute; inset: 0; overflow: hidden; }
+        .kb-v4 .tpl-geo-circle {
+            position: absolute; border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .kb-v4 .tpl-header-emoji {
+            font-size: 28px; position: relative; z-index: 2;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+        }
+        .kb-v4 .tpl-active-badge {
+            position: absolute; top: 10px; left: 10px;
+            background: var(--green); color: #000;
+            font-size: 9px; font-weight: 800;
+            letter-spacing: 0.8px; text-transform: uppercase;
+            padding: 3px 8px; border-radius: 4px; z-index: 3;
+        }
+        .kb-v4 .tpl-body { padding: 14px 16px 16px; }
+        .kb-v4 .tpl-name {
+            font-family: var(--font-head);
+            font-size: 14px; font-weight: 700;
+            margin-bottom: 2px; letter-spacing: -0.2px;
+            color: var(--text-primary);
+        }
+        .kb-v4 .tpl-type-row { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+        .kb-v4 .tpl-type-chip {
+            font-size: 10px; font-weight: 700;
+            letter-spacing: 0.5px; text-transform: uppercase;
+            padding: 2px 7px; border-radius: 4px;
+        }
+        .kb-v4 .chip-default { background: var(--purple-dim); color: var(--purple-light); border: 1px solid var(--border-active); }
+        .kb-v4 .chip-custom  { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,179,64,0.25); }
+        .kb-v4 .tpl-files-list {
+            display: flex; flex-direction: column; gap: 5px;
+            margin-bottom: 14px; min-height: 36px;
+        }
+        .kb-v4 .tpl-file-pill {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 6px; padding: 4px 9px;
+            font-size: 11px; color: var(--text-secondary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .kb-v4 .tpl-file-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+        .kb-v4 .tpl-empty {
+            display: flex; align-items: center; justify-content: center;
+            height: 36px;
+            border: 1px dashed rgba(255,255,255,0.08); border-radius: 8px;
+            font-size: 11px; color: var(--text-tertiary);
+        }
+        .kb-v4 .tpl-footer {
+            display: flex; align-items: center; gap: 6px;
+            padding-top: 12px; border-top: 1px solid var(--border);
+        }
+        .kb-v4 .tpl-icon-btn {
+            width: 28px; height: 28px; border-radius: 7px;
+            border: 1px solid var(--border); background: var(--surface2);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-tertiary); transition: all 0.18s; flex-shrink: 0;
+        }
+        .kb-v4 .tpl-icon-btn:hover     { border-color: var(--purple); color: var(--purple-light); }
+        .kb-v4 .tpl-icon-btn.del:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+        .kb-v4 .tpl-set-btn {
+            flex: 1; padding: 6px 0; text-align: center;
+            background: var(--purple-dim); border: 1px solid var(--border-active);
+            border-radius: 7px; font-size: 11.5px; font-weight: 600;
+            color: var(--purple-light); cursor: pointer;
+            font-family: var(--font-body); transition: all 0.2s;
+        }
+        .kb-v4 .tpl-set-btn:hover { background: var(--purple); color: white; border-color: var(--purple); }
+        .kb-v4 .tpl-add-card {
+            flex-shrink: 0; width: 160px;
+            background: transparent;
+            border: 1.5px dashed rgba(255,255,255,0.08);
+            border-radius: 16px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 10px; cursor: pointer; transition: all 0.22s;
+            padding: 24px 16px; min-height: 240px;
+        }
+        .kb-v4 .tpl-add-card:hover {
+            border-color: rgba(124,92,255,0.4);
+            background: rgba(124,92,255,0.04);
+            transform: translateY(-3px);
+        }
+        .kb-v4 .tpl-add-ring {
+            width: 48px; height: 48px; border-radius: 50%;
+            border: 1.5px dashed rgba(124,92,255,0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: var(--purple-light); transition: all 0.22s;
+        }
+        .kb-v4 .tpl-add-card:hover .tpl-add-ring {
+            border-color: var(--purple); background: var(--purple-dim); transform: rotate(90deg);
+        }
+        .kb-v4 .tpl-add-label {
+            font-family: var(--font-head); font-size: 13px; font-weight: 700;
+            color: var(--text-secondary); text-align: center;
+        }
+        .kb-v4 .tpl-add-sub { font-size: 11px; color: var(--text-tertiary); text-align: center; line-height: 1.5; }
+
+        /* --- Uploaded Files Panel (dark premium) — LEGACY (hidden) --- */
         .kb-v4 .kb-files-panel {
             border: none !important;
             border-radius: 20px !important;
@@ -9989,32 +10936,32 @@
             0% { opacity: 0; transform: translateY(12px); }
             100% { opacity: 1; transform: translateY(0); }
         }
-        .kb-v4 .kb-file-item.kb-stagger-in {
+        .kb-v4 .file-card.kb-stagger-in {
             animation: kbItemSlideIn 0.35s ease-out forwards;
             opacity: 0;
         }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(1) { animation-delay: 0.02s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(2) { animation-delay: 0.06s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(3) { animation-delay: 0.1s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(4) { animation-delay: 0.14s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(5) { animation-delay: 0.18s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(6) { animation-delay: 0.22s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(7) { animation-delay: 0.26s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(8) { animation-delay: 0.30s; }
-        .kb-v4 .kb-file-item.kb-stagger-in:nth-child(n+9) { animation-delay: 0.34s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(1) { animation-delay: 0.02s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(2) { animation-delay: 0.06s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(3) { animation-delay: 0.1s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(4) { animation-delay: 0.14s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(5) { animation-delay: 0.18s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(6) { animation-delay: 0.22s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(7) { animation-delay: 0.26s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(8) { animation-delay: 0.30s; }
+        .kb-v4 .file-card.kb-stagger-in:nth-child(n+9) { animation-delay: 0.34s; }
 
         /* Staggered entrance for template cards */
-        .kb-v4 .kb-template-card.kb-stagger-in,
-        .kb-v4 .kb-create-tile.kb-stagger-in {
+        .kb-v4 .tpl-card.kb-stagger-in,
+        .kb-v4 .tpl-add-card.kb-stagger-in {
             animation: kbItemSlideIn 0.35s ease-out forwards;
             opacity: 0;
         }
-        .kb-v4 .kb-template-list-ui > :nth-child(1).kb-stagger-in { animation-delay: 0.03s; }
-        .kb-v4 .kb-template-list-ui > :nth-child(2).kb-stagger-in { animation-delay: 0.08s; }
-        .kb-v4 .kb-template-list-ui > :nth-child(3).kb-stagger-in { animation-delay: 0.13s; }
-        .kb-v4 .kb-template-list-ui > :nth-child(4).kb-stagger-in { animation-delay: 0.18s; }
-        .kb-v4 .kb-template-list-ui > :nth-child(5).kb-stagger-in { animation-delay: 0.23s; }
-        .kb-v4 .kb-template-list-ui > :nth-child(n+6).kb-stagger-in { animation-delay: 0.28s; }
+        .kb-v4 .templates-track-wrap > :nth-child(1).kb-stagger-in { animation-delay: 0.03s; }
+        .kb-v4 .templates-track-wrap > :nth-child(2).kb-stagger-in { animation-delay: 0.08s; }
+        .kb-v4 .templates-track-wrap > :nth-child(3).kb-stagger-in { animation-delay: 0.13s; }
+        .kb-v4 .templates-track-wrap > :nth-child(4).kb-stagger-in { animation-delay: 0.18s; }
+        .kb-v4 .templates-track-wrap > :nth-child(5).kb-stagger-in { animation-delay: 0.23s; }
+        .kb-v4 .templates-track-wrap > :nth-child(n+6).kb-stagger-in { animation-delay: 0.28s; }
 
         /* 4. Ripple click effect */
         @keyframes kbRipple {
@@ -10067,16 +11014,18 @@
         /* --- Database responsive overrides --- */
         @media (max-width: 1100px) {
             .kb-v4 .kb4-main-grid {
-                grid-template-columns: 1fr !important;
+                grid-template-columns: minmax(0, 1fr) !important;
             }
-            .kb-v4 .kb-template-list-ui {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            .kb-v4 .files-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
             }
         }
         @media (max-width: 768px) {
-            .kb-v4 .kb-template-list-ui {
-                grid-template-columns: 1fr !important;
+            .kb-v4 .files-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
             }
+            .kb-v4 .tpl-card { width: 180px; }
+            .kb-v4 .tpl-add-card { width: 140px; min-height: 200px; }
             .kb-v4 .kb4-chip-row {
                 gap: 0.4rem !important;
             }
@@ -10102,8 +11051,8 @@
             .sched-v2-stats {
                 grid-template-columns: repeat(4, minmax(0, 1fr));
             }
-            .kb-v4 .kb-template-list-ui {
-                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            .kb-v4 .files-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
             }
         }
 
@@ -10250,10 +11199,6 @@
                     <div class="user-chip-name" id="user-display-name">User</div>
                     <div class="user-chip-email" id="user-display-email">Not signed in</div>
                 </div>
-                <button class="btn btn-secondary" onclick="openIndustrySelector()">
-                    <i class="fas fa-layer-group"></i>
-                    Select Industry
-                </button>
                 <button class="btn btn-primary" onclick="switchTab('content-creator')">
                     <i class="fas fa-pen-fancy"></i>
                     New Post
@@ -10505,10 +11450,17 @@
 
             <!-- LINKEDIN POST TAB -->
             <div id="content-creator" class="tab-content creator-v4">
-                <div class="creator-v4-topbar">
-                    <div class="creator-v4-headline">
-                        <h2>LinkedIn Post</h2>
-                        <span id="creator-date-pill" class="creator-date-pill">Thursday, March 5, 2026</span>
+                <!-- Hero Banner -->
+                <div class="lip-hero">
+                    <div class="lip-hero-left">
+                        <div class="lip-hero-icon"><i class="fab fa-linkedin-in"></i></div>
+                        <div>
+                            <div class="lip-hero-title">LinkedIn Post</div>
+                            <div class="lip-hero-desc">Generate AI-powered posts grounded in your knowledge base and writing style.</div>
+                        </div>
+                    </div>
+                    <div class="lip-hero-right">
+                        <span id="creator-date-pill" class="lip-date-pill"><i class="fas fa-calendar-day" style="opacity:0.6;margin-right:0.35rem;"></i>Thursday, March 5, 2026</span>
                     </div>
                 </div>
 
@@ -10839,44 +11791,48 @@
 
             <!-- SCHEDULER TAB -->
             <div id="scheduler" class="tab-content">
-                <div class="sched-v2-header">
-                    <div>
-                        <h2>Content Scheduler</h2>
-                        <p>Plan, schedule and manage your LinkedIn posts in one place.</p>
+                <!-- Hero Banner -->
+                <div class="sc2-hero">
+                    <div class="sc2-hero-left">
+                        <div class="sc2-hero-icon"><i class="fas fa-calendar-days"></i></div>
+                        <div>
+                            <div class="sc2-hero-title">Content Scheduler</div>
+                            <div class="sc2-hero-desc">Plan, schedule and manage your LinkedIn posts in one place.</div>
+                        </div>
                     </div>
-                    <div class="sched-v2-header-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="exportScheduledPosts()"><i class="fas fa-download"></i> Export</button>
-                        <button class="btn btn-primary" onclick="openNewScheduleFlow()"><i class="fas fa-plus"></i> Schedule New Post</button>
+                    <div class="sc2-hero-actions">
+                        <button class="sc2-hero-btn-outline" onclick="exportScheduledPosts()"><i class="fas fa-download"></i> Export</button>
+                        <button class="sc2-hero-btn-primary" onclick="openNewScheduleFlow()"><i class="fas fa-plus"></i> Schedule New Post</button>
                     </div>
                 </div>
 
-                <div class="sched-v2-stats">
-                    <div class="sched-v2-stat-card">
-                        <span class="sched-v2-stat-icon amber"><i class="fas fa-clock"></i></span>
+                <div class="sc2-stat-row">
+                    <div class="sc2-stat-card">
+                        <span class="sc2-stat-icon amber"><i class="fas fa-clock"></i></span>
                         <div>
-                            <div id="sched-stat-scheduled" class="sched-v2-stat-value">0</div>
-                            <div class="sched-v2-stat-label">Scheduled</div>
+                            <div id="sched-stat-scheduled" class="sc2-stat-value">0</div>
+                            <div class="sc2-stat-label">Scheduled</div>
                         </div>
                     </div>
-                    <div class="sched-v2-stat-card">
-                        <span class="sched-v2-stat-icon green"><i class="fas fa-check"></i></span>
+                    <div class="sc2-stat-card">
+                        <span class="sc2-stat-icon green"><i class="fas fa-check"></i></span>
                         <div>
-                            <div id="sched-stat-published" class="sched-v2-stat-value">0</div>
-                            <div class="sched-v2-stat-label">Published</div>
+                            <div id="sched-stat-published" class="sc2-stat-value">0</div>
+                            <div class="sc2-stat-label">Published</div>
                         </div>
                     </div>
-                    <div class="sched-v2-stat-card">
-                        <span class="sched-v2-stat-icon blue"><i class="fas fa-calendar-day"></i></span>
+                    <div class="sc2-stat-card">
+                        <span class="sc2-stat-icon blue"><i class="fas fa-calendar-day"></i></span>
                         <div>
-                            <div id="sched-stat-next" class="sched-v2-stat-value">Next</div>
-                            <div id="sched-stat-next-meta" class="sched-v2-stat-label">No post scheduled</div>
+                            <div id="sched-stat-next" class="sc2-stat-value">Next</div>
+                            <div id="sched-stat-next-meta" class="sc2-stat-label">No post scheduled</div>
                         </div>
                     </div>
-                    <div class="sched-v2-stat-card">
-                        <span class="sched-v2-stat-icon purple"><i class="fas fa-chart-simple"></i></span>
+                    <div class="sc2-stat-card">
+                        <span class="sc2-stat-icon purple"><i class="fas fa-chart-simple"></i></span>
                         <div>
-                            <div id="sched-stat-slots" class="sched-v2-stat-value">30</div>
-                            <div class="sched-v2-stat-label">Slots remaining</div>
+                            <div id="sched-stat-slots" class="sc2-stat-value">30</div>
+                            <div class="sc2-stat-label">Slots remaining</div>
                         </div>
                     </div>
                 </div>
@@ -11068,58 +12024,104 @@
                     </div>
                 </section>
 
-                <div class="card kb-panel kb-files-panel" style="margin-bottom: 1.5rem;">
-                    <div class="kb-files-header">
-                        <div>
-                            <h3 class="kb-files-title">Uploaded Files</h3>
-                            <p class="form-hint" style="margin-top:0.2rem;">Indexed files available for generation.</p>
+                <!-- ══ UPLOADED FILES — New Card Grid ══ -->
+                <div class="files-section">
+                    <div class="section-eyebrow">
+                        <div class="section-eyebrow-left">
+                            <span class="section-title">Uploaded Files</span>
+                            <span class="section-count-pill" id="kb-files-count-pill">0 files</span>
                         </div>
-                        <div class="kb-files-header-actions">
-                            <button class="btn btn-sm kb-train-btn" type="button" onclick="trainKnowledgeBase()"><i class="fas fa-arrows-rotate"></i> Train Your Database Again</button>
-                            <i class="fas fa-circle-info help-tip" data-tooltip="Re-trains your database using all currently uploaded files, so post generation uses the latest indexed content."></i>
+                        <button class="btn btn-outline" style="font-size:12px; padding:7px 14px;" onclick="trainKnowledgeBase()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                            Retrain Database
+                        </button>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="files-toolbar-row">
+                        <div class="search-wrap">
+                            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            <input class="search-input" id="kb-file-search" type="text" placeholder="Search by filename, type, or status…" oninput="onKbFileFilterChange()">
+                        </div>
+                        <div class="filter-tabs" id="kb-file-type-tabs">
+                            <button class="filter-tab active" data-filter="all" onclick="setFileTypeFilter(this,'all')">All</button>
+                            <button class="filter-tab" data-filter="pdf" onclick="setFileTypeFilter(this,'pdf')">PDF</button>
+                            <button class="filter-tab" data-filter="docx" onclick="setFileTypeFilter(this,'docx')">DOCX</button>
+                            <button class="filter-tab" data-filter="other" onclick="setFileTypeFilter(this,'other')">Other</button>
                         </div>
                     </div>
 
-                    <div class="kb-files-toolbar">
-                        <input id="kb-file-search" type="text" placeholder="Search uploaded files..." oninput="onKbFileFilterChange()">
-                        <select id="kb-file-type-filter" onchange="onKbFileFilterChange()">
-                            <option value="all">All types</option>
-                            <option value="pdf">PDF</option>
-                            <option value="docx">DOCX</option>
-                        </select>
+                    <!-- File Cards Grid (dynamically filled) -->
+                    <div class="files-grid" id="kb-files-list">
+                        <div class="files-empty-state">
+                            <i class="fas fa-folder-open"></i>
+                            <h4>No files uploaded yet</h4>
+                            <p>Upload your first document to start building your knowledge base.</p>
+                        </div>
                     </div>
 
-                    <div class="kb-file-list" id="kb-files-list">
-                        <div class="kb-empty">No uploaded files yet</div>
+                    <!-- Retrain Banner (dynamically toggled) -->
+                    <div class="retrain-banner" id="kb-retrain-banner" style="display:none;">
+                        <div class="retrain-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                        </div>
+                        <div class="retrain-text">
+                            <div class="retrain-title" id="kb-retrain-title">Database is fully trained</div>
+                            <div class="retrain-sub" id="kb-retrain-sub">All chunks indexed. Add new documents and retrain to expand AI knowledge.</div>
+                        </div>
+                        <button class="btn btn-ghost" style="font-size:12px; flex-shrink:0;" onclick="document.getElementById('kb-file')?.click()">Add More Files</button>
                     </div>
+
+                    <!-- Hidden select for backwards compat -->
+                    <select id="kb-file-type-filter" style="display:none;" onchange="onKbFileFilterChange()">
+                        <option value="all">All types</option>
+                        <option value="pdf">PDF</option>
+                        <option value="docx">DOCX</option>
+                    </select>
                 </div>
 
-                <div class="card kb-panel kb-template-panel" style="margin-top: 0; margin-bottom: 0; padding: 0; overflow: hidden;">
-                    <div class="kb-template-shell">
-                        <div class="kb-template-header">
-                            <div>
-                                <h3>Templates</h3>
-                                <p class="form-hint">Group files by topic and choose a template while generating posts.</p>
-                            </div>
-                            <button class="btn btn-primary btn-sm" type="button" onclick="startCreateTemplateMode()">
-                                <i class="fas fa-plus"></i> New Template
-                            </button>
+                <!-- ══ TEMPLATES — Horizontal Track ══ -->
+                <div class="templates-section">
+                    <div class="section-eyebrow">
+                        <div class="section-eyebrow-left">
+                            <span class="section-title">Templates</span>
+                            <span class="section-count-pill" id="kb-templates-count-pill">0 templates</span>
                         </div>
-
-                        <div class="kb-template-body">
-                            <div class="kb-template-sidebar kb-template-sidebar-wide">
-                                <div class="kb-template-list-label">Template Library</div>
-                                <select id="kb-workspace-select" onchange="onWorkspaceTemplateChange()" size="8"></select>
-                                <div id="kb-template-list-ui" class="kb-template-list-ui"></div>
-                            </div>
-                        </div>
-                        <div id="kb-inline-feedback" class="kb-inline-feedback" style="padding: 0 1rem 1rem;"></div>
+                        <button class="btn btn-primary" style="font-size:12px; padding:7px 16px;" onclick="startCreateTemplateMode()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Template
+                        </button>
                     </div>
+
+                    <div class="templates-track-outer" style="position:relative;">
+                        <button class="track-scroll-btn scroll-left" id="tpl-scroll-left" onclick="scrollTemplateTrack(-1)" aria-label="Scroll left">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <div class="templates-track-wrap" id="kb-template-list-ui">
+                            <!-- Dynamically filled by renderWorkspaceListUI() -->
+                        </div>
+                        <button class="track-scroll-btn scroll-right" id="tpl-scroll-right" onclick="scrollTemplateTrack(1)" aria-label="Scroll right">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Hidden select for backwards compat -->
+                    <select id="kb-workspace-select" onchange="onWorkspaceTemplateChange()" size="8" style="display:none;"></select>
+                    <div id="kb-inline-feedback" class="kb-inline-feedback" style="padding: 0 0 1rem;"></div>
                 </div>
             </div>
 
             <!-- SETTINGS TAB -->
             <div id="settings" class="tab-content">
+                <!-- Hero Banner -->
+                <div class="st2-hero">
+                    <div class="st2-hero-icon"><i class="fas fa-sliders"></i></div>
+                    <div>
+                        <div class="st2-hero-title">Settings</div>
+                        <div class="st2-hero-desc">Configure your AI provider, LinkedIn connection, schedule defaults, and account preferences.</div>
+                    </div>
+                </div>
+
                 <div class="settings-v2-layout">
                     <aside class="settings-v2-nav">
                         <div class="settings-v2-nav-title">Settings</div>
@@ -11635,10 +12637,18 @@
 
             <!-- POST HISTORY TAB -->
             <div id="post-history" class="tab-content">
-                <h2>History</h2>
-                <div class="ph-head-row">
-                    <p class="text-muted" style="margin:0;">All your generated and published LinkedIn content in one place.</p>
-                    <button class="btn btn-secondary btn-sm ph-export-btn" onclick="exportPostHistoryCsv()"><i class="fas fa-download"></i> Export CSV</button>
+                <!-- Hero Banner -->
+                <div class="ph2-hero">
+                    <div class="ph2-hero-left">
+                        <div class="ph2-hero-icon"><i class="fas fa-clock-rotate-left"></i></div>
+                        <div>
+                            <div class="ph2-hero-title">Post History</div>
+                            <div class="ph2-hero-desc">All your generated and published LinkedIn content in one place.</div>
+                        </div>
+                    </div>
+                    <div class="ph2-hero-actions">
+                        <button class="ph2-export-btn" onclick="exportPostHistoryCsv()"><i class="fas fa-download"></i> Export CSV</button>
+                    </div>
                 </div>
 
                 <div class="ph-shell">
@@ -11726,8 +12736,14 @@
 
             <!-- HELP TAB -->
             <div id="help" class="tab-content">
-                <h2>Help Center</h2>
-                <p class="text-muted" style="margin-bottom: 1rem;">Guides and FAQs for setup, knowledge base workflows, and post generation.</p>
+                <!-- Hero Banner -->
+                <div class="hlp-hero">
+                    <div class="hlp-hero-icon"><i class="fas fa-circle-question"></i></div>
+                    <div>
+                        <div class="hlp-hero-title">Help Center</div>
+                        <div class="hlp-hero-desc">Guides and FAQs for setup, knowledge base workflows, and post generation.</div>
+                    </div>
+                </div>
 
                 <div class="help-layout">
                     <div class="help-grid">
@@ -11758,10 +12774,8 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-bottom: 0;">
-                        <div class="card-header">
-                            <h3>Knowledge Base & Templates Workflow</h3>
-                        </div>
+                    <div class="hlp-card">
+                        <div class="hlp-card-title"><i class="fas fa-database"></i> Knowledge Base &amp; Templates Workflow</div>
                         <div class="help-grid">
                             <div class="help-card">
                                 <h3>How to use Knowledge Base</h3>
@@ -11798,10 +12812,8 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-bottom: 0;">
-                        <div class="card-header">
-                            <h3>Platform Features</h3>
-                        </div>
+                    <div class="hlp-card">
+                        <div class="hlp-card-title"><i class="fas fa-bolt"></i> Platform Features</div>
                         <div class="help-grid">
                             <div class="help-card">
                                 <h3>Core platform capabilities</h3>
@@ -11826,10 +12838,8 @@
                         </div>
                     </div>
 
-                    <div class="card" style="margin-bottom: 0;">
-                        <div class="card-header">
-                            <h3>FAQs</h3>
-                        </div>
+                    <div class="hlp-card">
+                        <div class="hlp-card-title"><i class="fas fa-circle-question"></i> FAQs</div>
 
                         <details class="help-faq">
                             <summary>Why is post generation not using my uploaded files?</summary>
@@ -11962,13 +12972,26 @@
 
 <!-- REPURPOSE TAB -->
 <div id="repurpose" class="tab-content" style="display:none;">
-    <div class="ptool-page-header">
-        <h2>Content Repurpose <span class="ptool-badge"><i class="fas fa-recycle"></i> New</span></h2>
-        <p>Paste a URL or text — AI extracts the core ideas and writes 3 ready-to-post LinkedIn variants.</p>
+
+    <!-- Hero banner -->
+    <div class="rp-hero">
+        <div class="rp-hero-left">
+            <div class="rp-hero-icon"><i class="fas fa-recycle"></i></div>
+            <div>
+                <div class="rp-hero-title">Content Repurpose</div>
+                <div class="rp-hero-desc">Paste a URL or text — AI extracts the core ideas and writes 3 ready-to-post LinkedIn variants.</div>
+                <div class="rp-hero-badge"><i class="fas fa-wand-magic-sparkles"></i> AI-Powered</div>
+            </div>
+        </div>
     </div>
+
     <div class="ptool-grid-2" style="align-items:start;">
-        <div class="card" style="padding:1.5rem;">
-            <div class="card-header"><h3>Source Content</h3></div>
+
+        <!-- Left: Source input card -->
+        <div class="rp-card">
+            <div class="rp-card-title">Source Content</div>
+
+            <!-- URL / Text toggle -->
             <div class="rp-source-toggle">
                 <button class="rp-source-btn active" id="rp-btn-url" onclick="rpSetSource('url')">
                     <i class="fas fa-link"></i> URL
@@ -11977,16 +13000,30 @@
                     <i class="fas fa-align-left"></i> Paste Text
                 </button>
             </div>
-            <div id="rp-url-wrap" style="margin-bottom:1rem;">
-                <input id="rp-url-input" placeholder="https://example.com/blog/article" style="width:100%;" class="creator-native-field" type="url">
+
+            <!-- URL input -->
+            <div id="rp-url-wrap" class="rp-input-wrap">
+                <i class="fas fa-link rp-input-prefix"></i>
+                <input id="rp-url-input"
+                       class="rp-input-field"
+                       type="url"
+                       placeholder="https://example.com/blog/article">
             </div>
-            <div id="rp-text-wrap" style="margin-bottom:1rem;display:none;">
-                <textarea id="rp-text-input" rows="7" placeholder="Paste your article, blog post, newsletter, or any text here..." style="width:100%;font-size:0.875rem;padding:0.75rem;border:1px solid var(--card-border);border-radius:var(--radius-sm);resize:vertical;font-family:inherit;outline:none;color:var(--text-1);"></textarea>
+
+            <!-- Text input -->
+            <div id="rp-text-wrap" style="display:none; margin-bottom:1.25rem;">
+                <textarea id="rp-text-input"
+                          class="rp-input-field"
+                          rows="7"
+                          style="resize:vertical;"
+                          placeholder="Paste your article, blog post, newsletter, or any text here…"></textarea>
             </div>
-            <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-                <div style="flex:1;min-width:120px;">
-                    <label style="font-size:0.75rem;font-weight:600;color:var(--text-3);display:block;margin-bottom:0.35rem;">INDUSTRY</label>
-                    <select id="rp-industry" style="width:100%;" class="creator-native-field">
+
+            <!-- Industry + Role -->
+            <div class="rp-form-row">
+                <div>
+                    <label class="rp-label">Industry</label>
+                    <select id="rp-industry" class="rp-select">
                         <option value="technology">Technology</option>
                         <option value="finance">Finance</option>
                         <option value="healthcare">Healthcare</option>
@@ -11995,9 +13032,9 @@
                         <option value="saas">SaaS</option>
                     </select>
                 </div>
-                <div style="flex:1;min-width:120px;">
-                    <label style="font-size:0.75rem;font-weight:600;color:var(--text-3);display:block;margin-bottom:0.35rem;">YOUR ROLE</label>
-                    <select id="rp-role" style="width:100%;" class="creator-native-field">
+                <div>
+                    <label class="rp-label">Your Role</label>
+                    <select id="rp-role" class="rp-select">
                         <option value="ceo">CEO / Founder</option>
                         <option value="cto">CTO</option>
                         <option value="developer">Developer</option>
@@ -12007,10 +13044,13 @@
                     </select>
                 </div>
             </div>
-            <button class="btn btn-primary" id="rp-go-btn" onclick="rpGenerate()" style="width:100%;">
+
+            <!-- Generate button -->
+            <button class="rp-generate-btn" id="rp-go-btn" onclick="rpGenerate()">
                 <i class="fas fa-wand-magic-sparkles"></i> Extract &amp; Generate 3 Posts
             </button>
-            <!-- Progress -->
+
+            <!-- Progress steps -->
             <div id="rp-progress" class="rp-progress">
                 <div class="rp-progress-steps">
                     <div class="rp-step" id="rp-s1"><i class="fas fa-download"></i> Fetching</div>
@@ -12019,36 +13059,57 @@
                 </div>
             </div>
         </div>
+
+        <!-- Right: Results -->
         <div>
-            <div id="rp-insights-section" style="display:none;margin-bottom:1rem;">
-                <div class="card" style="padding:1.1rem 1.25rem;">
-                    <div class="card-header" style="margin-bottom:0.6rem;"><h3 id="rp-page-title">Key Insights Extracted</h3></div>
+            <div id="rp-insights-section" style="display:none;">
+                <div class="rp-insights-card">
+                    <div class="rp-insights-card-title" id="rp-page-title">Key Insights Extracted</div>
                     <div id="rp-insight-chips" class="rp-insight-chips"></div>
                 </div>
             </div>
+
             <div id="rp-variants-section" style="display:none;">
-                <div style="font-size:0.78rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.75rem;">3 Post Variants</div>
+                <div class="rp-variants-label">3 Post Variants</div>
                 <div id="rp-variants-list" style="display:flex;flex-direction:column;gap:1rem;"></div>
             </div>
-            <div id="rp-empty-right" class="card" style="padding:2rem;text-align:center;">
-                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔄</div>
-                <h4 style="color:var(--text-1);margin-bottom:0.5rem;">One source, 3 angles</h4>
-                <p style="font-size:0.83rem;color:var(--text-3);line-height:1.6;">Paste any URL or text. AI extracts key points and writes a data-driven take, a personal perspective, and a contrarian view — all ready to schedule.</p>
+
+            <div id="rp-empty-right" class="rp-empty-panel">
+                <div class="rp-empty-emoji">🔄</div>
+                <div class="rp-empty-title">One source, 3 angles</div>
+                <p class="rp-empty-desc">Paste any URL or text. AI extracts key points and writes a data-driven take, a personal perspective, and a contrarian view — all ready to schedule.</p>
             </div>
         </div>
+
     </div>
 </div>
 
 <!-- BEST TIME TO POST TAB -->
 <div id="best-time" class="tab-content" style="display:none;">
-    <div class="ptool-page-header">
-        <h2>Best Time to Post <span class="ptool-badge"><i class="fas fa-clock-rotate-left"></i> Smart</span></h2>
-        <p>Personalised posting windows based on your history + global LinkedIn engagement data.</p>
+
+    <!-- Hero banner -->
+    <div class="bt-hero">
+        <div class="bt-hero-left">
+            <div class="bt-hero-icon"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="bt-hero-title">Best Time to Post</div>
+                <div class="bt-hero-desc">Personalised posting windows based on your history + global LinkedIn engagement data.</div>
+                <div class="bt-hero-badge"><i class="fas fa-chart-line"></i> Smart Analytics</div>
+            </div>
+        </div>
     </div>
-    <div id="bt-note" class="bt-note"><i class="fas fa-circle-info"></i> <span id="bt-note-text">Loading your data...</span></div>
-    <div class="ptool-grid-2" style="align-items:start;gap:1.75rem;">
+
+    <!-- Info note -->
+    <div id="bt-note" class="bt-note">
+        <i class="fas fa-circle-info"></i>
+        <span id="bt-note-text">Loading your data…</span>
+    </div>
+
+    <div class="ptool-grid-2" style="align-items:start; gap:1.5rem;">
+
+        <!-- Left column -->
         <div>
-            <div class="card" style="padding:1.5rem;">
+            <div class="bt-card">
                 <div class="bt-section-title">Day-of-week engagement score</div>
                 <div id="bt-day-grid" class="bt-day-grid"></div>
                 <div class="bt-legend">
@@ -12057,23 +13118,27 @@
                     <div class="bt-legend-item"><div class="bt-legend-dot" style="background:#e0e7ff;"></div> Low (&lt;60)</div>
                 </div>
             </div>
-            <div class="card" style="padding:1.5rem;margin-top:1.25rem;">
+
+            <div class="bt-card">
                 <div class="bt-section-title">Optimal posting hours</div>
                 <div id="bt-hour-rows"></div>
             </div>
         </div>
+
+        <!-- Right column -->
         <div>
-            <div class="card" style="padding:1.5rem;">
+            <div class="bt-card">
                 <div class="bt-section-title" style="margin-bottom:1rem;">Your top posting windows</div>
-                <div id="bt-slots-list" style="display:flex;flex-direction:column;gap:0.75rem;"></div>
-                <div style="margin-top:1.5rem;border-top:1px solid var(--card-border);padding-top:1.25rem;">
-                    <button class="btn btn-primary" id="bt-schedule-btn" onclick="btScheduleOptimal()" style="width:100%;">
+                <div id="bt-slots-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+                <div style="margin-top:1.5rem; border-top:1px solid var(--card-border); padding-top:1.25rem;">
+                    <button class="bt-schedule-btn" id="bt-schedule-btn" onclick="btScheduleOptimal()">
                         <i class="fas fa-calendar-check"></i> Schedule Next Post at Best Time
                     </button>
-                    <p style="font-size:0.75rem;color:var(--text-3);text-align:center;margin-top:0.5rem;">Opens the scheduler pre-filled with your #1 slot</p>
+                    <p style="font-size:0.74rem; color:var(--text-3); text-align:center; margin-top:0.6rem;">Opens the scheduler pre-filled with your #1 slot</p>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -13812,6 +14877,7 @@
     function renderWorkspaceListUI() {
         const container = document.getElementById('kb-template-list-ui');
         const select = document.getElementById('kb-workspace-select');
+        const countPill = document.getElementById('kb-templates-count-pill');
         if (!container || !select) {
             return;
         }
@@ -13821,9 +14887,14 @@
         const availableFiles = kbFileOptionsCache || [];
         const availableById = new Map(availableFiles.map(file => [normalizeFileId(file.id), file]));
 
-        container.innerHTML = options.map(ws => {
+        /* Update count pill */
+        if (countPill) countPill.textContent = `${options.length} template${options.length !== 1 ? 's' : ''}`;
+
+        /* Emoji palette for templates */
+        const templateEmojis = ['🗂️', '🤖', '₿', '🎯', '🚀', '📊', '💡', '🔬', '📱', '🎨'];
+
+        container.innerHTML = options.map((ws, idx) => {
             const isActive = String(ws.id) === String(selectedValue);
-            const icon = ws.id === KB_DEFAULT_TEMPLATE_ID ? 'fa-folder-open' : 'fa-robot';
             const workspaceFileIds = (ws.file_ids || []).map(normalizeFileId).filter(Boolean);
             const resolvedFiles = ws.use_all_files
                 ? availableFiles
@@ -13831,42 +14902,119 @@
             const fileCount = resolvedFiles.length;
             const isDefaultTemplate = String(ws.id) === KB_DEFAULT_TEMPLATE_ID;
             const templateName = isDefaultTemplate ? 'Default Template' : (ws.name || 'Template');
-            const tooltipFiles = resolvedFiles
-                .slice(0, 8)
-                .map(file => `<div class="tt-file"><span class="tt-dot"></span>${escapeHtml(file.name || 'Unnamed file')}</div>`)
-                .join('');
-            const tooltipExtra = resolvedFiles.length > 8 ? `<div class="tt-file" style="color:rgba(165,180,252,0.5);">+${resolvedFiles.length - 8} more</div>` : '';
-            const fileCountPill = fileCount > 0
-                ? `<div class="kb-template-file-count" onclick="event.stopPropagation();"><i class="fas fa-file-lines"></i> ${fileCount} file${fileCount === 1 ? '' : 's'}<div class="file-tooltip">${tooltipFiles}${tooltipExtra}</div></div>`
-                : `<div class="kb-template-file-count" onclick="event.stopPropagation();"><i class="fas fa-file-circle-xmark"></i> No files</div>`;
+            const emoji = templateEmojis[idx % templateEmojis.length];
+            const headerClass = isDefaultTemplate ? 'tpl-header-default' : 'tpl-header-custom';
+            const chipClass = isDefaultTemplate ? 'chip-default' : 'chip-custom';
+            const chipLabel = isDefaultTemplate ? 'Default' : 'Custom';
+            const safeId = String(ws.id).replace(/'/g, "\\'");
+
+            /* Build file pills (show first 3 files) */
+            let filesHtml = '';
+            if (fileCount > 0) {
+                filesHtml = resolvedFiles.slice(0, 3).map(file => {
+                    const shortName = (file.name || 'Unnamed').length > 22
+                        ? (file.name || 'Unnamed').substring(0, 19) + '...'
+                        : (file.name || 'Unnamed');
+                    return `<div class="tpl-file-pill"><span class="tpl-file-dot"></span>${escapeHtml(shortName)}</div>`;
+                }).join('');
+                if (fileCount > 3) {
+                    filesHtml += `<div class="tpl-file-pill" style="color:var(--text-tertiary);border-style:dashed;">+${fileCount - 3} more</div>`;
+                }
+            } else {
+                filesHtml = '<div class="tpl-empty">No files linked yet</div>';
+            }
+
+            /* Build footer */
+            let footerHtml = '';
+            if (isActive) {
+                footerHtml = `<span style="font-size:11px;color:var(--text-tertiary);flex:1;">${fileCount} file${fileCount !== 1 ? 's' : ''} linked</span>`;
+            } else {
+                footerHtml = `
+                    <div class="tpl-icon-btn" onclick="openEditTemplateModal('${safeId}', event)">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    ${!isDefaultTemplate ? `<div class="tpl-icon-btn del" onclick="deleteWorkspaceTemplateFromCard('${safeId}', event)">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                    </div>` : ''}
+                    <button class="tpl-set-btn" onclick="event.stopPropagation(); setActiveWorkspaceTemplate('${safeId}')">Set Active</button>
+                `;
+            }
+
+            /* Geo circles for header variety */
+            const geoCircles = `
+                <div class="tpl-geo-circle" style="width:${80 + (idx * 13) % 50}px;height:${80 + (idx * 13) % 50}px;top:${-20 + (idx * 7) % 15}px;left:${-20 + (idx * 11) % 25}px;"></div>
+                <div class="tpl-geo-circle" style="width:${40 + (idx * 9) % 30}px;height:${40 + (idx * 9) % 30}px;bottom:${-10 + (idx * 5) % 15}px;right:${10 + (idx * 7) % 30}px;"></div>
+            `;
 
             return `
-                <div class="kb-template-card ${isActive ? 'active' : ''}" onclick="selectWorkspaceTemplate('${String(ws.id).replace(/'/g, "\\'")}')">
-                    <div class="kb-template-card-head">
-                        <span class="kb-template-icon"><i class="fas ${icon}"></i></span>
-                        ${isActive ? '<span class="kb-template-state active">Current</span>' : ''}
+                <div class="tpl-card ${isActive ? 'tpl-active' : ''}" onclick="selectWorkspaceTemplate('${safeId}')">
+                    <div class="tpl-header ${headerClass}">
+                        <div class="tpl-header-geo">${geoCircles}</div>
+                        ${isActive ? '<div class="tpl-active-badge">● Active</div>' : ''}
+                        <span class="tpl-header-emoji">${emoji}</span>
                     </div>
-                    <div class="kb-template-content">
-                        <div class="kb-template-name" title="${escapeHtml(templateName)}">${escapeHtml(templateName)}</div>
-                        ${fileCountPill}
-                    </div>
-                    <div class="kb-template-footer">
-                        <span class="kb-template-type">${isDefaultTemplate ? 'Default' : 'Custom'}</span>
-                        <div class="kb-template-actions">
-                            ${!isDefaultTemplate ? `<button class="btn btn-secondary btn-sm kb-template-edit-btn" type="button" onclick="openEditTemplateModal('${String(ws.id).replace(/'/g, "\\'")}', event)"><i class="fas fa-pen"></i></button>` : ''}
-                            ${!isDefaultTemplate ? `<button class="btn btn-danger btn-sm kb-template-delete-btn" type="button" onclick="deleteWorkspaceTemplateFromCard('${String(ws.id).replace(/'/g, "\\'")}', event)"><i class="fas fa-trash"></i></button>` : ''}
-                        </div>
+                    <div class="tpl-body">
+                        <div class="tpl-name">${escapeHtml(templateName)}</div>
+                        <div class="tpl-type-row"><span class="tpl-type-chip ${chipClass}">${chipLabel}</span></div>
+                        <div class="tpl-files-list">${filesHtml}</div>
+                        <div class="tpl-footer">${footerHtml}</div>
                     </div>
                 </div>
             `;
         }).join('') + `
-            <div class="kb-create-tile" onclick="startCreateTemplateMode()">
-                <i class="fas fa-plus"></i>
-                <span>New Template</span>
-                <small>Group files by topic</small>
+            <div class="tpl-add-card" onclick="startCreateTemplateMode()">
+                <div class="tpl-add-ring">+</div>
+                <div class="tpl-add-label">New Template</div>
+                <div class="tpl-add-sub">Group your files by topic for smarter posts</div>
             </div>
         `;
+
+        /* After rendering, update scroll arrow visibility */
+        requestAnimationFrame(() => updateTemplateScrollArrows());
     }
+
+    /* ── Template track scroll arrows ─────────────────────── */
+    function scrollTemplateTrack(direction) {
+        const track = document.getElementById('kb-template-list-ui');
+        if (!track) return;
+        const cardWidth = 234; /* 220px card + 14px gap */
+        track.scrollBy({ left: direction * cardWidth * 2, behavior: 'smooth' });
+    }
+
+    function updateTemplateScrollArrows() {
+        const track = document.getElementById('kb-template-list-ui');
+        const leftBtn = document.getElementById('tpl-scroll-left');
+        const rightBtn = document.getElementById('tpl-scroll-right');
+        if (!track || !leftBtn || !rightBtn) return;
+
+        const { scrollLeft, scrollWidth, clientWidth } = track;
+        const atStart = scrollLeft <= 8;
+        const atEnd = scrollLeft + clientWidth >= scrollWidth - 8;
+
+        leftBtn.classList.toggle('visible', !atStart);
+        rightBtn.classList.toggle('visible', !atEnd);
+    }
+
+    /* Attach scroll listener once DOM is ready */
+    (function _initTemplateScrollObserver() {
+        function attach() {
+            const track = document.getElementById('kb-template-list-ui');
+            if (!track) return;
+            if (track._scrollObserverAttached) return;
+            track._scrollObserverAttached = true;
+            track.addEventListener('scroll', updateTemplateScrollArrows, { passive: true });
+            /* Also observe resize */
+            if (window.ResizeObserver) {
+                new ResizeObserver(() => updateTemplateScrollArrows()).observe(track);
+            }
+            updateTemplateScrollArrows();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attach);
+        } else {
+            requestAnimationFrame(attach);
+        }
+    })();
 
     function selectWorkspaceTemplate(workspaceId) {
         const select = document.getElementById('kb-workspace-select');
@@ -16393,14 +17541,29 @@
         renderKbUploadedFilesList();
     }
 
+    /* New filter-tab click handler for the file type tabs */
+    var _kbFileTypeFilter = 'all';
+    function setFileTypeFilter(btn, type) {
+        _kbFileTypeFilter = type || 'all';
+        document.querySelectorAll('#kb-file-type-tabs .filter-tab').forEach(t => t.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        /* keep hidden select in sync for backward compat */
+        const sel = document.getElementById('kb-file-type-filter');
+        if (sel) sel.value = type === 'other' ? 'all' : (type || 'all');
+        renderKbUploadedFilesList();
+    }
+
     function getFilteredKbUploadedFiles() {
         const search = (document.getElementById('kb-file-search')?.value || '').trim().toLowerCase();
-        const typeFilter = (document.getElementById('kb-file-type-filter')?.value || 'all').toLowerCase();
+        const typeFilter = _kbFileTypeFilter || 'all';
         return (kbUploadedFilesCache || []).filter(file => {
             const fileName = String(file?.name || '').toLowerCase();
             const fileType = String(file?.type || '').toLowerCase();
             const matchesSearch = !search || fileName.includes(search);
-            const matchesType = typeFilter === 'all' || fileType === typeFilter;
+            let matchesType = true;
+            if (typeFilter === 'pdf') matchesType = fileType === 'pdf';
+            else if (typeFilter === 'docx') matchesType = fileType === 'docx';
+            else if (typeFilter === 'other') matchesType = fileType !== 'pdf' && fileType !== 'docx';
             return matchesSearch && matchesType;
         });
     }
@@ -16424,29 +17587,48 @@
 
     function renderKbUploadedFilesList() {
         const listEl = document.getElementById('kb-files-list');
+        const countPill = document.getElementById('kb-files-count-pill');
+        const retrainBanner = document.getElementById('kb-retrain-banner');
         const allFiles = kbUploadedFilesCache || [];
-        if (!listEl) {
-            return;
-        }
+        if (!listEl) return;
+
+        /* Update count pill */
+        if (countPill) countPill.textContent = `${allFiles.length} file${allFiles.length !== 1 ? 's' : ''}`;
 
         if (!allFiles.length) {
-            listEl.innerHTML = `<div class="kb-empty-rich">
-                <div class="kb-empty-rich-icon"><i class="fas fa-folder-open"></i></div>
+            listEl.innerHTML = `<div class="files-empty-state">
+                <i class="fas fa-folder-open"></i>
                 <h4>No files uploaded yet</h4>
                 <p>Upload your first document to start building your knowledge base for AI-powered post generation.</p>
                 <button class="btn btn-primary btn-sm" onclick="document.getElementById('kb-file')?.click()"><i class="fas fa-upload"></i> Upload Your First File</button>
             </div>`;
+            if (retrainBanner) retrainBanner.style.display = 'none';
             return;
         }
 
         const files = getFilteredKbUploadedFiles();
         if (!files.length) {
-            listEl.innerHTML = `<div class="kb-empty-rich">
-                <div class="kb-empty-rich-icon"><i class="fas fa-search"></i></div>
+            listEl.innerHTML = `<div class="files-empty-state">
+                <i class="fas fa-search"></i>
                 <h4>No files match your filters</h4>
                 <p>Try adjusting your search or filter criteria.</p>
             </div>`;
             return;
+        }
+
+        /* Compute totals for retrain banner */
+        const totalChunks = allFiles.reduce((s, f) => s + (Number(f.chunks) || 0), 0);
+        const allIndexed = allFiles.every(f => Boolean(f.indexed) || String(f.upload_status || '').toLowerCase() === 'indexed' || (Number(f.chunks) || 0) > 0);
+        if (retrainBanner) {
+            if (allIndexed && allFiles.length > 0) {
+                retrainBanner.style.display = 'flex';
+                const titleEl = document.getElementById('kb-retrain-title');
+                const subEl = document.getElementById('kb-retrain-sub');
+                if (titleEl) titleEl.textContent = 'Database is fully trained';
+                if (subEl) subEl.textContent = `All ${totalChunks} chunks indexed across ${allFiles.length} file${allFiles.length !== 1 ? 's' : ''}. Add new documents and retrain to expand AI knowledge.`;
+            } else {
+                retrainBanner.style.display = 'none';
+            }
         }
 
         listEl.innerHTML = files.map(file => {
@@ -16454,37 +17636,57 @@
             const rawName = file.name || '';
             const safeName = escapeHtml(rawName);
             const encodedName = encodeURIComponent(rawName);
-            const iconClass = typeClass === 'docx' ? 'fa-file-word' : 'fa-file-pdf';
             const extensionLabel = typeClass.toUpperCase();
             const sizeLabel = Number.isFinite(Number(file.size)) ? `${Number(file.size).toFixed(2)} MB` : `${file.size || '--'} MB`;
             const chunkCount = Number.isFinite(Number(file.chunks)) ? Number(file.chunks) : 0;
+            const totalChunksForFile = chunkCount; /* treated as max */
             const uploadStatus = String(file.upload_status || '').toLowerCase();
             const isIndexed = Boolean(file.indexed) || uploadStatus === 'indexed' || chunkCount > 0;
-            const statusLabel = isIndexed
-                ? 'Indexed'
-                : (uploadStatus === 'failed' ? 'Failed' : (uploadStatus === 'queued' ? 'Queued' : 'Pending'));
+            const isFailed = uploadStatus === 'failed';
+            const isQueued = uploadStatus === 'queued';
+            const statusLabel = isIndexed ? 'Indexed · Ready' : (isFailed ? 'Failed' : (isQueued ? 'Queued' : 'Pending'));
+            const dotClass = isIndexed ? 'sdot-green' : (isFailed ? 'sdot-red' : 'sdot-amber');
+            const stripeClass = typeClass === 'docx' ? 'stripe-docx' : 'stripe-pdf';
+            const progressPct = isIndexed ? 100 : (isQueued ? 30 : (isFailed ? 0 : 10));
+            const uploadDate = file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString() : 'Uploaded today';
+
             return `
-                <div class="kb-file-item">
-                    <div class="kb-file-meta">
-                        <div class="kb-file-title">
-                            <i class="fas ${iconClass} kb-file-icon"></i>
-                            <div class="kb-file-name" title="${safeName}">${safeName}</div>
+                <div class="file-card">
+                    <div class="file-card-stripe ${stripeClass}"></div>
+                    <div class="file-card-body">
+                        <div class="file-card-top">
+                            <div class="file-type-block ${typeClass}">
+                                <span class="file-type-ext">${extensionLabel}</span>
+                                <div class="file-type-lines" style="color:var(--${typeClass === 'docx' ? 'blue' : 'red'});">
+                                    <div class="file-type-line" style="width:18px;"></div>
+                                    <div class="file-type-line" style="width:14px;"></div>
+                                    <div class="file-type-line" style="width:10px;"></div>
+                                </div>
+                            </div>
+                            <div class="file-card-meta">
+                                <div class="file-card-name" title="${safeName}">${safeName}</div>
+                                <div class="file-card-size">${sizeLabel} · ${uploadDate}</div>
+                            </div>
                         </div>
-                        <div class="kb-file-sub">${extensionLabel} • ${sizeLabel}</div>
-                        <div class="kb-file-badges">
-                            <span class="kb4-mini-chip">${extensionLabel}</span>
-                            <span class="kb4-mini-chip ${isIndexed ? 'ok' : ''}">${statusLabel}</span>
-                            <span class="kb4-mini-chip">${isIndexed ? 'Ready' : 'Waiting'}</span>
+                        <div class="file-progress-row">
+                            <span class="file-progress-label">Chunks indexed</span>
+                            <span class="file-progress-val">${chunkCount} / ${totalChunksForFile}</span>
                         </div>
-                    </div>
-                    <div style="display:flex;align-items:center;">
-                        <div class="kb4-chunk-box">
-                            <div class="kb4-chunk-value">${chunkCount}</div>
-                            <div class="kb4-chunk-label">chunks</div>
+                        <div class="file-progress-bar">
+                            <div class="file-progress-fill" style="width:${progressPct}%;"></div>
                         </div>
-                        <button class="btn btn-danger btn-sm kb-file-delete-btn" onclick="event.stopPropagation(); showKbInlineDeleteConfirm(this, decodeURIComponent('${encodedName}'))">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <div class="file-card-footer">
+                            <div class="status-dot-row">
+                                <span class="sdot ${dotClass}"></span>
+                                <span class="status-text">${statusLabel}</span>
+                            </div>
+                            <div class="file-action-btn" title="Rename" onclick="event.stopPropagation();">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </div>
+                            <div class="file-action-btn danger" title="Delete" onclick="event.stopPropagation(); showKbInlineDeleteConfirm(this, decodeURIComponent('${encodedName}'))">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -18475,7 +19677,7 @@
 
     // --- Staggered Entrance Animations ---
     function kbTriggerStaggerFileItems() {
-        const items = document.querySelectorAll('#kb-files-list .kb-file-item');
+        const items = document.querySelectorAll('#kb-files-list .file-card');
         items.forEach(item => {
             item.classList.remove('kb-stagger-in');
             void item.offsetWidth; // force reflow
@@ -18484,7 +19686,7 @@
     }
 
     function kbTriggerStaggerTemplateCards() {
-        const items = document.querySelectorAll('#kb-template-list-ui .kb-template-card, #kb-template-list-ui .kb-create-tile');
+        const items = document.querySelectorAll('#kb-template-list-ui .tpl-card, #kb-template-list-ui .tpl-add-card');
         items.forEach(item => {
             item.classList.remove('kb-stagger-in');
             void item.offsetWidth;
