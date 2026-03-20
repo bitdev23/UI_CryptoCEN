@@ -17,7 +17,7 @@
                 --purple2: #6c3aed;
                 --purple-soft: rgba(124,58,237,0.08);
                 --purple-border: rgba(124,58,237,0.25);
-                --grad: linear-gradient(135deg, #6874e8 0%, #7b52d4 30%, #8b3fbf 60%, #7c3aed 100%);
+                --grad: linear-gradient(135deg, #1a1546 0%, #262062 32%, #332c80 62%, #433a9e 100%);
                 --r: 12px;
                 --r-lg: 18px;
                 --white: #ffffff;
@@ -46,9 +46,9 @@
                 content: '';
                 position: fixed; inset: 0; z-index: 0;
                 background:
-                    radial-gradient(ellipse 900px 700px at 10% 20%, rgba(120,100,230,0.4) 0%, transparent 65%),
-                    radial-gradient(ellipse 600px 600px at 88% 80%, rgba(150,60,200,0.38) 0%, transparent 65%),
-                    radial-gradient(ellipse 500px 400px at 60% 5%, rgba(100,90,220,0.28) 0%, transparent 65%);
+                    radial-gradient(ellipse 900px 700px at 10% 20%, rgba(99,102,241,0.34) 0%, transparent 65%),
+                    radial-gradient(ellipse 600px 600px at 88% 80%, rgba(139,92,246,0.30) 0%, transparent 65%),
+                    radial-gradient(ellipse 500px 400px at 60% 5%, rgba(79,70,229,0.24) 0%, transparent 65%);
                 pointer-events: none;
             }
 
@@ -314,14 +314,14 @@
             /* CTA Button */
             .cta {
                 width: 100%; padding: 12.5px;
-                background: linear-gradient(135deg, #7c52e8 0%, var(--purple2) 100%);
+                background: linear-gradient(135deg, #332c80 0%, #433a9e 100%);
                 border: none; border-radius: var(--r); color: #fff;
                 font-size: 14px; font-weight: 600; cursor: pointer;
                 font-family: 'Inter', sans-serif; letter-spacing: -0.1px;
-                box-shadow: 0 4px 16px rgba(108,58,237,0.38);
+                box-shadow: 0 4px 16px rgba(67,58,158,0.42);
                 transition: all 0.15s; margin-bottom: 14px;
             }
-            .cta:hover { opacity: 0.91; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(108,58,237,0.44); }
+            .cta:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(67,58,158,0.5); }
             .cta:active { transform: scale(0.99); }
             .cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
@@ -461,23 +461,24 @@
 
             .allow-btn {
                 width: 100%; padding: 12.5px;
-                background: linear-gradient(135deg, #7c52e8, var(--purple2));
+                background: linear-gradient(135deg, #332c80 0%, #433a9e 100%);
                 border: none; border-radius: var(--r); color: #fff;
                 font-size: 14px; font-weight: 600; cursor: pointer;
                 font-family: 'Inter', sans-serif;
-                box-shadow: 0 4px 16px rgba(108,58,237,0.38);
+                box-shadow: 0 4px 16px rgba(67,58,158,0.42);
                 transition: all 0.15s; margin-bottom: 10px;
             }
-            .allow-btn:hover { opacity: 0.91; transform: translateY(-1px); }
+            .allow-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(67,58,158,0.5); }
 
             .deny-btn {
-                width: 100%; padding: 11px; background: #fff;
-                border: 1.5px solid var(--border); border-radius: var(--r);
-                color: var(--ink3); font-size: 13.5px; font-weight: 500;
+                width: 100%; padding: 11px;
+                background: #f8f7ff;
+                border: 1.5px solid #ddd8ff; border-radius: var(--r);
+                color: #433a9e; font-size: 13.5px; font-weight: 600;
                 cursor: pointer; font-family: 'Inter', sans-serif;
                 transition: all 0.15s; margin-bottom: 16px;
             }
-            .deny-btn:hover { background: #fafafa; border-color: #d1d5db; }
+            .deny-btn:hover { background: #eeebff; border-color: #c7c0ff; }
 
             .oauth-note { font-size: 11.5px; color: var(--ink5); line-height: 1.6; }
             .oauth-note a { color: var(--ink4); text-decoration: none; }
@@ -1360,14 +1361,20 @@
                 showScreen(3); // show loading screen immediately
 
                 try {
+                    const controller = new AbortController();
+                    const timeoutMs = 30000;
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
                     // Make actual API call to backend
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ email, password })
+                        body: JSON.stringify({ email, password }),
+                        signal: controller.signal
                     });
+                    clearTimeout(timeoutId);
 
                     const data = await response.json();
 
@@ -1422,7 +1429,10 @@
                     showScreen(0);
                     const msgEl = document.createElement('div');
                     msgEl.className = 'message error';
-                    msgEl.textContent = '✗ ' + (err.message || 'Network error during login');
+                    const isTimeout = err && (err.name === 'AbortError' || String(err.message || '').toLowerCase().includes('abort'));
+                    msgEl.textContent = isTimeout
+                        ? '✗ Login request timed out. Please try again in a few seconds.'
+                        : '✗ ' + (err.message || 'Network error during login');
                     msgEl.style.marginBottom = '16px';
                     msgEl.style.padding = '12px';
                     msgEl.style.background = '#fee2e2';

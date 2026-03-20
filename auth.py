@@ -187,16 +187,17 @@ def _auth_http_connect_timeout() -> float:
 
 
 def _auth_http_read_timeout() -> float:
-    raw = (os.getenv('AUTH_HTTP_READ_TIMEOUT') or '75').strip()
+    raw = (os.getenv('AUTH_HTTP_READ_TIMEOUT') or '20').strip()
     try:
         return max(5.0, float(raw))
     except Exception:
-        return 75.0
+        return 20.0
 
 
 def _auth_http_timeout(multiplier: float = 1.0):
     connect_timeout = _auth_http_connect_timeout()
-    read_timeout = min(180.0, _auth_http_read_timeout() * max(1.0, multiplier))
+    growth = 1.0 + (max(1.0, multiplier) - 1.0) * 0.25
+    read_timeout = min(60.0, _auth_http_read_timeout() * growth)
     return (connect_timeout, read_timeout)
 
 
@@ -275,6 +276,7 @@ def _post_json_with_retries(url: str, payload: Dict[str, Any], operation_name: s
         delay_sec = 1.0
 
     last_error: Optional[Exception] = None
+    last_response: Optional[requests.Response] = None
     for attempt in range(1, attempts + 1):
         try:
             response = requests.post(
@@ -283,6 +285,17 @@ def _post_json_with_retries(url: str, payload: Dict[str, Any], operation_name: s
                 json=payload,
                 timeout=_auth_http_timeout(multiplier=float(attempt))
             )
+            last_response = response
+            if response.status_code >= 500 and attempt < attempts:
+                logger.warning(
+                    "%s HTTP fallback got %d (attempt %d/%d). Retrying...",
+                    operation_name,
+                    response.status_code,
+                    attempt,
+                    attempts
+                )
+                time.sleep(delay_sec * attempt)
+                continue
             return response
         except Exception as exc:
             last_error = exc
@@ -295,7 +308,7 @@ def _post_json_with_retries(url: str, payload: Dict[str, Any], operation_name: s
 
     if last_error:
         logger.error("%s HTTP fallback failed: %s", operation_name, last_error)
-    return None
+    return last_response
 
 
 def _fallback_signup(email: str, password: str, metadata: Dict, redirect_to: str) -> Optional[Dict[str, Any]]:

@@ -2058,18 +2058,19 @@ def auth_login():
         success, message, auth_data = login_user(email, password)
 
         if success:
-            # Extra verification: ensure token is valid and user still exists
+            # Extra verification (best-effort): do not block successful login
+            # if Supabase is experiencing transient timeout issues.
             token = auth_data.get('access_token')
             verified = None
             try:
                 if token:
                     verified = verify_token(token)
-            except Exception:
+            except Exception as verify_exc:
+                logger.warning("Post-login token verification failed (non-blocking): %s", verify_exc)
                 verified = None
 
-            if not verified:
-                # Treat as user not found or deleted
-                return jsonify({'success': False, 'message': 'User not found or account deleted'}), 404
+            if token and not verified:
+                logger.warning("Post-login token verification returned no user (non-blocking); proceeding with login response")
 
             return jsonify({
                 'success': True,
