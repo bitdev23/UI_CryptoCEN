@@ -3656,29 +3656,44 @@
             letter-spacing: -0.01em;
         }
 
-        /* LinkedIn Post hero (matches Dashboard/Database style) */
+        /* LinkedIn Post hero (Database header reference) */
         .creator-v4 .cv-hero {
-            margin: 14px 20px 14px;
-            padding: 18px 20px;
-            border-radius: 16px;
-            border: 1px solid rgba(165,180,252,0.2);
-            background: linear-gradient(135deg, rgba(102,126,234,0.22) 0%, rgba(118,75,162,0.22) 100%);
+            margin: 14px 20px 16px;
+            padding: 2rem 2.2rem 1.8rem;
+            border-radius: 20px;
+            border: none;
+            background: var(--sidebar-bg);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 14px;
+            gap: 1.25rem;
             position: relative;
             overflow: hidden;
+            color: #ffffff;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+            animation: dbFadeSlideUp 0.45s ease-out;
+        }
+        .creator-v4 .cv-hero::before {
+            content: '';
+            position: absolute;
+            top: -45%;
+            right: -8%;
+            width: 380px;
+            height: 380px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%);
+            pointer-events: none;
+            animation: dbPulseGlow 5s ease-in-out infinite;
         }
         .creator-v4 .cv-hero::after {
             content: '';
             position: absolute;
-            width: 220px;
-            height: 220px;
-            border-radius: 999px;
-            right: -70px;
-            top: -80px;
-            background: rgba(255,255,255,0.08);
+            bottom: -30%;
+            left: 10%;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.04);
             pointer-events: none;
         }
         .creator-v4 .cv-hero-left,
@@ -3689,45 +3704,47 @@
         .creator-v4 .cv-hero-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 1rem;
             min-width: 0;
-            flex: 1;
+            flex: 1 1 280px;
         }
         .creator-v4 .cv-hero-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.24);
-            color: #e0e7ff;
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #a5b4fc;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.05rem;
+            font-size: 1.25rem;
             flex-shrink: 0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: scFloat 4s ease-in-out infinite;
         }
         .creator-v4 .cv-hero-title {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-            font-size: 1.65rem;
-            line-height: 1.25;
+            font-size: 1.7rem;
+            line-height: 1.2;
             color: #ffffff;
             font-weight: 800;
             letter-spacing: -0.02em;
         }
         .creator-v4 .cv-hero-desc {
-            margin: 0.4rem 0 0;
+            margin: 0.35rem 0 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-            color: rgba(255,255,255,0.55);
-            font-size: 0.9rem;
-            line-height: 1.45;
-            max-width: 560px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            max-width: 680px;
         }
         .creator-v4 .cv-hero-right {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            gap: 0;
+            flex-wrap: nowrap;
             justify-content: flex-end;
         }
         .creator-v4 .cv-hero-main {
@@ -3736,105 +3753,122 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 1rem;
             flex-wrap: wrap;
         }
         .creator-v4 .cv-hero-main .cv-tb-steps {
-            flex: 1;
+            flex: 0 1 100%;
             justify-content: flex-end;
-            min-width: 300px;
+            min-width: auto;
+            gap: 0.6rem;
         }
         .creator-v4 .cv-hero-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.12);
-            color: #eef2ff;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.15);
+            color: #ffffff;
             font-size: 0.72rem;
             font-weight: 700;
             padding: 5px 10px;
             white-space: nowrap;
         }
 
-        /* Stepper in topbar */
+        /* Stepper in topbar (Database-chip style) */
         .creator-v4 .cv-tb-steps {
             display: flex;
             align-items: center;
-            gap: 0;
+            gap: 0.6rem;
             flex: 1;
-            justify-content: center;
-            max-width: 480px;
+            justify-content: flex-end;
+            max-width: none;
+            flex-wrap: wrap;
         }
         .creator-v4 .cv-tbs-item {
             display: flex;
+            flex-direction: row;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            font-size: 11.5px;
-            font-weight: 500;
-            color: var(--cv-dim);
+            gap: 0.42rem;
+            padding: 0.45rem 0.78rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: rgba(199,210,254,0.85);
             cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.16s;
+            border-radius: 12px;
+            border: 1px solid rgba(165,180,252,0.15);
+            background: rgba(255,255,255,0.06);
+            transition: all 0.25s ease;
+            backdrop-filter: blur(8px);
         }
-        .creator-v4 .cv-tbs-item:hover { color: var(--cv-muted) }
+        .creator-v4 .cv-tbs-item:hover {
+            border-color: rgba(165,180,252,0.3);
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 4px 16px rgba(99,102,241,0.12);
+            color: #ffffff;
+        }
         .creator-v4 .cv-tbs-item.visited,
-        .creator-v4 .cv-tbs-item.done { color: var(--cv-muted) }
-        .creator-v4 .cv-tbs-item.active { color: var(--cv-text) }
+        .creator-v4 .cv-tbs-item.done { color: #ffffff }
+        .creator-v4 .cv-tbs-item.active {
+            color: #ffffff;
+            border-color: rgba(255,255,255,0.34);
+            background: rgba(255,255,255,0.14);
+        }
         .creator-v4 .cv-tbs-num {
-            width: 17px; height: 17px;
+            width: 20px; height: 20px;
             border-radius: 50%; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
-            font-size: 9px; font-weight: 700;
-            font-family: 'Syne', sans-serif;
-            background: var(--cv-s4);
-            border: 1px solid var(--cv-border);
+            font-size: 10px; font-weight: 800;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.9);
             transition: all 0.2s;
         }
         .creator-v4 .cv-tbs-item.visited .cv-tbs-num,
         .creator-v4 .cv-tbs-item.done .cv-tbs-num {
-            background: rgba(40,214,164,0.14);
-            border-color: rgba(40,214,164,0.3);
-            color: var(--cv-accent-g);
+            background: rgba(16,185,129,0.2);
+            border-color: rgba(52,211,153,0.32);
+            color: #6ee7b7;
         }
         .creator-v4 .cv-tbs-item.active .cv-tbs-num {
-            background: linear-gradient(135deg, var(--cv-accent), var(--cv-accent-v));
-            border-color: transparent;
-            color: #fff;
-            box-shadow: 0 0 10px rgba(79,144,255,0.4);
+            background: rgba(99,102,241,0.24);
+            border-color: rgba(129,140,248,0.38);
+            color: #c7d2fe;
+            box-shadow: none;
         }
         .creator-v4 .cv-tbs-name {
-            font-size: 11.5px;
-            font-weight: 500;
+            font-size: 0.78rem;
+            font-weight: 700;
             white-space: nowrap;
             transition: color 0.2s;
+            letter-spacing: 0.01em;
         }
-        .creator-v4 .cv-tbs-item.done .cv-tbs-name { color: var(--cv-muted) }
-        .creator-v4 .cv-tbs-item.active .cv-tbs-name { color: var(--cv-text) }
+        .creator-v4 .cv-tbs-item.done .cv-tbs-name { color: #ffffff }
+        .creator-v4 .cv-tbs-item.active .cv-tbs-name { color: #ffffff }
         /* Step connector arrows */
         .creator-v4 .cv-tbs-bar {
-            width: auto;
-            height: auto;
-            margin: 0 4px;
+            width: 8px;
+            height: 1px;
+            margin: 0;
             background: transparent;
             border: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: rgba(199,210,254,0.62);
+            color: rgba(255,255,255,0.24);
             line-height: 1;
         }
         .creator-v4 .cv-tbs-bar::before {
-            content: '→';
-            font-size: 12px;
-            font-weight: 700;
+            content: '•';
+            font-size: 8px;
+            font-weight: 300;
         }
         .creator-v4 .cv-tbs-bar-fill {
             display: none;
         }
-        .creator-v4 .cv-tbs-bar.on { color: var(--cv-accent-g) }
+        .creator-v4 .cv-tbs-bar.on { color: rgba(255,255,255,0.38) }
 
         /* Topbar right */
         .creator-v4 .cv-tb-right {
@@ -3843,18 +3877,18 @@
             gap: 7px;
             flex-shrink: 0;
         }
-        .creator-v4 .cv-tb-pill {
-            display: flex;
+        .creator-v4 .cv-hero-pill {
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 4px 9px;
-            border-radius: 16px;
-            background: var(--cv-s2);
-            border: 1px solid var(--cv-border);
-            font-size: 11px;
-            color: var(--cv-muted);
+            gap: 6px;
+            border-radius: 999px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.12);
+            color: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 12px;
             white-space: nowrap;
-            transition: all 0.15s;
         }
         .creator-v4 .cv-tb-pill:hover {
             background: var(--cv-s3);
@@ -3915,7 +3949,6 @@
 
         /* ---------- Section Component ---------- */
         .creator-v4 .cv-section {
-            border-bottom: 1px solid var(--cv-border);
             scroll-margin-top: 12px;
         }
         .creator-v4 .cv-section:last-of-type { border-bottom: none }
@@ -3928,7 +3961,7 @@
             display: flex;
             align-items: center;
             gap: 11px;
-            padding: 18px 0 0;
+            padding: 0;
             cursor: pointer;
             user-select: none;
         }
@@ -3965,10 +3998,10 @@
 
         .creator-v4 .cv-sec-info { flex: 1; min-width: 0 }
         .creator-v4 .cv-sec-eyebrow {
-            font-size: 9px;
+            font-size: 0.72rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            letter-spacing: 0.01em;
+            text-transform: none;
             color: var(--cv-text2);
             margin-bottom: 2px;
         }
@@ -3976,17 +4009,21 @@
             display: flex; align-items: center; gap: 8px;
         }
         .creator-v4 .cv-sec-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 14.5px;
-            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
         }
         .creator-v4 .cv-opt-tag {
-            font-size: 9px; font-weight: 600;
-            padding: 2px 6px; border-radius: 8px;
-            background: rgba(255,255,255,0.04);
+            font-size: 0.78rem; font-weight: 600;
+            line-height: 1.4;
+            padding: 3px 8px; border-radius: 8px;
+            background: rgba(99,102,241,0.06);
             border: 1px solid var(--cv-border-md);
             color: var(--cv-muted);
-            letter-spacing: 0.04em; flex-shrink: 0;
+            letter-spacing: 0;
+            flex-shrink: 0;
         }
         /* Collapse toggle */
         .creator-v4 .cv-sec-collapse-btn {
@@ -4016,7 +4053,7 @@
 
         /* Section body */
         .creator-v4 .cv-sec-body {
-            padding: 12px 0 22px;
+            padding: 12px 0 0;
             max-height: 3000px;
             opacity: 1;
             overflow: hidden;
@@ -4026,9 +4063,9 @@
             max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
         }
         .creator-v4 .cv-sec-desc {
-            font-size: 12.5px;
-            color: var(--cv-text2);
-            line-height: 1.65;
+            font-size: 0.78rem;
+            color: #55658f;
+            line-height: 1.4;
             margin-bottom: 16px;
         }
         /* Collapsed summary pills */
@@ -4156,12 +4193,84 @@
             padding: 9px 20px;
             font-size: 12.5px;
         }
+        .creator-v4 .cv-generate-progress {
+            display: none;
+            padding: 12px 14px 14px;
+            border-top: 1px solid var(--cv-border);
+            background: linear-gradient(180deg, rgba(79,144,255,0.05), rgba(124,91,255,0.03));
+            animation: dbFadeSlideUp 0.3s ease-out;
+        }
+        .creator-v4 .cv-generate-progress-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.45rem;
+        }
+        .creator-v4 .cv-generate-progress-label span:first-child {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-width: 0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #4338ca;
+        }
+        .creator-v4 .cv-generate-progress-label span:first-child i {
+            color: #6366f1;
+            animation: dbPulseGlow 1.5s ease-in-out infinite;
+        }
+        .creator-v4 .cv-generate-progress-label span:last-child {
+            flex-shrink: 0;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #6366f1;
+        }
+        .creator-v4 .cv-generate-progress-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .creator-v4 .cv-generate-progress-track {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(99,102,241,0.12);
+            overflow: hidden;
+            position: relative;
+        }
+        .creator-v4 .cv-generate-progress-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
+            background-size: 200% 100%;
+            animation: dbShimmer 2s ease-in-out infinite;
+            transition: width 0.4s ease;
+        }
+        .creator-v4 .cv-generate-progress-steps {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-top: 0.45rem;
+        }
+        .creator-v4 .cv-generate-progress-step {
+            font-size: 0.66rem;
+            font-weight: 700;
+            color: rgba(99,102,241,0.45);
+            transition: color 0.3s ease;
+        }
+        .creator-v4 .cv-generate-progress-step.active {
+            color: #4338ca;
+        }
+        .creator-v4 .cv-generate-progress-step.done {
+            color: #059669;
+        }
 
         .creator-v4 .cv-topic-footer {
             position: relative; z-index: 1;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
             padding: 8px 17px;
             border-top: 1px solid var(--cv-border);
             font-size: 11px; color: var(--cv-dim);
@@ -4172,6 +4281,45 @@
             align-items: center;
             gap: 10px;
         }
+        .creator-v4 .cv-topic-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 10px 0 8px;
+        }
+        .creator-v4 .cv-topic-chip {
+            border: 1px solid #dbe3f4;
+            background: #f8f9fc;
+            color: #526189;
+            border-radius: 999px;
+            padding: 0.3rem 0.68rem;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .creator-v4 .cv-topic-chip:hover {
+            border-color: #c7d2fe;
+            background: #eef2ff;
+            color: #4338ca;
+        }
+        .creator-v4 .cv-shortcut-hint {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: #718096;
+        }
+        .creator-v4 .cv-shortcut-hint kbd {
+            font-family: inherit;
+            font-size: 0.68rem;
+            font-weight: 700;
+            border: 1px solid #dbe3f4;
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            padding: 2px 6px;
+            background: #fff;
+            color: #2d3748;
+            margin: 0 1px;
+        }
         .creator-v4 .cv-topic-sep {
             color: var(--cv-border);
             font-size: 14px;
@@ -4181,32 +4329,44 @@
         .creator-v4 .cv-kb-inline {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            background: var(--cv-s3);
-            border: 1px solid var(--cv-border);
-            border-radius: 16px;
-            padding: 3px 6px 3px 8px;
+            gap: 6px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
             cursor: pointer;
-            transition: border-color 0.15s;
+            transition: opacity 0.15s;
         }
         .creator-v4 .cv-kb-inline:hover {
-            border-color: var(--cv-border-md);
+            opacity: 0.9;
         }
-        .creator-v4 .cv-kb-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--cv-accent-g);
-            box-shadow: 0 0 5px rgba(40,214,164,0.6);
+        .creator-v4 .cv-kb-trigger-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            background: rgba(99,102,241,0.12);
+            border: 1px solid rgba(99,102,241,0.22);
+            color: #6366f1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
             flex-shrink: 0;
+        }
+        .creator-v4 .cv-kb-pop-icon {
+            color: var(--cv-dim);
+            font-size: 10px;
+            margin-left: 1px;
         }
         .creator-v4 .cv-kb-inline select {
             background: transparent;
             border: none;
-            color: var(--cv-muted);
-            font-size: 11px;
+            color: var(--cv-text2);
+            font-size: 0.78rem;
+            font-weight: 700;
             font-family: 'DM Sans', sans-serif;
             cursor: pointer;
-            padding: 0 2px;
+            padding: 0;
             -webkit-appearance: none;
             appearance: none;
             outline: none;
@@ -4454,9 +4614,9 @@
         .creator-v4 .cv-cb-title {
             display: flex;
             align-items: center; gap: 7px;
-            font-size: 9px; font-weight: 700;
-            letter-spacing: 0.11em;
-            text-transform: uppercase;
+            font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.01em;
+            text-transform: none;
             color: var(--cv-text2);
             margin-bottom: 11px;
             position: relative; z-index: 1;
@@ -4681,9 +4841,9 @@
         .creator-v4 input[type="range"],
         .creator-v4 #hashtag-count {
             -webkit-appearance: none; appearance: none;
-            width: 100%; height: 3px;
-            border-radius: 2px; outline: none; cursor: pointer;
-            background: linear-gradient(to right, var(--cv-accent-g) 0%, var(--cv-accent-g) var(--v, 50%), var(--cv-s6) var(--v, 50%));
+            width: 100%; height: 14px;
+            border-radius: 999px; outline: none; cursor: pointer;
+            background: transparent;
         }
         .creator-v4 input[type="range"]::-webkit-slider-thumb,
         .creator-v4 #hashtag-count::-webkit-slider-thumb {
@@ -4693,6 +4853,7 @@
             background: var(--cv-accent-g);
             border: 2px solid var(--cv-bg);
             box-shadow: 0 0 9px rgba(40,214,164,0.55);
+            margin-top: -5px;
             transition: transform 0.15s;
         }
         .creator-v4 input[type="range"]::-webkit-slider-thumb:hover,
@@ -4701,8 +4862,29 @@
         }
         .creator-v4 input[type="range"]::-webkit-slider-runnable-track,
         .creator-v4 #hashtag-count::-webkit-slider-runnable-track {
-            height: 3px; border-radius: 2px;
-            background: transparent;
+            height: 4px; border-radius: 999px;
+            background: linear-gradient(to right, var(--cv-accent-g) 0%, var(--cv-accent-g) var(--v, 50%), var(--cv-s6) var(--v, 50%));
+        }
+        .creator-v4 input[type="range"]::-moz-range-thumb,
+        .creator-v4 #hashtag-count::-moz-range-thumb {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--cv-accent-g);
+            border: 2px solid var(--cv-bg);
+            box-shadow: 0 0 9px rgba(40,214,164,0.55);
+            transition: transform 0.15s;
+        }
+        .creator-v4 input[type="range"]::-moz-range-track,
+        .creator-v4 #hashtag-count::-moz-range-track {
+            height: 4px;
+            border-radius: 999px;
+            background: linear-gradient(to right, var(--cv-accent-g) 0%, var(--cv-accent-g) var(--v, 50%), var(--cv-s6) var(--v, 50%));
+        }
+        .creator-v4 input[type="range"]::-moz-range-progress,
+        .creator-v4 #hashtag-count::-moz-range-progress {
+            height: 4px;
+            border-radius: 999px;
+            background: var(--cv-accent-g);
         }
 
         /* Emoji scale */
@@ -4916,12 +5098,25 @@
 
         /* Preview topbar */
         .creator-v4 .cv-pv-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
             padding: 13px 17px 12px;
             border-bottom: 1px solid var(--cv-border);
             flex-shrink: 0;
             transition: opacity 0.3s;
         }
         .creator-v4 .cv-pv-topbar.generating { opacity: 0.45 }
+        .creator-v4 .cv-pv-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: var(--cv-text);
+            letter-spacing: -0.01em;
+        }
+        .creator-v4 .cv-pv-meta-hidden {
+            display: none;
+        }
         .creator-v4 .cv-pv-eyebrow {
             display: flex; align-items: center; gap: 8px;
             font-size: 9px; font-weight: 700;
@@ -5293,22 +5488,20 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            background: var(--cv-bg);
-            padding: 0 0 2px;
-            margin: 0 -26px;
-            padding-left: 26px;
-            padding-right: 26px;
+            background: #f8f9fc;
+            padding: 0;
+            margin: 0;
             transition: box-shadow 0.25s;
         }
         .creator-v4 .cv-sticky-topic.stuck {
-            box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 1px 0 var(--cv-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .creator-v4 .cv-sticky-topic::after {
             content: '';
             position: absolute;
             bottom: -16px; left: 0; right: 0;
             height: 16px;
-            background: linear-gradient(to bottom, rgba(6,8,14,0.7), transparent);
+            background: linear-gradient(to bottom, rgba(248,249,252,0.7), transparent);
             pointer-events: none;
             z-index: 1;
             opacity: 0;
@@ -5637,10 +5830,10 @@
 
         /* --- 13. Typography Micro-Tuning --- */
         .creator-v4 .cv-sec-title {
-            letter-spacing: -0.015em;
+            letter-spacing: -0.01em;
         }
         .creator-v4 .cv-sec-eyebrow {
-            letter-spacing: 0.14em;
+            letter-spacing: 0.01em;
             color: var(--cv-muted);
         }
         .creator-v4 .cv-tb-label {
@@ -5664,37 +5857,193 @@
             box-shadow: 0 4px 18px rgba(0,0,0,0.16);
         }
 
-        /* --- 15. Theme Alignment: use colorful Sidebar gradient directly --- */
+        /* --- 15. Theme Alignment: Individual Card Layout --- */
         .creator-v4 {
-            --cv-bg: #140f3a;
-            --cv-surface: rgba(17, 21, 62, 0.84);
-            --cv-s2: rgba(16, 20, 58, 0.86);
-            --cv-s3: rgba(24, 29, 74, 0.86);
-            --cv-s4: rgba(34, 40, 92, 0.88);
-            --cv-s5: rgba(45, 52, 108, 0.9);
-            --cv-s6: rgba(56, 64, 126, 0.9);
-            --cv-border: rgba(255,255,255,0.12);
-            --cv-border-md: rgba(255,255,255,0.18);
-            --cv-border-hi: rgba(199,210,254,0.45);
-            --cv-text: #eef2ff;
-            --cv-text2: #c7d2fe;
-            --cv-muted: #a5b4fc;
-            --cv-dim: #93a0d6;
-            background: var(--sidebar-bg) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            box-shadow: 0 12px 32px rgba(24,16,77,0.28) !important;
+            --cv-bg: #f8f9fc;
+            --cv-surface: #ffffff;
+            --cv-s2: #ffffff;
+            --cv-s3: #ffffff;
+            --cv-s4: #ffffff;
+            --cv-s5: #ffffff;
+            --cv-s6: #ffffff;
+            --cv-border: #e8ecf0;
+            --cv-border-md: #dde2e9;
+            --cv-border-hi: #c8d0db;
+            --cv-text: #1a202c;
+            --cv-text2: #2d3748;
+            --cv-muted: #718096;
+            --cv-dim: #a0aec0;
+            background: #f8f9fc !important;
+            border: none !important;
+            box-shadow: none !important;
         }
 
         .creator-v4 .cv-topbar {
-            background: var(--sidebar-bg) !important;
-            border-bottom: 1px solid rgba(255,255,255,0.15) !important;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 10px 28px rgba(16,10,55,0.34) !important;
+            background: #ffffff !important;
+            border-bottom: 1px solid #e8ecf0 !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
         }
         .creator-v4 .cv-tb-label {
-            background: linear-gradient(135deg, #ffffff, #c7d2fe) !important;
+            background: linear-gradient(135deg, #6a60c3, #544da3) !important;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        /* Individual card sections */
+        .creator-v4 .cv-section {
+            background: #ffffff !important;
+            border: 1px solid #e8ecf0 !important;
+            border-radius: 12px !important;
+            padding: 1.5rem !important;
+            margin-bottom: 1.25rem !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+        }
+
+        /* Step 2 gradient header */
+        .creator-v4 .cv-section#cv-sec-config .cv-sec-hd {
+            background: linear-gradient(135deg, #6a60c3 0%, #544da3 38%, #423b87 68%, #352f6d 100%);
+            padding: 1rem !important;
+            margin: -1.5rem -1.5rem 1rem -1.5rem;
+            border-radius: 12px 12px 0 0;
+            color: #ffffff;
+        }
+        .creator-v4 .cv-section#cv-sec-config .cv-sec-eyebrow {
+            color: rgba(255,255,255,0.8);
+        }
+        .creator-v4 .cv-section#cv-sec-config .cv-sec-title {
+            color: #ffffff;
+        }
+        .creator-v4 .cv-preset-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 0.75rem;
+        }
+        .creator-v4 .cv-preset-chips {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .creator-v4 .cv-preset-chip {
+            border: 1px solid #dbe3f4;
+            background: #ffffff;
+            color: #526189;
+            border-radius: 999px;
+            padding: 0.34rem 0.72rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .creator-v4 .cv-preset-chip:hover {
+            border-color: #c7d2fe;
+            color: #4338ca;
+            background: #eef2ff;
+        }
+        .creator-v4 .cv-preset-chip.active {
+            border-color: #c7d2fe;
+            color: #3730a3;
+            background: #e0e7ff;
+        }
+        .creator-v4 .cv-advanced-toggle {
+            border: 1px solid #dbe3f4;
+            background: #fff;
+            color: #526189;
+            border-radius: 10px;
+            padding: 0.36rem 0.7rem;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .creator-v4 .cv-advanced-toggle:hover {
+            border-color: #c7d2fe;
+            color: #4338ca;
+        }
+        .creator-v4 .cv-style-suggest {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 0.7rem;
+            padding: 0.55rem 0.72rem;
+            border-radius: 10px;
+            border: 1px solid #dbe3f4;
+            background: #f8f9fc;
+        }
+        .creator-v4 .cv-style-suggest-text {
+            font-size: 0.74rem;
+            color: #526189;
+            line-height: 1.35;
+        }
+        .creator-v4 .cv-style-suggest .btn {
+            white-space: nowrap;
+        }
+        .creator-v4 #cv-sec-config.cv-advanced-collapsed .cv-sec-config-advanced {
+            display: none;
+        }
+
+        .creator-v4 .cv-quality-meter {
+            margin-top: 0.7rem;
+            margin-bottom: 0.4rem;
+            padding: 0.7rem;
+            border: 1px solid #e8ecf0;
+            border-radius: 12px;
+            background: #f8f9fc;
+        }
+        .creator-v4 .cv-qm-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .creator-v4 .cv-qm-title {
+            font-size: 0.78rem;
+            color: #2d3748;
+            font-weight: 800;
+        }
+        .creator-v4 .cv-qm-score {
+            font-size: 0.78rem;
+            color: #4338ca;
+            font-weight: 800;
+        }
+        .creator-v4 .cv-qm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+        }
+        .creator-v4 .cv-qm-item {
+            display: grid;
+            grid-template-columns: 68px 1fr 28px;
+            align-items: center;
+            gap: 6px;
+        }
+        .creator-v4 .cv-qm-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: 700;
+        }
+        .creator-v4 .cv-qm-track {
+            height: 5px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            overflow: hidden;
+        }
+        .creator-v4 .cv-qm-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width 0.25s ease;
+        }
+        .creator-v4 .cv-qm-val {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 700;
+            text-align: right;
         }
 
         .creator-v4 .cv-cfg-block,
@@ -5703,47 +6052,46 @@
         .creator-v4 .cv-cfg-select,
         .creator-v4 .cv-sec-summary-item,
         .creator-v4 .cv-tm-btn {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(255,255,255,0.16);
+            background: #ffffff;
+            border-color: #e8ecf0;
         }
 
         .creator-v4 .cv-cfg-block {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.03) 100%),
-                rgba(19, 24, 68, 0.76);
-            box-shadow: 0 8px 22px rgba(12,9,45,0.24);
+            background: #ffffff;
+            border: 1px solid #e8ecf0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .creator-v4 .cv-cfg-block:hover {
-            border-color: rgba(199,210,254,0.45);
-            box-shadow: 0 12px 28px rgba(18,13,58,0.32);
+            border-color: #d0d7e4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .creator-v4 .cv-preview-col {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%),
-                var(--sidebar-bg);
-            border-left: 1px solid rgba(255,255,255,0.14);
+            background: #ffffff !important;
+            border: 1px solid #e8ecf0 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
         }
 
         .creator-v4 .cv-btn-gen {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
-            box-shadow: 0 4px 16px rgba(124,92,255,0.34), inset 0 1px 0 rgba(255,255,255,0.16);
+            background: linear-gradient(135deg, #6a60c3, #544da3);
+            box-shadow: 0 2px 8px rgba(106, 96, 195, 0.24);
         }
 
         .creator-v4 .cv-topic-gen-row {
-            background: linear-gradient(135deg, rgba(199,210,254,0.16), rgba(167,139,250,0.1), transparent);
-            border-top-color: rgba(255,255,255,0.14);
+            background: #f8f9fc;
+            border-top-color: #e8ecf0;
         }
 
-        /* --- 15. Summary Pills — Subtle Gradient Badge --- */
+        /* --- 15. Summary Pills — Subtle Badge --- */
         .creator-v4 .cv-sec-summary-item {
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
-            border: 1px solid rgba(255,255,255,0.18);
+            background: #f8f9fc;
+            border: 1px solid #e8ecf0;
             transition: all 0.2s;
         }
         .creator-v4 .cv-gen-summary span {
-            background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));
-            border: 1px solid rgba(255,255,255,0.2);
+            background: #f8f9fc;
+            border: 1px solid #e8ecf0;
         }
 
         /* --- 16. Smoother Easing Curves --- */
@@ -13346,7 +13694,7 @@
             <div class="cv-sec-eyebrow">Step 1</div>
             <div class="cv-sec-title-row">
               <div class="cv-sec-title">What do you want to share?</div>
-              <div class="cv-opt-tag">Optional</div>
+                              <div class="cv-opt-tag">Leave this as blank & AI will choose a topic for you</div>
             </div>
           </div>
           <button class="cv-sec-collapse-btn" type="button"><svg class="cv-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
@@ -13367,16 +13715,21 @@
           <div class="cv-freewrite-mode" id="cv-freewrite-mode">
             <div class="cv-topic-box">
               <textarea id="topic-input" maxlength="300" oninput="updateTopicCounter()" placeholder="e.g. How AI teams can improve release velocity without increasing incident risk..." rows="4"></textarea>
+                            <div class="cv-topic-chips" id="cv-topic-chips">
+                                <button type="button" class="cv-topic-chip" onclick="applyTopicPromptChip('A contrarian take on AI adoption for lean startup teams')">Contrarian angle</button>
+                                <button type="button" class="cv-topic-chip" onclick="applyTopicPromptChip('3 lessons from scaling a B2B product from 0 to 100 enterprise customers')">Lessons learned</button>
+                                <button type="button" class="cv-topic-chip" onclick="applyTopicPromptChip('A practical framework to improve team execution without burnout')">Framework post</button>
+                                <button type="button" class="cv-topic-chip" onclick="applyTopicPromptChip('A short story about one decision that changed our go-to-market results')">Story-style</button>
+                            </div>
               <div class="cv-topic-footer">
-                <span style="font-size:11px;color:var(--cv-dim)">💡 Specific topics produce sharper posts</span>
                 <div class="cv-topic-footer-right">
                   <div class="cv-kb-inline" id="cv-kb-inline-wrap">
-                    <span class="cv-kb-dot"></span>
-                    <i class="fas fa-folder-open" style="font-size:10px;color:var(--cv-muted)"></i>
+                                        <span class="cv-kb-trigger-icon"><i class="fas fa-folder-tree"></i></span>
                     <select id="cv-kb-inline-select" onchange="onInlineKbChange(this.value)">
                       <option value="use_kb">All files</option>
                       <option value="no_kb">General AI</option>
                     </select>
+                                        <i class="fas fa-chevron-down cv-kb-pop-icon"></i>
                   </div>
                   <span class="cv-topic-sep">|</span>
                   <span class="cv-char-count"><b id="topic-char-count">0</b> / 300</span>
@@ -13394,7 +13747,23 @@
                   <button class="cv-btn-gen" onclick="generatePost()" type="button"><i class="fas fa-wand-magic-sparkles"></i> Generate</button>
                 </div>
               </div>
+                            <div class="cv-generate-progress" id="cv-generate-progress">
+                                <div class="cv-generate-progress-label">
+                                    <span><i class="fas fa-spinner fa-spin"></i> <span class="cv-generate-progress-text" id="cv-generate-progress-text">Generating your LinkedIn post...</span></span>
+                                    <span id="cv-generate-progress-pct">0%</span>
+                                </div>
+                                <div class="cv-generate-progress-track">
+                                    <div class="cv-generate-progress-fill" id="cv-generate-progress-fill"></div>
+                                </div>
+                                <div class="cv-generate-progress-steps">
+                                    <span class="cv-generate-progress-step active" id="cv-gstep-prepare">Preparing</span>
+                                    <span class="cv-generate-progress-step" id="cv-gstep-draft">Writing</span>
+                                    <span class="cv-generate-progress-step" id="cv-gstep-refine">Refining</span>
+                                    <span class="cv-generate-progress-step" id="cv-gstep-done">Ready</span>
+                                </div>
+                            </div>
             </div>
+                        <p class="cv-shortcut-hint">Shortcuts: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> Generate · <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> Publish</p>
             <p class="form-hint" style="margin-top:6px;">Enter a topic or leave blank for AI to decide based on your Knowledge Base</p>
           </div>
 
@@ -13477,6 +13846,19 @@
         </div>
         <div class="cv-sec-body">
           <div class="cv-sec-desc">Industry context, writing voice, post length, and format options shape the entire tone and structure.</div>
+                    <div class="cv-preset-row">
+                        <div class="cv-preset-chips" id="cv-writing-presets">
+                            <button type="button" class="cv-preset-chip active" data-preset="balanced" onclick="applyWritingPreset('balanced', this)">Balanced</button>
+                            <button type="button" class="cv-preset-chip" data-preset="thought-leader" onclick="applyWritingPreset('thought-leader', this)">Thought Leader</button>
+                            <button type="button" class="cv-preset-chip" data-preset="engagement" onclick="applyWritingPreset('engagement', this)">Engagement</button>
+                            <button type="button" class="cv-preset-chip" data-preset="educational" onclick="applyWritingPreset('educational', this)">Educational</button>
+                        </div>
+                        <button type="button" class="cv-advanced-toggle" id="cv-advanced-toggle" onclick="toggleConfigAdvanced()">Show advanced</button>
+                    </div>
+                    <div class="cv-style-suggest" id="cv-style-suggest" style="display:none;">
+                        <div class="cv-style-suggest-text" id="cv-style-suggest-text"></div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="applyLastStyleProfile()"><i class="fas fa-wand-magic-sparkles"></i> Apply</button>
+                    </div>
           <div class="cv-cfg-grid">
 
             <!-- ── Industry ── -->
@@ -13574,7 +13956,7 @@
             </div>
 
             <!-- ── Audience & Post Goal ── -->
-            <div class="cv-cfg-block cb-amber" id="cfg-options">
+            <div class="cv-cfg-block cb-amber cv-sec-config-advanced" id="cfg-options">
               <div class="cv-cb-title"><span class="cv-cb-dot dot-amber"></span> Audience & Post Goal <span class="cv-cb-count" id="cv-optCount">2 on</span></div>
 
               <!-- Audience -->
@@ -13634,7 +14016,7 @@
             </div>
 
             <!-- ── Hashtags & Emoji ── -->
-            <div class="cv-cfg-block cb-rose" id="cfg-hashtag-emoji">
+            <div class="cv-cfg-block cb-rose cv-sec-config-advanced" id="cfg-hashtag-emoji">
               <div class="cv-cb-title"><span class="cv-cb-dot dot-rose"></span> Hashtags & Emoji <span class="cv-cb-count" id="cv-heCount">3 · Balanced</span></div>
 
               <!-- Hashtags -->
@@ -13711,22 +14093,14 @@
   <!-- Preview Column -->
   <div class="cv-preview-col">
     <div class="cv-pv-topbar" id="pvBar">
-      <div>
-        <div class="cv-pv-eyebrow">
-          Preview &amp; Publish
-          <div class="cv-pv-eyebrow-line"></div>
-        </div>
-        <div class="cv-pv-profile">
-          <div class="cv-pv-avatar" id="cv-pv-avatar">Y</div>
-          <div>
-            <div class="cv-pv-name"><span id="cv-pv-name">Your Name</span><span class="cv-pv-badge">· 1st</span></div>
-            <div class="cv-pv-handle">🌐 LinkedIn · <span style="color:var(--cv-accent-g)" id="pvTime">—</span></div>
-          </div>
-        </div>
-      </div>
+            <div class="cv-pv-title">Preview &amp; Publish</div>
+            <div class="cv-pv-meta-hidden" aria-hidden="true">
+                <span id="cv-pv-avatar">Y</span>
+                <span id="cv-pv-name">Your Name</span>
+                <span id="pvTime">—</span>
+            </div>
       <div class="cv-pv-actions">
         <button class="cv-pv-action-btn" onclick="copyPost()" title="Copy"><i class="far fa-copy"></i></button>
-        <button class="cv-pv-action-btn" onclick="regeneratePost()" title="Regenerate"><i class="fas fa-arrows-rotate"></i></button>
       </div>
     </div>
 
@@ -15943,6 +16317,8 @@
         postText.classList.remove('skeleton');
         postText.setAttribute('contenteditable', 'true');
         syncCreatorPreviewState();
+        updateQuickQualityMeter(text);
+        refreshCvStepperState();
     }
 
     function toggleCreatorQuickActions(visible) {
@@ -17989,6 +18365,107 @@
     // Content generation
 
     /* ─── LinkedIn Mockup + Progress Bar helpers ─── */
+    let cvGenerateProgressTimer = null;
+    let cvGenerateInFlight = false;
+
+    function setCreatorGenerateButtonsLoading(isLoading) {
+        document.querySelectorAll('#content-creator button.cv-btn-gen[onclick*="generatePost"]').forEach(btn => {
+            if (!btn.dataset.defaultLabel) {
+                btn.dataset.defaultLabel = btn.innerHTML;
+            }
+            btn.disabled = Boolean(isLoading);
+            btn.innerHTML = isLoading
+                ? '<i class="fas fa-spinner fa-spin"></i> Generating…'
+                : btn.dataset.defaultLabel;
+        });
+    }
+
+    function updateCreatorGenerateProgressBar(value) {
+        const fill = document.getElementById('cv-generate-progress-fill');
+        const pct = document.getElementById('cv-generate-progress-pct');
+        const next = Math.min(value, 94);
+        if (fill) fill.style.width = next + '%';
+        if (pct) pct.textContent = Math.round(next) + '%';
+    }
+
+    function setCreatorGenerateProgressStep(step) {
+        const steps = ['prepare', 'draft', 'refine', 'done'];
+        const idx = steps.indexOf(step);
+        steps.forEach((name, index) => {
+            const el = document.getElementById('cv-gstep-' + name);
+            if (!el) return;
+            el.classList.remove('active', 'done');
+            if (index < idx) el.classList.add('done');
+            else if (index === idx) el.classList.add('active');
+        });
+    }
+
+    function showCreatorGenerateProgress(topic) {
+        const wrap = document.getElementById('cv-generate-progress');
+        const text = document.getElementById('cv-generate-progress-text');
+        const fill = document.getElementById('cv-generate-progress-fill');
+        const pct = document.getElementById('cv-generate-progress-pct');
+        if (!wrap) return;
+
+        if (cvGenerateProgressTimer) {
+            clearInterval(cvGenerateProgressTimer);
+            cvGenerateProgressTimer = null;
+        }
+
+        const trimmedTopic = (topic || '').trim();
+        if (text) {
+            text.textContent = trimmedTopic
+                ? `Generating: ${trimmedTopic}`
+                : 'Generating your LinkedIn post...';
+        }
+        if (fill) fill.style.width = '0%';
+        if (pct) pct.textContent = '0%';
+        wrap.style.display = 'block';
+        setCreatorGenerateProgressStep('prepare');
+
+        cvGenerateProgressTimer = setInterval(() => {
+            const current = parseFloat(fill?.style.width || '0') || 0;
+            if (current < 28) {
+                updateCreatorGenerateProgressBar(current + Math.random() * 5 + 2);
+            } else if (current < 60) {
+                setCreatorGenerateProgressStep('draft');
+                updateCreatorGenerateProgressBar(current + Math.random() * 2.5 + 0.8);
+            } else if (current < 86) {
+                setCreatorGenerateProgressStep('refine');
+                updateCreatorGenerateProgressBar(current + Math.random() * 1.6 + 0.4);
+            } else if (current < 94) {
+                updateCreatorGenerateProgressBar(current + Math.random() * 0.7 + 0.15);
+            }
+        }, 380);
+    }
+
+    function completeCreatorGenerateProgress(message) {
+        const wrap = document.getElementById('cv-generate-progress');
+        const fill = document.getElementById('cv-generate-progress-fill');
+        const pct = document.getElementById('cv-generate-progress-pct');
+        const text = document.getElementById('cv-generate-progress-text');
+        if (cvGenerateProgressTimer) {
+            clearInterval(cvGenerateProgressTimer);
+            cvGenerateProgressTimer = null;
+        }
+        if (text && message) text.textContent = message;
+        if (fill) fill.style.width = '100%';
+        if (pct) pct.textContent = '100%';
+        setCreatorGenerateProgressStep('done');
+        setTimeout(() => {
+            if (wrap) wrap.style.display = 'none';
+        }, 900);
+    }
+
+    function hideCreatorGenerateProgress() {
+        const wrap = document.getElementById('cv-generate-progress');
+        if (cvGenerateProgressTimer) {
+            clearInterval(cvGenerateProgressTimer);
+            cvGenerateProgressTimer = null;
+        }
+        if (wrap) wrap.style.display = 'none';
+    }
+
     function showMockupLoading() {
         const emptyState = document.getElementById('li-empty-state');
         const loadingState = document.getElementById('li-loading-state');
@@ -18057,24 +18534,64 @@
             if (readEl) readEl.textContent = words > 200 ? 'Dense' : words > 100 ? 'Good' : 'Light';
         } catch (e) { console.warn('Analytics render error:', e); }
     }
-    function updateProgressBar(step) {
-        // Update hero header stepper steps
+    let cvProgressHint = 'what';
+    let cvConfigInteracted = false;
+    let cvControlsInteracted = false;
+
+    function getCvProgressState() {
+        const topicVal = (document.getElementById('topic-input')?.value || '').trim();
+        const hasTopic = topicVal.length > 0;
+
+        const hasPreview = Boolean((document.getElementById('post-text')?.innerText || '').trim());
+
+        const tone = document.getElementById('post-tone')?.value || 'professional';
+        const lengthPreset = document.getElementById('cv-length-select')?.value || 'medium';
+        const audiencePreset = document.getElementById('audience-preset')?.value || 'general';
+        const goalPreset = document.getElementById('goal-preset')?.value || 'spark-comments';
+
+        const hashtagCount = Number(document.getElementById('hashtag-count')?.value || 3);
+        const emojiLevel = document.getElementById('emoji-level')?.value || 'moderate';
+        const topicsSelected = getSelectedContentTopics().length > 0;
+
+        const configChanged = cvConfigInteracted || tone !== 'professional' || lengthPreset !== 'medium' || audiencePreset !== 'general' || goalPreset !== 'spark-comments';
+        const controlsChanged = cvControlsInteracted || hashtagCount !== 3 || emojiLevel !== 'moderate' || topicsSelected;
+
+        const done = [
+            hasTopic || hasPreview,
+            configChanged || hasPreview,
+            controlsChanged || hasPreview,
+            hasPreview
+        ];
+
+        let activeIdx = done.findIndex(v => !v);
+        if (activeIdx === -1) activeIdx = 3;
+
+        const hintMin = cvProgressHint === 'result' ? 3 : (cvProgressHint === 'how' ? 1 : 0);
+        if (activeIdx < hintMin) activeIdx = hintMin;
+
+        return { done, activeIdx, hasPreview };
+    }
+
+    function refreshCvStepperState() {
         const steps = document.querySelectorAll('.cv-hero .cv-tbs-item');
         if (!steps || !steps.length) return;
-        const order = ['what', 'how', 'result'];
-        const idx = order.indexOf(step);
-        // Map old step names to step numbers: what=1, how=2&3, result=4
-        const stepMap = { what: 0, how: 1, result: 3 };
-        const activeIdx = stepMap[step] !== undefined ? stepMap[step] : 0;
+        const state = getCvProgressState();
         steps.forEach((s, i) => {
-            s.classList.remove('active', 'done');
-            if (i < activeIdx) s.classList.add('done');
-            else if (i === activeIdx) s.classList.add('active');
+            s.classList.remove('active', 'done', 'visited');
+            if (state.done[i]) s.classList.add('done');
+            if (i < state.activeIdx) s.classList.add('visited');
+            if (i === state.activeIdx) s.classList.add('active');
         });
+    }
 
-        // Keep old progress bar updated for compat
+    function updateProgressBar(step) {
+        if (step) cvProgressHint = step;
+        refreshCvStepperState();
+
         const bar = document.getElementById('creator-progress-bar');
         if (bar) {
+            const order = ['what', 'how', 'result'];
+            const idx = Math.max(0, order.indexOf(step || cvProgressHint));
             const oldSteps = bar.querySelectorAll('.creator-progress-step');
             oldSteps.forEach((s, i) => {
                 s.classList.remove('active', 'done');
@@ -18083,13 +18600,48 @@
             });
         }
     }
-    // Auto-track progress based on input activity
+
     function initProgressTracking() {
         const topic = document.getElementById('topic-input');
-        if (topic) topic.addEventListener('input', () => updateProgressBar('what'));
-        // When user interacts with config sections
-        const sections = document.querySelectorAll('.cv-section, .cv-cfg-block');
-        sections.forEach(el => el.addEventListener('click', () => updateProgressBar('how')));
+        if (topic) {
+            topic.addEventListener('input', () => {
+                updateProgressBar('what');
+                refreshCvStepperState();
+            });
+        }
+
+        const configInputs = ['industry-select', 'role-select', 'post-tone', 'cv-length-select', 'audience-preset', 'goal-preset'];
+        configInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', () => {
+                cvConfigInteracted = true;
+                updateProgressBar('how');
+            });
+        });
+
+        const controlsInputs = ['hashtag-count', 'emoji-level', 'target-audience', 'post-goal'];
+        controlsInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', () => {
+                cvControlsInteracted = true;
+                updateProgressBar('how');
+            });
+            el.addEventListener('change', () => {
+                cvControlsInteracted = true;
+                updateProgressBar('how');
+            });
+        });
+
+        document.querySelectorAll('#content-topics-group input[type="checkbox"]').forEach(el => {
+            el.addEventListener('change', () => {
+                cvControlsInteracted = true;
+                updateProgressBar('how');
+            });
+        });
+
+        refreshCvStepperState();
     }
 
     /** Return the real scroll container — .main-content if it scrolls, else documentElement */
@@ -18110,6 +18662,10 @@
         initStickyTopicObserver();
         initCvRippleEffect();
         initScoreRingGlow();
+        initCreatorKeyboardShortcuts();
+        toggleConfigAdvanced(true);
+        renderCreatorStyleSuggestion();
+        updateQuickQualityMeter();
         // Populate mockup with user info if available
         try {
             const nameEl = document.getElementById('li-mockup-name');
@@ -18250,7 +18806,214 @@
         }
     }
 
+    function applyTopicPromptChip(text) {
+        const topic = document.getElementById('topic-input');
+        if (!topic) return;
+        topic.value = String(text || '').trim();
+        updateTopicCounter();
+        topic.focus();
+        topic.setSelectionRange(topic.value.length, topic.value.length);
+        updateProgressBar('what');
+        saveCreatorDraftState();
+    }
 
+    function applyWritingPreset(preset, triggerBtn = null) {
+        const tone = document.getElementById('post-tone');
+        const lengthSelect = document.getElementById('cv-length-select');
+        const audiencePreset = document.getElementById('audience-preset');
+        const goalPreset = document.getElementById('goal-preset');
+        const hashtag = document.getElementById('hashtag-count');
+        const emoji = document.getElementById('emoji-level');
+
+        if (preset === 'thought-leader') {
+            if (tone) tone.value = 'authoritative';
+            if (lengthSelect) lengthSelect.value = 'long';
+            if (audiencePreset) audiencePreset.value = 'c-suite';
+            if (goalPreset) goalPreset.value = 'build-authority';
+            if (hashtag) hashtag.value = '2';
+            if (emoji) emoji.value = 'minimal';
+        } else if (preset === 'engagement') {
+            if (tone) tone.value = 'conversational';
+            if (lengthSelect) lengthSelect.value = 'short';
+            if (audiencePreset) audiencePreset.value = 'general';
+            if (goalPreset) goalPreset.value = 'spark-comments';
+            if (hashtag) hashtag.value = '4';
+            if (emoji) emoji.value = 'moderate';
+        } else if (preset === 'educational') {
+            if (tone) tone.value = 'educational';
+            if (lengthSelect) lengthSelect.value = 'medium';
+            if (audiencePreset) audiencePreset.value = 'developers';
+            if (goalPreset) goalPreset.value = 'educate';
+            if (hashtag) hashtag.value = '3';
+            if (emoji) emoji.value = 'minimal';
+        } else {
+            if (tone) tone.value = 'professional';
+            if (lengthSelect) lengthSelect.value = 'medium';
+            if (audiencePreset) audiencePreset.value = 'general';
+            if (goalPreset) goalPreset.value = 'spark-comments';
+            if (hashtag) hashtag.value = '3';
+            if (emoji) emoji.value = 'moderate';
+        }
+
+        onLengthDropdownChange(lengthSelect?.value || 'medium');
+        onAudiencePresetChange(audiencePreset?.value || 'general');
+        onGoalPresetChange(goalPreset?.value || 'spark-comments');
+        updateHashtagPreview();
+        updateContentHints();
+        syncCreatorReplicaControls();
+
+        document.querySelectorAll('#cv-writing-presets .cv-preset-chip').forEach(btn => {
+            btn.classList.toggle('active', triggerBtn ? btn === triggerBtn : btn.dataset.preset === preset);
+        });
+
+        cvConfigInteracted = true;
+        updateProgressBar('how');
+        saveCreatorDraftState();
+    }
+
+    function toggleConfigAdvanced(force = null) {
+        const sec = document.getElementById('cv-sec-config');
+        const btn = document.getElementById('cv-advanced-toggle');
+        if (!sec || !btn) return;
+        const shouldCollapse = force === null ? !sec.classList.contains('cv-advanced-collapsed') : Boolean(force);
+        sec.classList.toggle('cv-advanced-collapsed', shouldCollapse);
+        btn.textContent = shouldCollapse ? 'Show advanced' : 'Hide advanced';
+    }
+
+    function setQualityMetric(idBase, value) {
+        const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+        const fill = document.getElementById(`cv-qm-${idBase}`);
+        const val = document.getElementById(`cv-qm-${idBase}-v`);
+        if (fill) fill.style.width = `${safe}%`;
+        if (val) val.textContent = String(safe);
+        return safe;
+    }
+
+    function updateQuickQualityMeter(text = null) {
+        const meter = document.getElementById('cv-quality-meter');
+        const scoreEl = document.getElementById('cv-qm-score');
+        const content = String(text == null ? (document.getElementById('post-text')?.innerText || '') : text).trim();
+        if (!meter) return;
+        if (!content) {
+            meter.style.display = 'none';
+            return;
+        }
+        meter.style.display = 'block';
+
+        const lines = content.split('\n').map(v => v.trim()).filter(Boolean);
+        const firstLine = lines[0] || '';
+        const words = content.split(/\s+/).filter(Boolean);
+        const sentences = content.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
+        const avgSentenceLen = sentences.length ? (words.length / sentences.length) : words.length;
+
+        const hookScore = firstLine.length <= 120
+            ? (/[!?]/.test(firstLine) ? 92 : 82)
+            : (firstLine.length <= 170 ? 64 : 36);
+        const clarityScore = avgSentenceLen <= 18 ? 90 : (avgSentenceLen <= 24 ? 72 : 48);
+        const readabilityScore = words.length >= 80 && words.length <= 260 ? 88 : (words.length <= 320 ? 70 : 44);
+        const ctaScore = /\b(comment|share|follow|check|link|drop|let me know|thoughts|click|subscribe|download|sign up|join|visit|DM)\b/i.test(content) ? 92 : 38;
+
+        const h = setQualityMetric('hook', hookScore);
+        const c = setQualityMetric('clarity', clarityScore);
+        const r = setQualityMetric('readability', readabilityScore);
+        const a = setQualityMetric('cta', ctaScore);
+        const total = Math.round((h + c + r + a) / 4);
+        if (scoreEl) scoreEl.textContent = `${total}/100`;
+    }
+
+    const CREATOR_STYLE_PROFILE_STORAGE_KEY = 'creator_style_profile_v1';
+
+    function buildCreatorStyleProfile() {
+        return {
+            tone: document.getElementById('post-tone')?.value || 'professional',
+            length: document.getElementById('cv-length-select')?.value || 'medium',
+            audiencePreset: document.getElementById('audience-preset')?.value || 'general',
+            goalPreset: document.getElementById('goal-preset')?.value || 'spark-comments',
+            hashtag: document.getElementById('hashtag-count')?.value || '3',
+            emoji: document.getElementById('emoji-level')?.value || 'moderate',
+            updatedAt: Date.now()
+        };
+    }
+
+    function saveCreatorStyleProfile() {
+        try {
+            localStorage.setItem(CREATOR_STYLE_PROFILE_STORAGE_KEY, JSON.stringify(buildCreatorStyleProfile()));
+        } catch (_) {}
+    }
+
+    function renderCreatorStyleSuggestion() {
+        const wrap = document.getElementById('cv-style-suggest');
+        const text = document.getElementById('cv-style-suggest-text');
+        if (!wrap || !text) return;
+        let state = null;
+        try {
+            state = JSON.parse(localStorage.getItem(CREATOR_STYLE_PROFILE_STORAGE_KEY) || 'null');
+        } catch (_) {
+            state = null;
+        }
+        if (!state || !state.tone || !state.length) {
+            wrap.style.display = 'none';
+            return;
+        }
+        const toneLabel = state.tone.replace(/-/g, ' ');
+        const lengthLabel = state.length.replace(/-/g, ' ');
+        text.textContent = `Use your last winning style: ${toneLabel} tone · ${lengthLabel} length`;
+        wrap.style.display = 'flex';
+    }
+
+    function applyLastStyleProfile() {
+        let state = null;
+        try {
+            state = JSON.parse(localStorage.getItem(CREATOR_STYLE_PROFILE_STORAGE_KEY) || 'null');
+        } catch (_) {
+            state = null;
+        }
+        if (!state) return;
+        if (state.tone) setSelectValue('post-tone', state.tone);
+        if (state.length) setSelectValue('cv-length-select', state.length);
+        if (state.audiencePreset) setSelectValue('audience-preset', state.audiencePreset);
+        if (state.goalPreset) setSelectValue('goal-preset', state.goalPreset);
+        if (state.hashtag) setSelectValue('hashtag-count', String(state.hashtag));
+        if (state.emoji) setSelectValue('emoji-level', state.emoji);
+
+        onLengthDropdownChange(document.getElementById('cv-length-select')?.value || 'medium');
+        onAudiencePresetChange(document.getElementById('audience-preset')?.value || 'general');
+        onGoalPresetChange(document.getElementById('goal-preset')?.value || 'spark-comments');
+        updateHashtagPreview();
+        updateContentHints();
+        syncCreatorReplicaControls();
+        cvConfigInteracted = true;
+        updateProgressBar('how');
+        saveCreatorDraftState();
+        showToast('success', 'Style profile applied', 'fas fa-check');
+    }
+
+    function isCreatorTabActive() {
+        return Boolean(document.getElementById('content-creator')?.classList.contains('active'));
+    }
+
+    function initCreatorKeyboardShortcuts() {
+        document.addEventListener('keydown', function(e) {
+            if (!isCreatorTabActive()) return;
+            const key = String(e.key || '').toLowerCase();
+            const cmd = e.metaKey || e.ctrlKey;
+
+            if (cmd && e.shiftKey && key === 'enter') {
+                e.preventDefault();
+                postNow();
+                return;
+            }
+            if (cmd && key === 'enter') {
+                e.preventDefault();
+                generatePost();
+                return;
+            }
+            if (e.altKey && key === 'enter') {
+                e.preventDefault();
+                openScheduleModal();
+            }
+        });
+    }
 
     // Floating generate button: show when generate card scrolls out of view
     function initCvFloatGen() {
@@ -18393,6 +19156,10 @@
     }
 
     async function generatePost() {
+        if (cvGenerateInFlight) {
+            return;
+        }
+
         const canProceed = await ensureGenerationReadiness();
         if (!canProceed) {
             return;
@@ -18426,6 +19193,10 @@
             showToast('error', 'Select at least one file for this mode', 'fas fa-exclamation-circle');
             return;
         }
+
+        cvGenerateInFlight = true;
+        setCreatorGenerateButtonsLoading(true);
+        showCreatorGenerateProgress(topic);
 
         if (postPreview) {
             postPreview.style.display = 'block';
@@ -18469,6 +19240,9 @@
         .then(data => {
             const content = data.content || data.text || data.post;
             if (data.success && content) {
+                cvGenerateInFlight = false;
+                setCreatorGenerateButtonsLoading(false);
+                completeCreatorGenerateProgress('Post ready to review');
                 postText.classList.remove('skeleton');
                 postText.style.display = 'block';
                 postText.removeAttribute('contenteditable');
@@ -18508,12 +19282,20 @@
                 }
                 toggleCreatorQuickActions(true);
                 saveCreatorDraftState();
+                saveCreatorStyleProfile();
                 showMockupResult(content);
                 populatePostAnalytics(content, lastGeneratedHashtags);
+                updateQuickQualityMeter(content);
+                refreshCvStepperState();
+                renderCreatorStyleSuggestion();
                 showToast('success', 'Post generated!', 'fas fa-check');
                 refreshBillingStatus(false);
                 return;
             }
+
+            cvGenerateInFlight = false;
+            setCreatorGenerateButtonsLoading(false);
+            hideCreatorGenerateProgress();
 
             postText.classList.remove('skeleton');
             postText.style.display = 'none';
@@ -18535,6 +19317,8 @@
             toggleCreatorQuickActions(false);
             hideVariantPanel();
             showMockupEmpty();
+            updateQuickQualityMeter('');
+            refreshCvStepperState();
             if (data.quota_exceeded) {
                 showToast('warning', data.message || 'Monthly post limit reached', 'fas fa-lock');
                 setTimeout(() => openUpgradeModal('quota_exceeded'), 400);
@@ -18543,6 +19327,9 @@
             }
         })
         .catch(e => {
+            cvGenerateInFlight = false;
+            setCreatorGenerateButtonsLoading(false);
+            hideCreatorGenerateProgress();
             postText.classList.remove('skeleton');
             postText.style.display = 'none';
             if (insightsPanel) {
@@ -18563,6 +19350,8 @@
             toggleCreatorQuickActions(false);
             hideVariantPanel();
             showMockupEmpty();
+            updateQuickQualityMeter('');
+            refreshCvStepperState();
             showToast('error', e.message, 'fas fa-exclamation-circle');
         });
     }
@@ -19661,6 +20450,7 @@
         if (stuckInput && document.activeElement !== stuckInput) {
             stuckInput.value = input.value;
         }
+        refreshCvStepperState();
     }
 
     // Sync compact stuck topic input back to main textarea
@@ -19693,6 +20483,8 @@
             postText.setAttribute('contenteditable', 'true');
             postText.setAttribute('spellcheck', 'true');
             toggleCreatorQuickActions(true);
+            updateQuickQualityMeter(postText.textContent || '');
+            refreshCvStepperState();
             if (previewState) previewState.textContent = 'Generated';
             return;
         }
@@ -19705,6 +20497,8 @@
         placeholder.classList.remove('is-loading');
         toggleCreatorQuickActions(false);
         hideVariantPanel();
+        updateQuickQualityMeter('');
+        refreshCvStepperState();
         if (previewState) previewState.textContent = 'Not generated yet';
     }
 
@@ -23055,6 +23849,9 @@
         syncCreatorPreviewState();
         updateCreatorDatePill();
         restoreCreatorDraftState();
+        renderCreatorStyleSuggestion();
+        refreshCvStepperState();
+        updateQuickQualityMeter();
 
         const postTextEl = document.getElementById('post-text');
         if (postTextEl) {
@@ -23099,6 +23896,8 @@
             if (event.target.id === 'post-text') {
                 const content = getEditablePostText();
                 toggleCreatorQuickActions(Boolean(content));
+                updateQuickQualityMeter(content);
+                refreshCvStepperState();
                 if (content) {
                     renderPrePublishValidator(buildPrePublishValidation(content, lastGeneratedHashtags || []));
                 }
