@@ -58,16 +58,31 @@ from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from kb_jobs import enqueue_kb_training_job, get_kb_training_status
 from freemium import create_freemium_blueprint, load_plan_limits as load_freemium_plan_limits
+from crypto_utils import encrypt_value, decrypt_value, is_encrypted
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_cors import CORS
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
+
+# ── CORS ──────────────────────────────────────────────────────────────────
+CORS(app, resources={r"/api/*": {"origins": os.getenv('ALLOWED_ORIGINS', '*').split(',')}})
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────
+_redis_url = os.getenv('REDIS_URL', '').strip()
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per minute", "2000 per hour"],
+    storage_uri=_redis_url if _redis_url else "memory://",
+    strategy="fixed-window",
+)
 
 # Register freemium blueprint
 freemium_bp = create_freemium_blueprint()
@@ -77,6 +92,131 @@ app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
+
+# ── Security Headers Middleware ───────────────────────────────────────────
+@app.after_request
+def set_security_headers(response):
+    """Inject security headers into every response."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
+    if os.getenv('FLASK_ENV') == 'production':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "font-src 'self' https://cdnjs.cloudflare.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self' https://*.supabase.co;"
+        )
+    return response
+
+
+# ── Custom Error Handlers ─────────────────────────────────────────────────
+@app.errorhandler(404)
+def not_found_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Endpoint not found'}), 404
+    return render_template('error.html',
+        error_code=404,
+        error_title='Page Not Found',
+        error_message="The page you're looking for doesn't exist or has been moved. Check the URL or head back to your dashboard."
+    ), 404
+
+
+@app.errorhandler(429)
+def ratelimit_handler(error):
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'success': False,
+            'message': 'Too many requests. Please slow down and try again shortly.',
+            'retry_after': error.description
+        }), 429
+    return render_template('error.html',
+        error_code=429,
+        error_title='Too Many Requests',
+        error_message="You've sent too many requests in a short period. Please wait a moment and try again."
+    ), 429
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.exception('Internal server error: %s', error)
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    return render_template('error.html',
+        error_code=500,
+        error_title='Something Went Wrong',
+        error_message="An unexpected error occurred on our end. Our team has been notified. Please try again in a few moments."
+    ), 500
+
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    return render_template('error.html',
+        error_code=403,
+        error_title='Access Denied',
+        error_message="You don't have permission to access this page. If you believe this is an error, please contact support."
+    ), 403
+
+
+# ── CSRF Protection ──────────────────────────────────────────────────────
+# API routes use Bearer token auth (inherently CSRF-safe).
+# Session-based routes (admin login) get a double-submit cookie CSRF check.
+import secrets
+
+@app.before_request
+def _csrf_protect():
+    """Double-submit cookie CSRF protection for session-based form POSTs.
+
+    Skipped for:
+    - GET, HEAD, OPTIONS (safe methods)
+    - /api/* routes (JWT-authenticated, CSRF-safe by design)
+    - /api/billing/webhook (server-to-server callback)
+    """
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return None
+    if request.path.startswith('/api/'):
+        return None
+    # For session-based POST routes (admin login, etc.), enforce CSRF token
+    token_from_form = request.form.get('csrf_token') or (request.get_json(silent=True) or {}).get('csrf_token')
+    token_from_cookie = request.cookies.get('csrf_token')
+    if not token_from_form or not token_from_cookie or not hmac.compare_digest(token_from_form, token_from_cookie):
+        logger.warning('CSRF validation failed for %s %s', request.method, request.path)
+        return jsonify({'success': False, 'message': 'CSRF validation failed. Please refresh the page.'}), 403
+
+
+@app.after_request
+def _set_csrf_cookie(response):
+    """Set a CSRF cookie if one doesn't exist or is about to expire."""
+    if 'csrf_token' not in request.cookies:
+        token = secrets.token_hex(32)
+        response.set_cookie(
+            'csrf_token', token,
+            httponly=False,   # JS needs to read this for forms
+            samesite='Lax',
+            secure=os.getenv('FLASK_ENV') == 'production',
+            max_age=86400
+        )
+    return response
+
+
+def get_csrf_token() -> str:
+    """Retrieve or generate a CSRF token for template injection."""
+    token = request.cookies.get('csrf_token')
+    if not token:
+        token = secrets.token_hex(32)
+    return token
+
+# Make csrf_token available in all templates
+app.jinja_env.globals['csrf_token'] = get_csrf_token
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
@@ -1079,7 +1219,12 @@ def _get_user_config_overrides(user_id: str) -> dict:
         return {}
     blob = _ensure_user_feature_blob(user_id)
     overrides = blob.get('user_config') if isinstance(blob.get('user_config'), dict) else {}
-    return dict(overrides)
+    # Decrypt sensitive keys on read
+    result = dict(overrides)
+    for key in SENSITIVE_USER_CONFIG_KEYS:
+        if key in result and is_encrypted(result[key]):
+            result[key] = decrypt_value(result[key])
+    return result
 
 
 def _save_user_config_overrides(user_id: str, config: dict) -> None:
@@ -1090,7 +1235,11 @@ def _save_user_config_overrides(user_id: str, config: dict) -> None:
     updated = dict(existing)
     for key in USER_CONFIG_KEYS:
         if key in config:
-            updated[key] = _serialize_config_value(key, config.get(key))
+            value = _serialize_config_value(key, config.get(key))
+            # Encrypt sensitive keys before persisting
+            if key in SENSITIVE_USER_CONFIG_KEYS and value:
+                value = encrypt_value(value)
+            updated[key] = value
     blob['user_config'] = updated
     _save_user_feature_blob(user_id, blob)
 
@@ -1992,6 +2141,7 @@ def _find_auth_user_by_id(user_id: str):
 # ============= AUTHENTICATION ROUTES =============
 
 @app.route('/api/auth/signup', methods=['POST'])
+@limiter.limit("5 per minute")
 def auth_signup():
     """User registration"""
     try:
@@ -2045,6 +2195,7 @@ def auth_signup():
 
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_login():
     """User login"""
     try:
@@ -2313,6 +2464,7 @@ def auth_account_update():
 
 
 @app.route('/api/auth/password/reset-request', methods=['POST'])
+@limiter.limit("3 per minute")
 @require_auth
 def auth_password_reset_request():
     """Send password reset email to current signed-in user."""
@@ -2377,6 +2529,7 @@ def logout_page():
 
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def admin_login_page():
     """Admin login page."""
     if request.method == 'GET':
@@ -3800,6 +3953,7 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
     return sorted(list(set(hits)))
 
 @app.route('/api/generate-preview', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def generate_preview():
     """Generate a preview post"""
     try:
@@ -4782,6 +4936,7 @@ Write ONLY the post content, nothing else."""
 # ============= KNOWLEDGE BASE & MODEL TRAINING ENDPOINTS =============
 
 @app.route('/api/upload-knowledge-base', methods=['POST'])
+@limiter.limit("20 per minute")
 @require_auth
 def upload_knowledge_base():
     """Upload PDF or DOCX files to the knowledge base"""

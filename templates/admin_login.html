@@ -37,6 +37,11 @@
     </div>
 
     <script>
+        function getCsrfToken() {
+            const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+            return match ? decodeURIComponent(match[1]) : '';
+        }
+
         document.getElementById('admin-login-form').addEventListener('submit', async function (event) {
             event.preventDefault();
             const msg = document.getElementById('msg');
@@ -45,7 +50,8 @@
 
             const payload = {
                 email: document.getElementById('email').value.trim(),
-                password: document.getElementById('password').value
+                password: document.getElementById('password').value,
+                csrf_token: getCsrfToken()
             };
 
             try {
