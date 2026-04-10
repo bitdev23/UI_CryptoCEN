@@ -1,8 +1,10 @@
 .env
 __pycache__/
 *.pyc
-valtrilabs.log
+velank.log
 .venv/
 venv/
 .DS_Store
 data/user_features.json
+_archive_cleanup/
+app.log

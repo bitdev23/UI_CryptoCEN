@@ -9,7 +9,7 @@ from rag_system_pgvector import RAGStore
 from ai_provider import AIProvider
 import config
 
-logger = logging.getLogger("valtrilabs.content_generator")
+logger = logging.getLogger("velank.content_generator")
 
 
 class ContentGenerator:

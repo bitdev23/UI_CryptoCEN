@@ -101,7 +101,7 @@ def create_freemium_blueprint():
             admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
             is_admin = any(email.strip().lower() == user_email.lower() for email in admin_emails if email.strip())
             
-            if not is_admin and os.getenv('FLASK_ENV') != 'development':
+            if not is_admin:
                 return jsonify({'success': False, 'message': 'Admin access required'}), 403
             
             limits = load_plan_limits()
@@ -112,7 +112,7 @@ def create_freemium_blueprint():
             
         except Exception as e:
             logger.error(f"Error fetching plan limits: {e}")
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': 'Failed to fetch plan limits'}), 500
     
     @freemium_bp.route('/api/admin/plan-limits', methods=['POST'])
     def update_plan_limits():
@@ -134,7 +134,7 @@ def create_freemium_blueprint():
             admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
             is_admin = any(email.strip().lower() == user_email.lower() for email in admin_emails if email.strip())
             
-            if not is_admin and os.getenv('FLASK_ENV') != 'development':
+            if not is_admin:
                 return jsonify({'success': False, 'message': 'Admin access required'}), 403
             
             data = request.get_json() or {}
@@ -176,7 +176,7 @@ def create_freemium_blueprint():
                 
         except Exception as e:
             logger.error(f"Error updating plan limits: {e}")
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': 'Failed to update plan limits'}), 500
     
     @freemium_bp.route('/api/user/quota-status', methods=['GET'])
     def get_quota_status():
@@ -202,6 +202,6 @@ def create_freemium_blueprint():
             
         except Exception as e:
             logger.error(f"Error fetching quota status: {e}")
-            return jsonify({'success': False, 'message': str(e)}), 500
+            return jsonify({'success': False, 'message': 'Failed to fetch quota status'}), 500
     
     return freemium_bp

@@ -1,0 +1,8 @@
+clarity,completion_tokens,cost_usd,cta,error,goal_key,hook,industry,latency_ms,model,novelty,ok,prompt_id,prompt_tokens,provider,quality_score,role,specificity,text_preview,tone,topic,total_tokens
+100,17,5.25e-05,32,,educate_audience,90,E-commerce,4328,gemini-2.5-flash,76,True,p_0717,99,google,71,CTO,44,Is your e-commerce platform slowing down innovation? Technical debt might be the silent culprit,educational,technical debt,116
+,,0.0,,OPENAI_API_KEY not set,educate_audience,,E-commerce,0,,,False,p_0717,,openai,0,CTO,,,educational,technical debt,
+100,228,0.00375,88,,educate_audience,90,E-commerce,8747,claude-sonnet-4-20250514,84,True,p_0717,110,claude,86,CTO,65,"Technical debt isn't just a developer problem—it's a business risk that compounds daily.
+
+In e-commerce, I've seen technical debt manifest in subtle but costly ways. That quick checkout fix from Black Friday 2022? It's s",educational,technical debt,338
+,,0.0,,DEEPSEEK_API_KEY not set,educate_audience,,E-commerce,0,,,False,p_0717,,deepseek,0,CTO,,,educational,technical debt,
+,,0.0,,XAI_API_KEY not set,educate_audience,,E-commerce,0,,,False,p_0717,,xai,0,CTO,,,educational,technical debt,

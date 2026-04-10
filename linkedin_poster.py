@@ -5,7 +5,7 @@ import requests
 import logging
 from urllib.parse import quote
 
-logger = logging.getLogger("valtrilabs.linkedin")
+logger = logging.getLogger("velank.linkedin")
 
 
 class LinkedInPoster:

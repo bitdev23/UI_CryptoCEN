@@ -71,6 +71,7 @@
         (function () {
             var titleEl = document.getElementById('title');
             var messageEl = document.getElementById('message');
+            var _tokenStore = sessionStorage;   // tokens in sessionStorage (XSS-safe)
 
             function showError(title, msg) {
                 titleEl.className = 'err';
@@ -79,7 +80,9 @@
             }
 
             function clearAuthStorage() {
-                ['access_token', 'refresh_token', 'user_id', 'user_email',
+                _tokenStore.removeItem('access_token');
+                _tokenStore.removeItem('refresh_token');
+                ['user_id', 'user_email',
                  'first_name', 'last_name', 'country', 'auth_just_signed_in_at',
                  'token_type']
                     .forEach(function (k) { localStorage.removeItem(k); });
@@ -154,11 +157,11 @@
                     }
 
                     // Otherwise accept token and store user info
-                    localStorage.setItem('access_token', accessToken);
+                    _tokenStore.setItem('access_token', accessToken);
                     if (refreshToken) {
-                        localStorage.setItem('refresh_token', refreshToken);
+                        _tokenStore.setItem('refresh_token', refreshToken);
                     }
-                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                    if (refreshToken) _tokenStore.setItem('refresh_token', refreshToken);
 
                     if (user.id)    localStorage.setItem('user_id',    user.id);
                     if (user.email) localStorage.setItem('user_email', user.email);
@@ -195,8 +198,8 @@
                     console.warn('Token verification failed but continuing with OAuth token:', result.body);
                     
                     // Store the token and redirect - let the dashboard handle any issues
-                    localStorage.setItem('access_token', accessToken);
-                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                    _tokenStore.setItem('access_token', accessToken);
+                    if (refreshToken) _tokenStore.setItem('refresh_token', refreshToken);
                     localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
 
                     titleEl.className = 'ok';
@@ -209,8 +212,8 @@
                 console.error('Verification error:', err);
                 // Even if verification fails, if we have a token from Supabase, try to use it
                 if (accessToken) {
-                    localStorage.setItem('access_token', accessToken);
-                    if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+                    _tokenStore.setItem('access_token', accessToken);
+                    if (refreshToken) _tokenStore.setItem('refresh_token', refreshToken);
                     localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
                     
                     titleEl.className = 'ok';

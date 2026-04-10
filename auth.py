@@ -414,8 +414,9 @@ def require_auth(f):
         # Get token from Authorization header
         auth_header = request.headers.get('Authorization')
 
-        # In TEST_MODE, allow fallback user only when no token was provided.
-        if os.getenv('TEST_MODE') == 'true' and not auth_header:
+        # In TEST_MODE, allow fallback user only in local dev (never in production).
+        # Production is detected via FLASK_ENV=production in .env (loaded by systemd EnvironmentFile).
+        if os.getenv('TEST_MODE') == 'true' and not auth_header and os.getenv('FLASK_ENV') != 'production':
             g.user_id = os.getenv('TEST_USER_ID', '00000000-0000-0000-0000-000000000000')
             g.user_email = 'test@example.com'
             g.user = {

@@ -1,0 +1,6 @@
+clarity,completion_tokens,cost_usd,cta,error,goal_key,hook,industry,latency_ms,model,novelty,ok,prompt_id,prompt_tokens,provider,quality_score,role,specificity,text_preview,tone,topic,total_tokens
+100,148,0.0004122,32,,educate_audience,60,E-commerce,5233,gpt-4o-mini,72,True,p_0717,95,openai,64,CTO,44,"Technical debt can be a silent killer in e-commerce. It creeps in when we prioritize speed over quality, leading to short-term gains but long-term headaches. As CTOs, we must recognize that every quick fix can accumulate",educational,technical debt,243
+100,166,0.00020825,88,,educate_audience,55,E-commerce,7936,deepseek-chat,84,True,p_0717,95,deepseek,77,CTO,58,"The silent tax on your e-commerce engine.
+
+Technical debt isn't about bad code; it's the accumulated cost of past trade-offs. In e-commerce, it's the checkout modification that takes weeks, the promo system that breaks w",educational,technical debt,261
+,,0.0,,"Error code: 400 - {'code': 'Client specified an invalid argument', 'error': 'Model not found: grok-2-latest'}",educate_audience,,E-commerce,0,,,False,p_0717,,xai,0,CTO,,,educational,technical debt,

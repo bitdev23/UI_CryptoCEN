@@ -57,7 +57,7 @@ async function showUpgradeModal(quotaInfo) {
     
     // Fetch and display plans
     try {
-        const token = localStorage.getItem('velank_access_token');
+        const token = (typeof _tokenStore !== 'undefined' ? _tokenStore : sessionStorage).getItem('access_token');
         const response = await fetch('/api/user/quota-status', {
             headers: {
                 'Authorization': `Bearer ${token}`

@@ -1,0 +1,21 @@
+clarity,completion_tokens,cost_usd,cta,error,goal_key,hook,industry,latency_ms,model,novelty,ok,prompt_id,prompt_tokens,provider,quality_score,role,specificity,text_preview,tone,topic,total_tokens
+100,16,5.145e-05,32,,educate_audience,90,E-commerce,3754,gemini-2.5-flash,76,True,p_0717,99,google,71,CTO,44,Is your e-commerce platform feeling sluggish? Technical debt might be the silent culprit,educational,technical debt,115
+100,15,9.54e-05,32,,educate_audience,55,E-commerce,3112,gemini-2.5-flash,76,True,p_0717,99,openai,64,CTO,44,Is your e-commerce platform feeling sluggish or hard to update? You might,educational,technical debt,114
+100,218,0.0036,88,,educate_audience,90,E-commerce,8844,claude-sonnet-4-20250514,84,True,p_0717,110,claude,86,CTO,65,"Technical debt isn't just a developer problem—it's a business risk that compounds daily.
+
+In e-commerce, I've seen technical debt manifest in subtle but costly ways. That quick checkout fix from Black Friday 2022? It's s",educational,technical debt,328
+100,16,4.433e-05,32,,educate_audience,90,E-commerce,3111,gemini-2.5-flash,76,True,p_0717,99,deepseek,71,CTO,44,"Is technical debt slowing down your e-commerce innovation?
+
+In the fast-",educational,technical debt,115
+100,17,0.000368,32,,educate_audience,90,E-commerce,4122,gemini-2.5-flash,76,True,p_0717,99,xai,71,CTO,44,Is technical debt slowing down your e-commerce growth? It's more than just,educational,technical debt,116
+100,17,5.25e-05,32,,build_authority,90,GenAI,3243,gemini-2.5-flash,76,True,p_0326,99,google,71,Ops Leader,44,"In GenAI, operational friction kills productivity. Here's how we keep our teams",professional,team productivity,116
+100,16,9.78e-05,32,,build_authority,90,GenAI,3254,gemini-2.5-flash,76,True,p_0326,99,openai,71,Ops Leader,44,"Is your GenAI team truly productive, or just busy? The difference is critical",professional,team productivity,115
+100,203,0.003375,88,,build_authority,90,GenAI,7402,claude-sonnet-4-20250514,84,True,p_0326,110,claude,84,Ops Leader,58,"**GenAI teams aren't failing because of the technology—they're failing because of outdated productivity frameworks.**
+
+After leading ops for three GenAI implementations this year, I've seen a clear pattern. Teams applyin",professional,team productivity,313
+100,17,4.543e-05,32,,build_authority,90,GenAI,3064,gemini-2.5-flash,76,True,p_0326,99,deepseek,71,Ops Leader,44,"GenAI teams move fast. How do you keep productivity from derailing?
+
+In",professional,team productivity,116
+100,229,0.00251,88,,build_authority,90,GenAI,8662,claude-sonnet-4-20250514,84,True,p_0326,110,xai,86,Ops Leader,65,"**After 18 months leading ops in GenAI, here's what actually drives team productivity (not what you'd expect):**
+
+It's not the latest project management tool or productivity hack. The highest-performing teams I've built ",professional,team productivity,339

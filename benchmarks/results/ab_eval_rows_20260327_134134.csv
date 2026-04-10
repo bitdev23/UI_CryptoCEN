@@ -1,0 +1,2 @@
+cost_usd,error,goal_key,industry,latency_ms,ok,prompt_id,provider,quality_score,role,tone,topic
+0.0,GOOGLE_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,google,0,CTO,educational,technical debt

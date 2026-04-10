@@ -69,10 +69,25 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
+
+# ── CRITICAL: Flask secret key (no unsafe default) ────────────────────────
+_flask_secret = os.getenv('FLASK_SECRET_KEY', '').strip()
+if not _flask_secret:
+    # Allow a generated ephemeral key ONLY in local dev; refuse to start in production
+    if os.getenv('FLASK_ENV') == 'production':
+        raise RuntimeError(
+            'FLASK_SECRET_KEY environment variable is required in production. '
+            'Generate one with: python3 -c "import secrets; print(secrets.token_urlsafe(48))"'
+        )
+    _flask_secret = 'dev-only-' + os.urandom(16).hex()
+    logging.getLogger(__name__).warning(
+        'FLASK_SECRET_KEY is not set — using an ephemeral random key. '
+        'Sessions will not survive restarts. Set FLASK_SECRET_KEY for production.'
+    )
+app.secret_key = _flask_secret
 
 # ── CORS ──────────────────────────────────────────────────────────────────
-CORS(app, resources={r"/api/*": {"origins": os.getenv('ALLOWED_ORIGINS', '*').split(',')}})
+CORS(app, resources={r"/api/*": {"origins": os.getenv('ALLOWED_ORIGINS', 'https://app.velank.io').split(',')}})
 
 # ── Rate Limiting ─────────────────────────────────────────────────────────
 _redis_url = os.getenv('REDIS_URL', '').strip()
@@ -218,6 +233,17 @@ def get_csrf_token() -> str:
 app.jinja_env.globals['csrf_token'] = get_csrf_token
 
 
+def _safe_api_error(user_message: str, exc: Exception = None, status: int = 500) -> tuple:
+    """Return a sanitised JSON error response.
+
+    Logs the full exception server-side but sends only the generic *user_message*
+    to the client — never str(e).
+    """
+    if exc is not None:
+        logger.exception('%s: %s', user_message, exc)
+    return jsonify({'success': False, 'message': user_message}), status
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 PDF_DIR = os.path.join(DATA_DIR, 'pdfs')
@@ -262,8 +288,12 @@ def _read_feature_store() -> dict:
 
 def _write_feature_store(payload: dict) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
-    with open(FEATURE_STORE_PATH, 'w') as fh:
+    tmp_path = FEATURE_STORE_PATH + '.tmp'
+    with open(tmp_path, 'w') as fh:
         json.dump(payload, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_path, FEATURE_STORE_PATH)
 
 
 def _read_json_list(file_path: str) -> list:
@@ -282,10 +312,19 @@ def _read_json_list(file_path: str) -> list:
 
 
 def _write_json_list(file_path: str, items: list) -> None:
+    """Atomically write a JSON list file (safe under multi-worker Gunicorn).
+
+    Writes to a temp file first, then renames — this avoids partial/corrupt
+    reads if another worker opens the same path concurrently.
+    """
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     payload = items if isinstance(items, list) else []
-    with open(file_path, 'w') as fh:
+    tmp_path = file_path + '.tmp'
+    with open(tmp_path, 'w') as fh:
         json.dump(payload, fh, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_path, file_path)
 
 
 def _parse_post_datetime(value) -> datetime:
@@ -753,12 +792,6 @@ def _extract_post_metadata(payload: dict) -> dict:
         or settings_applied.get('role')
         or ''
     )
-    target_audience = (
-        raw.get('target_audience')
-        or generation_context.get('target_audience')
-        or settings_applied.get('target_audience')
-        or ''
-    )
 
     kb_mode = (
         raw.get('kb_mode')
@@ -788,7 +821,6 @@ def _extract_post_metadata(payload: dict) -> dict:
     return {
         'audience_industry': str(audience_industry or '').strip(),
         'professional_role': str(professional_role or '').strip(),
-        'target_audience': str(target_audience or '').strip(),
         'knowledge_base_used': str(knowledge_base_used or '').strip(),
         'kb_mode': str(kb_mode or 'use_kb').strip(),
         'workspace_id': str(workspace_id or '').strip()
@@ -1130,7 +1162,7 @@ def _enqueue_or_start_kb_training(user_id: str, mode: str, filepaths: list = Non
 # ============= CONFIGURATION HELPERS =============
 
 CONFIG_DEFAULTS = {
-    'AI_PROVIDER': 'google',
+    'AI_PROVIDER': 'deepseek',
     'GOOGLE_API_KEY': '',
     'OPENAI_API_KEY': '',
     'ANTHROPIC_API_KEY': '',
@@ -1164,13 +1196,37 @@ CONFIG_DEFAULTS = {
 }
 
 SENSITIVE_USER_CONFIG_KEYS = {
-    'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY',
     'LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_PERSON_ID'
+}
+
+PLATFORM_MANAGED_AI_KEYS = {
+    'AI_PROVIDER',
+    'GOOGLE_API_KEY',
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'DEEPSEEK_API_KEY',
+    'XAI_API_KEY',
 }
 
 USER_CONFIG_KEYS = set(CONFIG_DEFAULTS.keys()) - {
     'TEST_MODE', 'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET'
-}
+} - PLATFORM_MANAGED_AI_KEYS
+
+
+def _platform_ai_provider() -> str:
+    return str(os.getenv('AI_PROVIDER', CONFIG_DEFAULTS.get('AI_PROVIDER', 'deepseek')) or 'deepseek').strip().lower()
+
+
+def _build_platform_ai_provider() -> AIProvider:
+    return AIProvider(_platform_ai_provider())
+
+
+def _apply_platform_ai_config(config: dict) -> dict:
+    config['AI_PROVIDER'] = _platform_ai_provider()
+    config['GOOGLE_API_KEY'] = ''
+    config['OPENAI_API_KEY'] = ''
+    config['ANTHROPIC_API_KEY'] = ''
+    return config
 
 
 def _read_env_config_raw() -> dict:
@@ -1253,10 +1309,11 @@ def load_config(user_id: str = ''):
             config[key] = CONFIG_DEFAULTS.get(key, '')
         user_overrides = _get_user_config_overrides(user_id)
         for key, value in user_overrides.items():
-            if key in CONFIG_DEFAULTS:
+            if key in USER_CONFIG_KEYS and key in CONFIG_DEFAULTS:
                 config[key] = value
 
-    return _normalize_config_types(config)
+    config = _normalize_config_types(config)
+    return _apply_platform_ai_config(config)
 
 
 def save_config(config, user_id: str = ''):
@@ -1869,6 +1926,368 @@ def _single_value(raw_value: str) -> str:
     return first[:80]
 
 
+_INDUSTRY_LABELS = {
+    'tech': 'Technology & Software',
+    'technology': 'Technology & Software',
+    'technology_software': 'Technology & Software',
+    'finance': 'Finance & Banking',
+    'financial_services': 'Finance & Banking',
+    'healthcare': 'Healthcare & Pharma',
+    'health': 'Healthcare & Pharma',
+    'ecommerce': 'E-Commerce & Retail',
+    'e_commerce': 'E-Commerce & Retail',
+    'retail': 'E-Commerce & Retail',
+    'crypto': 'Cryptocurrency & Blockchain',
+    'cryptocurrency': 'Cryptocurrency & Blockchain',
+    'web3': 'Cryptocurrency & Blockchain',
+    'blockchain': 'Cryptocurrency & Blockchain',
+    'saas': 'SaaS & Startups',
+    'startups': 'SaaS & Startups',
+    'startup': 'SaaS & Startups',
+    'genai': 'GenAI',
+    'generative_ai': 'GenAI',
+    'virtual_assistant': 'Virtual Assistant',
+    'supply_chain': 'Supply Chain & Logistics',
+}
+
+_ROLE_LABELS = {
+    'ceo': 'CEO / Founder',
+    'founder': 'CEO / Founder',
+    'ceo_founder': 'CEO / Founder',
+    'cto': 'CTO / VP Engineering',
+    'vp_engineering': 'CTO / VP Engineering',
+    'dev': 'Software Developer',
+    'developer': 'Software Developer',
+    'software_developer': 'Software Developer',
+    'engineer': 'Software Developer',
+    'pm': 'Product Manager',
+    'product_manager': 'Product Manager',
+    'hr': 'HR / People Ops',
+    'people_ops': 'HR / People Ops',
+    'finance': 'Finance / CFO',
+    'cfo': 'Finance / CFO',
+    'ops': 'Operations',
+    'operations': 'Operations',
+    'marketing': 'Marketing / Growth',
+    'growth': 'Marketing / Growth',
+    'sales': 'Sales / BD',
+    'bd': 'Sales / BD',
+    'bde': 'Sales / BD',
+    'business_development': 'Sales / BD',
+}
+
+_GOAL_KEY_TO_LABEL = {
+    'spark_comments': 'Spark Comments & Discussion',
+    'drive_profile_visits': 'Drive Profile Visits',
+    'generate_leads': 'Generate Leads',
+    'build_authority': 'Build Thought Leadership',
+    'grow_network': 'Grow Network',
+    'educate_audience': 'Educate Audience',
+    'brand_awareness': 'Brand Awareness',
+    'general_engagement': 'General Engagement',
+}
+
+_GOAL_ALIASES = {
+    'spark_comments': 'spark_comments',
+    'spark_comments_discussion': 'spark_comments',
+    'spark_discussion': 'spark_comments',
+    'comments': 'spark_comments',
+    'drive_visits': 'drive_profile_visits',
+    'drive_profile_visits': 'drive_profile_visits',
+    'profile_visits': 'drive_profile_visits',
+    'drive_visibility': 'drive_profile_visits',
+    'generate_leads': 'generate_leads',
+    'lead_gen': 'generate_leads',
+    'build_authority': 'build_authority',
+    'build_thought_leadership': 'build_authority',
+    'thought_leadership': 'build_authority',
+    'grow_network': 'grow_network',
+    'network_growth': 'grow_network',
+    'educate': 'educate_audience',
+    'educate_audience': 'educate_audience',
+    'brand_awareness': 'brand_awareness',
+    'awareness': 'brand_awareness',
+    'general_engagement': 'general_engagement',
+}
+
+
+def _normalize_taxonomy_label(raw_value: str, label_map: dict) -> str:
+    text = _single_value(raw_value)
+    if not text:
+        return ''
+    normalized_key = re.sub(r'[^a-z0-9]+', '_', text.strip().lower()).strip('_')
+    if normalized_key in label_map:
+        return label_map[normalized_key]
+    return text
+
+
+def _normalize_tone_value(raw_tone: str) -> str:
+    tone = str(raw_tone or 'professional').strip().lower().replace('-', '_').replace(' ', '_')
+    tone_aliases = {
+        'thoughtleader': 'authoritative',
+        'authoritative': 'authoritative',
+        'professional': 'professional',
+        'conversational': 'conversational',
+        'contrarian': 'contrarian',
+        'educational': 'educational',
+        'storytelling': 'storytelling',
+        'inspirational': 'professional',  # Map legacy inspirational to professional
+    }
+    return tone_aliases.get(tone, 'professional')
+
+
+def _normalize_goal(raw_goal: str):
+    text = str(raw_goal or '').strip()
+    if not text:
+        return 'general_engagement', _GOAL_KEY_TO_LABEL['general_engagement']
+    key = re.sub(r'[^a-z0-9]+', '_', text.lower()).strip('_')
+    canonical = _GOAL_ALIASES.get(key, key)
+    if canonical not in _GOAL_KEY_TO_LABEL:
+        return 'general_engagement', text
+    return canonical, _GOAL_KEY_TO_LABEL[canonical]
+
+
+def _normalize_style_clone_mode(raw_mode: str) -> str:
+    mode = str(raw_mode or 'hybrid').strip().lower().replace(' ', '_').replace('-', '_')
+    if mode in {'off', 'disabled', 'none'}:
+        return 'off'
+    if mode in {'strict', 'full'}:
+        return 'strict'
+    return 'hybrid'
+
+
+# ── Instruction Pack Loader ────────────────────────────────────────────────────
+_INSTRUCTION_PACKS = None
+_PACK_PATH = Path(__file__).resolve().parent / 'data' / 'instruction_packs.json'
+_pack_save_lock = threading.Lock()
+
+
+def _load_instruction_packs():
+    """Load instruction packs JSON once, cache in module global."""
+    global _INSTRUCTION_PACKS
+    if _INSTRUCTION_PACKS is not None:
+        return _INSTRUCTION_PACKS
+    try:
+        with open(_PACK_PATH, 'r', encoding='utf-8') as f:
+            _INSTRUCTION_PACKS = json.load(f)
+    except Exception as e:
+        logger.warning('Could not load instruction_packs.json: %s', e)
+        _INSTRUCTION_PACKS = {}
+    return _INSTRUCTION_PACKS
+
+
+def _save_instruction_packs():
+    """Persist the in-memory instruction packs back to disk (thread-safe)."""
+    if not _INSTRUCTION_PACKS:
+        return
+    try:
+        with _pack_save_lock:
+            with open(_PACK_PATH, 'w', encoding='utf-8') as f:
+                json.dump(_INSTRUCTION_PACKS, f, indent=2, ensure_ascii=False)
+            logger.info('Instruction packs saved (%d industries, %d roles, %d goals)',
+                        len(_INSTRUCTION_PACKS.get('industries', {})),
+                        len(_INSTRUCTION_PACKS.get('roles', {})),
+                        len(_INSTRUCTION_PACKS.get('goals', {})))
+    except Exception as e:
+        logger.warning('Could not save instruction_packs.json: %s', e)
+
+
+def _resolve_pack_key(raw_value: str, section: dict) -> str:
+    """Find the best matching key in a pack section for a raw value."""
+    if not raw_value or not section:
+        return ''
+    key = re.sub(r'[^a-z0-9]+', '_', raw_value.strip().lower()).strip('_')
+    if key in section:
+        return key
+    # Fuzzy: try to match by label substring
+    for k, v in section.items():
+        label = str(v.get('label', '')).lower()
+        if key in label or label in raw_value.lower():
+            return k
+    return ''
+
+
+def _auto_generate_pack_entry(entry_type: str, raw_label: str, config_obj: dict) -> dict:
+    """Use AI to generate a new instruction pack entry for an unknown industry or role.
+
+    entry_type: 'industry' or 'role'
+    raw_label:  the human-readable name (e.g. 'Real Estate', 'Data Scientist')
+    config_obj: user config dict (needed for AI provider + keys)
+
+    Returns the generated entry dict (already inserted into _INSTRUCTION_PACKS and saved).
+    On failure, returns the fallback entry.
+    """
+    packs = _load_instruction_packs()
+    fallbacks = packs.get('_fallbacks', {})
+    fallback_entry = fallbacks.get(entry_type, {})
+
+    key = re.sub(r'[^a-z0-9]+', '_', raw_label.strip().lower()).strip('_')
+    section_name = 'industries' if entry_type == 'industry' else 'roles'
+
+    # Double-check: another thread may have generated it while we waited
+    if key in packs.get(section_name, {}):
+        return packs[section_name][key]
+
+    if entry_type == 'industry':
+        schema_prompt = f"""Generate a JSON object for the LinkedIn content industry "{raw_label}".
+The object must have EXACTLY these keys (no extras):
+{{
+  "label": "<human-readable industry name>",
+  "vocabulary": ["<10-14 domain-specific terms/acronyms professionals in this industry use daily>"],
+  "proof_types": ["<4-5 types of evidence that readers in this industry trust>"],
+  "metrics_readers_respect": ["<4-5 KPIs or metrics that earn credibility in this industry>"],
+  "angles": ["<4 strong content angles for LinkedIn posts in this industry>"],
+  "banned_cliches": ["<3-4 overused buzzwords/phrases to avoid in this industry>"],
+  "audience_context": "<1-2 sentences describing who reads LinkedIn posts about this industry and what they value>"
+}}
+Return ONLY the JSON object, no markdown fences, no explanation."""
+    else:
+        schema_prompt = f"""Generate a JSON object for the LinkedIn content role "{raw_label}".
+The object must have EXACTLY these keys (no extras):
+{{
+  "label": "<human-readable role name>",
+  "perspective": "<1-2 sentences on how this role's unique vantage point shapes their LinkedIn writing>",
+  "authority_signals": ["<3-4 ways someone in this role demonstrates credibility in a LinkedIn post>"],
+  "audience_relationship": "<1 sentence: who reads this person's posts and what they expect>",
+  "writing_style": "<1 sentence defining the ideal writing style for this role on LinkedIn>"
+}}
+Return ONLY the JSON object, no markdown fences, no explanation."""
+
+    try:
+        from ai_provider import AIProvider
+        ai = _build_platform_ai_provider()
+        result = ai.generate(schema_prompt, max_tokens=600, temperature=0.3)
+        raw_text = (result.get('text') or '').strip()
+
+        # Strip any accidental markdown fences
+        if raw_text.startswith('```'):
+            raw_text = re.sub(r'^```[a-zA-Z]*\n?', '', raw_text)
+            raw_text = re.sub(r'\n?```$', '', raw_text)
+
+        entry = json.loads(raw_text)
+
+        # Validate minimum keys
+        if entry_type == 'industry' and 'vocabulary' not in entry:
+            raise ValueError('Generated industry entry missing vocabulary key')
+        if entry_type == 'role' and 'perspective' not in entry:
+            raise ValueError('Generated role entry missing perspective key')
+
+        # Insert into memory + persist
+        if section_name not in packs:
+            packs[section_name] = {}
+        packs[section_name][key] = entry
+        _save_instruction_packs()
+
+        logger.info('Auto-generated instruction pack %s entry for "%s" (key=%s)', entry_type, raw_label, key)
+        return entry
+
+    except Exception as e:
+        logger.warning('Failed to auto-generate %s pack for "%s": %s — using fallback', entry_type, raw_label, e)
+        return fallback_entry
+
+
+def _build_instruction_pack_text(industry_raw: str, role_raw: str, goal_key: str, config_obj: dict = None) -> str:
+    """Build rich instruction text for a given (industry, role, goal) combination.
+
+    If the industry or role is not found in the packs, it will be auto-generated
+    via a one-time AI call and cached permanently (requires config_obj).
+    """
+    packs = _load_instruction_packs()
+    if not packs:
+        return ''
+
+    industries = packs.get('industries', {})
+    roles = packs.get('roles', {})
+    goals = packs.get('goals', {})
+
+    # Resolve keys
+    ind_key = _resolve_pack_key(industry_raw, industries)
+    role_key = _resolve_pack_key(role_raw, roles)
+
+    # Goal key comes in normalized already (e.g. 'spark_comments')
+    goal_data_key = goal_key.replace('-', '_') if goal_key else ''
+    if goal_data_key and goal_data_key not in goals:
+        _goal_pack_aliases = {
+            'spark_comments': 'spark_comments',
+            'drive_profile_visits': 'drive_visibility',
+            'drive_visits': 'drive_visibility',
+            'generate_leads': 'generate_leads',
+            'build_authority': 'build_authority',
+            'educate_audience': 'educate_audience',
+            'brand_awareness': 'brand_awareness',
+            'grow_network': 'grow_network',
+        }
+        goal_data_key = _goal_pack_aliases.get(goal_data_key, goal_data_key)
+
+    # ── Industry: auto-generate if missing ──
+    if ind_key:
+        ind = industries[ind_key]
+    elif config_obj:
+        ind = _auto_generate_pack_entry('industry', industry_raw, config_obj)
+    else:
+        ind = packs.get('_fallbacks', {}).get('industry', {})
+
+    # ── Role: auto-generate if missing ──
+    if role_key:
+        role = roles[role_key]
+    elif config_obj:
+        role = _auto_generate_pack_entry('role', role_raw, config_obj)
+    else:
+        role = packs.get('_fallbacks', {}).get('role', {})
+
+    # Goals are fixed set — just use fallback if missing
+    goal = goals.get(goal_data_key, packs.get('_fallbacks', {}).get('goal', {}))
+
+    sections = []
+
+    # ── Industry Section ──
+    vocab = ', '.join(ind.get('vocabulary', [])[:12])
+    proofs = ', '.join(ind.get('proof_types', [])[:4])
+    metrics = ', '.join(ind.get('metrics_readers_respect', [])[:4])
+    angles_list = ind.get('angles', [])
+    angles = '\n'.join(f'  - {a}' for a in angles_list[:4])
+    ind_banned = ', '.join(ind.get('banned_cliches', []))
+    aud_ctx = ind.get('audience_context', '')
+
+    sections.append(f"""INDUSTRY PLAYBOOK ({ind.get('label', industry_raw)}):
+- Domain vocabulary to use naturally: {vocab or 'general business terms'}
+- Proof types readers trust: {proofs or 'real examples with outcomes'}
+- Metrics that earn credibility: {metrics or 'revenue impact, time saved'}
+- Strong angles for this industry:
+{angles or '  - what most people get wrong'}
+{f'- Industry-specific clichés to AVOID: {ind_banned}' if ind_banned else ''}
+- Reader context: {aud_ctx or 'Professionals who value specifics.'}""")
+
+    # ── Role Section ──
+    perspective = role.get('perspective', '')
+    auth_signals = role.get('authority_signals', [])
+    aud_rel = role.get('audience_relationship', '')
+    writing = role.get('writing_style', '')
+
+    auth_str = '\n'.join(f'  - {s}' for s in auth_signals[:4])
+    sections.append(f"""ROLE PLAYBOOK ({role.get('label', role_raw)}):
+- Perspective: {perspective or 'Write as a knowledgeable professional with hands-on experience.'}
+- How to demonstrate authority:
+{auth_str or '  - share real decisions and outcomes'}
+- Your relationship with readers: {aud_rel or 'Peers who respect substance.'}
+- Writing style for this role: {writing or 'Clear, direct, human.'}""")
+
+    # ── Goal Section ──
+    struct_mod = goal.get('structural_modifier', '')
+    hook = goal.get('hook_style', '')
+    cta = goal.get('cta_pattern', '')
+
+    sections.append(f"""GOAL PLAYBOOK ({goal.get('label', 'Engagement')}):
+- Structure: {struct_mod or 'Deliver one clear, valuable idea.'}
+- Hook approach: {hook or 'Open with the most interesting sentence you can.'}
+- CTA pattern: {cta or 'Close with something the reader can act on or reflect on.'}""")
+
+    return '\n\n'.join(sections)
+
+
+# Removed _resolve_target_audience_hint as target_audience and audience_type logic is deprecated.
+
+
 def _month_start_date_utc(now: datetime = None) -> date:
     current = now or datetime.utcnow()
     return date(current.year, current.month, 1)
@@ -2191,7 +2610,7 @@ def auth_signup():
         
     except Exception as e:
         logger.exception("Signup failed")
-        return jsonify({'success': False, 'message': f'Signup failed: {str(e)}'}), 500
+        return _safe_api_error('Signup failed', e)
 
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -2239,7 +2658,7 @@ def auth_login():
             
     except Exception as e:
         logger.exception("Login failed")
-        return jsonify({'success': False, 'message': f'Login failed: {str(e)}'}), 500
+        return _safe_api_error('Login failed', e)
 
 
 @app.route('/api/auth/google/start', methods=['GET', 'POST'])
@@ -2271,7 +2690,7 @@ def auth_google_start():
         return jsonify({'success': True, 'auth_url': auth_url})
     except Exception as e:
         logger.exception("Failed to start Google OAuth")
-        return jsonify({'success': False, 'message': f'Failed to start Google sign-in: {str(e)}'}), 500
+        return _safe_api_error('Failed to start Google sign-in', e)
 
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -2283,7 +2702,7 @@ def auth_logout():
         return jsonify({'success': success, 'message': message}), 200 if success else 500
     except Exception as e:
         logger.exception("Logout failed")
-        return jsonify({'success': False, 'message': f'Logout failed: {str(e)}'}), 500
+        return _safe_api_error('Logout failed', e)
 
 
 @app.route('/api/auth/me', methods=['GET'])
@@ -2303,7 +2722,7 @@ def auth_me():
         }), 200
     except Exception as e:
         logger.exception("Failed to get user info")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/auth/verify-token', methods=['POST'])
@@ -2328,7 +2747,7 @@ def auth_verify():
             
     except Exception as e:
         logger.exception("Token verification failed")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/auth/refresh', methods=['POST'])
@@ -2354,7 +2773,7 @@ def auth_refresh():
         }), 200
     except Exception as e:
         logger.exception("Token refresh failed")
-        return jsonify({'success': False, 'message': f'Token refresh failed: {str(e)}'}), 500
+        return _safe_api_error('Token refresh failed', e)
 
 
 @app.route('/api/auth/health', methods=['GET'])
@@ -2460,7 +2879,7 @@ def auth_account_update():
         })
     except Exception as e:
         logger.exception("Account update failed")
-        return jsonify({'success': False, 'message': f'Failed to update account: {str(e)}'}), 400
+        return _safe_api_error('Failed to update account', e, 400)
 
 
 @app.route('/api/auth/password/reset-request', methods=['POST'])
@@ -2473,7 +2892,7 @@ def auth_password_reset_request():
         return jsonify({'success': success, 'message': message}), 200 if success else 400
     except Exception as e:
         logger.exception("Password reset email failed")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/auth/password/update', methods=['POST'])
@@ -2502,7 +2921,7 @@ def auth_password_update():
         return jsonify({'success': True, 'message': 'Password updated successfully'})
     except Exception as e:
         logger.exception("Password update failed")
-        return jsonify({'success': False, 'message': f'Failed to update password: {str(e)}'}), 400
+        return _safe_api_error('Failed to update password', e, 400)
 
 
 @app.route('/login')
@@ -2543,7 +2962,7 @@ def admin_login_page():
     if not creds['email'] or not creds['password']:
         return jsonify({'success': False, 'message': 'Admin credentials are not configured'}), 500
 
-    if email == creds['email'] and password == creds['password']:
+    if hmac.compare_digest(email, creds['email']) and hmac.compare_digest(password, creds['password']):
         session['is_admin'] = True
         session['admin_email'] = email
         return jsonify({'success': True, 'redirect': '/admin/dashboard'})
@@ -2677,26 +3096,10 @@ def admin_users():
         md = (u_obj.get('user_metadata') if isinstance(u_obj, dict) else getattr(u_obj, 'user_metadata', {})) or {}
 
         soft_flag = bool(md.get('soft_deleted'))
-        # If metadata is missing, try fetching the full user record as a fallback
-        if not soft_flag:
-            try:
-                if isinstance(u_obj, dict):
-                    uid = str(u_obj.get('id') or '')
-                else:
-                    uid = str(getattr(u_obj, 'id', '') or '')
-                if uid and auth_supabase:
-                    full_res = auth_supabase.auth.admin.get_user_by_id(uid)
-                    full_user = getattr(full_res, 'user', None)
-                    if full_user is None and isinstance(full_res, dict):
-                        full_user = full_res.get('user')
-                    if isinstance(full_user, dict):
-                        full_md = full_user.get('user_metadata') or {}
-                    else:
-                        full_md = getattr(full_user, 'user_metadata', {}) if full_user else {}
-                    full_md = full_md or {}
-                    soft_flag = bool(full_md.get('soft_deleted'))
-            except Exception:
-                pass
+        # If user_metadata is empty, assume the user is NOT soft-deleted rather
+        # than making a per-user API call.  The old code fired an individual
+        # auth.admin.get_user_by_id(uid) for every user with empty metadata,
+        # causing an N+1 query storm that timed out the admin panel.
 
         if not soft_flag:
             filtered_users.append(u)
@@ -2762,7 +3165,7 @@ def admin_create_user():
         return jsonify({'success': True, 'message': 'User created successfully', 'user_id': user_id, 'email': email})
     except Exception as e:
         logger.error("Admin create user failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to create user: {str(e)}'}), 500
+        return _safe_api_error('Failed to create user', e)
 
 
 @app.route('/api/admin/users/<user_id>', methods=['GET'])
@@ -2828,7 +3231,7 @@ def admin_toggle_user_status(user_id):
         return jsonify({'success': True, 'message': 'User activated' if active else 'User deactivated'})
     except Exception as e:
         logger.error("Admin status update failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to update user status: {str(e)}'}), 500
+        return _safe_api_error('Failed to update user status', e)
 
 
 @app.route('/api/admin/users/<user_id>', methods=['DELETE'])
@@ -2888,7 +3291,7 @@ def admin_delete_user(user_id):
             return jsonify({'success': True, 'message': 'User soft-deleted. To permanently remove the user, call DELETE with {"force": true, "confirm": "DELETE <user_id>"}'} )
         except Exception as e:
             logger.error('Soft-delete failed for %s: %s', user_id, e)
-            return jsonify({'success': False, 'message': f'Failed to soft-delete user: {str(e)}'}), 500
+            return _safe_api_error('Failed to soft-delete user', e)
 
     # force_delete == True: require exact token or email match and proceed to hard delete
     if not confirm_value or (confirm_value != expected_token and (expected_email and confirm_value != expected_email)):
@@ -2916,7 +3319,7 @@ def admin_delete_user(user_id):
             logger.info("Admin delete – user %s already removed from auth", user_id)
         else:
             logger.error("Admin delete user failed: %s", e)
-            return jsonify({'success': False, 'message': f'Failed to delete user: {str(e)}'}), 500
+            return _safe_api_error('Failed to delete user', e)
 
     log_details = {'cleanup_errors': cleanup_errors}
     try:
@@ -2966,7 +3369,7 @@ def admin_restore_user(user_id):
         return jsonify({'success': True, 'message': 'User restored successfully'})
     except Exception as e:
         logger.error('Restore user failed: %s', e)
-        return jsonify({'success': False, 'message': f'Failed to restore user: {str(e)}'}), 500
+        return _safe_api_error('Failed to restore user', e)
 
 
 @app.route('/api/admin/users/soft_deleted', methods=['GET'])
@@ -3027,7 +3430,7 @@ def admin_list_soft_deleted_users():
         return jsonify({'success': True, 'users': soft})
     except Exception as e:
         logger.error('List soft-deleted users failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/bulk_restore', methods=['POST'])
@@ -3065,7 +3468,7 @@ def admin_bulk_restore():
         return jsonify({'success': True, 'results': results})
     except Exception as e:
         logger.error('Bulk restore operation failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/purge', methods=['POST'])
@@ -3109,7 +3512,7 @@ def admin_bulk_purge():
         return jsonify({'success': True, 'summary': summary})
     except Exception as e:
         logger.error('Bulk purge operation failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/purge_scheduled', methods=['POST'])
@@ -3163,7 +3566,7 @@ def admin_purge_scheduled():
         return jsonify({'success': True, 'purged': len(purged), 'ids': purged})
     except Exception as e:
         logger.error('Scheduled purge failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/account/link_request', methods=['POST'])
@@ -3199,7 +3602,7 @@ def account_link_request():
         return jsonify({'success': True, 'message': 'Link request recorded. An admin will review and link accounts.'})
     except Exception as e:
         logger.error('Link request failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/<user_id>/attach_identity', methods=['POST'])
@@ -3233,7 +3636,7 @@ def admin_attach_identity(user_id):
         return jsonify({'success': True, 'message': 'Identity attached to user metadata'})
     except Exception as e:
         logger.error('Attach identity failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/<user_id>/detach_identity', methods=['POST'])
@@ -3266,7 +3669,7 @@ def admin_detach_identity(user_id):
         return jsonify({'success': True, 'message': 'Identity detached'})
     except Exception as e:
         logger.error('Detach identity failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/<user_id>/posts', methods=['GET'])
@@ -3282,7 +3685,7 @@ def admin_user_posts(user_id):
         return jsonify({'success': True, 'posts': posts})
     except Exception as e:
         logger.error("Admin fetch user posts failed: %s", e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/migrate-legacy-content-owner', methods=['POST'])
@@ -3337,7 +3740,7 @@ def admin_migrate_legacy_content_owner():
         })
     except Exception as e:
         logger.error('Admin legacy ownership migration failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/<user_id>/subscription/set-plan', methods=['POST'])
@@ -3378,7 +3781,7 @@ def admin_set_subscription_plan(user_id):
         })
     except Exception as e:
         logger.error("Admin set subscription failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to update subscription: {str(e)}'}), 500
+        return _safe_api_error('Failed to update subscription', e)
 
 
 @app.route('/api/admin/users/<user_id>/subscription/cancel', methods=['POST'])
@@ -3399,7 +3802,7 @@ def admin_cancel_subscription(user_id):
         return jsonify({'success': True, 'message': 'Subscription marked to cancel'})
     except Exception as e:
         logger.error("Admin cancel subscription failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to cancel subscription: {str(e)}'}), 500
+        return _safe_api_error('Failed to cancel subscription', e)
 
 
 @app.route('/api/billing/plans', methods=['GET'])
@@ -3484,7 +3887,7 @@ def billing_create_order():
         })
     except Exception as e:
         logger.exception("Billing create order failed")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/billing/verify-payment', methods=['POST'])
@@ -3519,7 +3922,7 @@ def billing_verify_payment():
         })
     except Exception as e:
         logger.exception("Billing verify payment failed")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/billing/webhook', methods=['POST'])
@@ -3548,7 +3951,7 @@ def billing_webhook():
         return jsonify({'success': True})
     except Exception as e:
         logger.exception("Billing webhook failed")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/admin/users/<user_id>/password/send-reset', methods=['POST'])
@@ -3587,7 +3990,7 @@ def admin_set_temp_password(user_id):
         return jsonify({'success': True, 'message': 'Temporary password has been set'})
     except Exception as e:
         logger.error("Admin set temp password failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to set temporary password: {str(e)}'}), 500
+        return _safe_api_error('Failed to set temporary password', e)
 
 
 @app.route('/api/admin/users/<user_id>/email/update', methods=['POST'])
@@ -3608,7 +4011,7 @@ def admin_update_user_email(user_id):
         return jsonify({'success': True, 'message': 'User email updated successfully', 'email': new_email})
     except Exception as e:
         logger.error("Admin update user email failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to update user email: {str(e)}'}), 500
+        return _safe_api_error('Failed to update user email', e)
 
 
 @app.route('/api/admin/audit-logs', methods=['GET'])
@@ -3634,7 +4037,7 @@ def admin_audit_logs():
         return jsonify({'success': True, 'logs': rows})
     except Exception as e:
         logger.error("Admin audit logs fetch failed: %s", e)
-        return jsonify({'success': False, 'message': f'Failed to fetch audit logs: {str(e)}'}), 500
+        return _safe_api_error('Failed to fetch audit logs', e)
 
 # ============= ROUTES =============
 
@@ -3675,6 +4078,8 @@ def update_config():
         # Update all provided configuration values
         for key in data:
             value = data[key]
+            if key in PLATFORM_MANAGED_AI_KEYS:
+                continue
             # Skip masked values (don't overwrite with ***) but allow False, 0, empty strings
             if isinstance(value, str) and value.startswith('***'):
                 continue
@@ -3685,28 +4090,7 @@ def update_config():
         return jsonify({'success': True, 'message': 'Configuration saved!'})
     except Exception as e:
         logger.exception("Failed to save config")
-        return jsonify({'success': False, 'message': str(e)}), 400
-
-@app.route('/api/test-api', methods=['POST'])
-@require_auth
-def test_api():
-    """Test AI API configuration"""
-    try:
-        from ai_provider import AIProvider
-        user_id = get_current_user_id()
-        config_obj = load_config(user_id)
-        ai = AIProvider(
-            config_obj.get('AI_PROVIDER', 'google'),
-            api_keys={
-                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
-            }
-        )
-        result = ai.generate("Say 'API is working' in 5 words", max_tokens=50)
-        return jsonify({'success': True, 'message': f"API Working! Response: {result['text'][:100]}"})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f"API Error: {str(e)}"})
+        return _safe_api_error('Request failed', e, 400)
 
 @app.route('/api/test-linkedin', methods=['POST'])
 @require_auth
@@ -3723,9 +4107,7 @@ def test_linkedin():
         )
         return jsonify({'success': True, 'message': 'LinkedIn authentication test passed!'})
     except Exception as e:
-        return jsonify({'success': False, 'message': f"LinkedIn Error: {str(e)}"})
-
-
+        return _safe_api_error('LinkedIn Error', e)
 WORD_RE = re.compile(r"\b[\w'-]+\b")
 HASHTAG_RE = re.compile(r"#([A-Za-z][A-Za-z0-9_]{1,49})")
 EMOJI_RE = re.compile(
@@ -3880,7 +4262,7 @@ def ensure_engagement_hook(body: str, industry: str, role: str, topic: str) -> s
     return (body or '').strip()
 
 
-def ensure_engagement_cta(body: str, target_audience: str, role: str) -> str:
+def ensure_engagement_cta(body: str, role: str) -> str:
     text = (body or '').strip()
     if not text:
         return text
@@ -3895,7 +4277,7 @@ def ensure_engagement_cta(body: str, target_audience: str, role: str) -> str:
     if has_cta:
         return text
 
-    # Use plain open-ended CTA — never echo raw DB audience labels into post copy
+    # Use plain open-ended CTA
     cta_line = "What's your take on this?"
     return f"{text}\n\n{cta_line}".strip()
 
@@ -3913,21 +4295,163 @@ def wrap_linkedin_lines(body: str, width: int = 170) -> str:
     return '\n\n'.join(wrapped_paragraphs).strip()
 
 
-def enforce_linkedin_quality(body: str, industry: str, role: str, topic: str, target_audience: str, emoji_level: str) -> str:
+def enforce_linkedin_quality(body: str, industry: str, role: str, topic: str, target_audience: str = '', emoji_level: str = 'moderate') -> str:
     content = clean_linkedin_body(body)
     content = apply_emoji_policy(content, emoji_level)
     content = ensure_engagement_hook(content, industry, role, topic)
-    content = ensure_engagement_cta(content, target_audience, role)
+    content = ensure_engagement_cta(content, role)
     content = wrap_linkedin_lines(content, width=170)
     return content.strip()
 
 
-def _is_crypto_requested(industry: str, role: str, topic: str, topics: list, target_audience: str, post_goal: str) -> bool:
+def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
+    text = str(body or '').strip()
+    if not text:
+        return {
+            'score': 0,
+            'clarity': 0,
+            'novelty': 0,
+            'specificity': 0,
+            'hook': 0,
+            'cta': 0,
+            'issues': ['Empty output'],
+            'first_line': ''
+        }
+
+    paragraphs = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+    first_line = paragraphs[0].split('\n')[0].strip() if paragraphs else text[:120]
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+    avg_sentence_len = (sum(words_count(s) for s in sentences) / len(sentences)) if sentences else words_count(text)
+
+    lower_text = text.lower()
+    lower_first_line = first_line.lower()
+    theme_tokens = [
+        token for token in re.findall(r'[a-zA-Z0-9]+', str(theme or '').lower())
+        if len(token) >= 4
+    ]
+    hook_topic_match = any(token in lower_first_line for token in theme_tokens[:6]) if theme_tokens else True
+    hook_length_ok = len(first_line) <= 120
+
+    cta_markers = [
+        'what\'s your take', 'what do you think', 'curious', 'share your', 'drop a comment',
+        'let me know', 'agree or disagree', 'thoughts?', 'have you seen', 'would you'
+    ]
+    has_cta = any(marker in lower_text for marker in cta_markers) or text.strip().endswith('?')
+
+    numbers_count = len(re.findall(r'\b\d+(?:\.\d+)?%?\b', text))
+    specificity_terms = len(re.findall(r'\b[A-Z]{2,}\b', text)) + numbers_count
+
+    banned_generic = [
+        'in today\'s fast-paced world', 'game changer', 'paradigm shift', 'cutting-edge', 'synergy',
+        'move the needle', 'best practices', 'robust', 'transformative'
+    ]
+    banned_hits = sum(1 for phrase in banned_generic if phrase in lower_text)
+
+    clarity = max(0, min(100, int(round(100 - max(0, avg_sentence_len - 18) * 3.4))))
+    novelty = max(0, min(100, 76 - (banned_hits * 12) + (8 if 'but' in lower_text or 'however' in lower_text else 0)))
+    specificity = max(0, min(100, 44 + min(40, specificity_terms * 7)))
+    hook = max(0, min(100, (55 if hook_length_ok else 25) + (35 if hook_topic_match else 0)))
+    cta = 88 if has_cta else 32
+
+    if goal_key in {'spark_comments', 'grow_network'} and not text.strip().endswith('?'):
+        cta = min(cta, 55)
+
+    issues = []
+    if not hook_length_ok:
+        issues.append('Hook line exceeds 120 characters')
+    if not hook_topic_match:
+        issues.append('Opening line is not clearly anchored to the requested topic')
+    if len(paragraphs) < 2:
+        issues.append('Needs clearer paragraph structure (2+ short paragraphs)')
+    if not has_cta:
+        issues.append('Missing clear engagement CTA/question at the end')
+    if banned_hits > 0:
+        issues.append('Contains generic corporate phrasing')
+
+    score = int(round((clarity * 0.24) + (novelty * 0.2) + (specificity * 0.2) + (hook * 0.2) + (cta * 0.16)))
+    score = max(0, min(100, score))
+
+    return {
+        'score': score,
+        'clarity': clarity,
+        'novelty': novelty,
+        'specificity': specificity,
+        'hook': hook,
+        'cta': cta,
+        'issues': issues,
+        'first_line': first_line,
+    }
+
+
+def _evaluate_post_quality(ai, body: str, theme: str, goal_key: str) -> dict:
+    heuristic = _post_contract_heuristics(body, theme, goal_key)
+    short_body = str(body or '').strip()[:1800]
+    if not short_body:
+        return heuristic
+
+    eval_prompt = f"""Score this LinkedIn post quickly.
+Return ONLY strict JSON with integer fields 0-100:
+{{"clarity":0,"novelty":0,"specificity":0,"hook":0,"cta":0,"overall":0,"issues":["..."]}}
+
+Topic: {theme}
+Goal key: {goal_key}
+Post:
+{short_body}
+"""
+
+    try:
+        eval_result = ai.generate(eval_prompt, max_tokens=140, temperature=0.0, task='evaluate')
+        raw = (eval_result.get('text') or '').strip()
+        if raw.startswith('```'):
+            raw = raw.split('```', 2)[1]
+            if raw.strip().lower().startswith('json'):
+                raw = raw.strip()[4:]
+        match = re.search(r'\{.*\}', raw, flags=re.DOTALL)
+        payload = json.loads(match.group(0) if match else raw)
+
+        def _score(name: str, fallback: int) -> int:
+            try:
+                return max(0, min(100, int(payload.get(name, fallback))))
+            except Exception:
+                return fallback
+
+        llm = {
+            'clarity': _score('clarity', heuristic['clarity']),
+            'novelty': _score('novelty', heuristic['novelty']),
+            'specificity': _score('specificity', heuristic['specificity']),
+            'hook': _score('hook', heuristic['hook']),
+            'cta': _score('cta', heuristic['cta']),
+            'overall': _score('overall', heuristic['score']),
+            'issues': payload.get('issues') if isinstance(payload.get('issues'), list) else [],
+        }
+
+        merged = {
+            'clarity': int(round((llm['clarity'] * 0.6) + (heuristic['clarity'] * 0.4))),
+            'novelty': int(round((llm['novelty'] * 0.55) + (heuristic['novelty'] * 0.45))),
+            'specificity': int(round((llm['specificity'] * 0.6) + (heuristic['specificity'] * 0.4))),
+            'hook': int(round((llm['hook'] * 0.55) + (heuristic['hook'] * 0.45))),
+            'cta': int(round((llm['cta'] * 0.55) + (heuristic['cta'] * 0.45))),
+        }
+        merged['score'] = int(round(
+            (merged['clarity'] * 0.24)
+            + (merged['novelty'] * 0.2)
+            + (merged['specificity'] * 0.2)
+            + (merged['hook'] * 0.2)
+            + (merged['cta'] * 0.16)
+        ))
+        merged['issues'] = list(dict.fromkeys((heuristic.get('issues') or []) + llm.get('issues', [])))[:5]
+        merged['first_line'] = heuristic.get('first_line', '')
+        return merged
+    except Exception as eval_error:
+        logger.debug('Post evaluator fallback to heuristics: %s', eval_error)
+        return heuristic
+
+
+def _is_crypto_requested(industry: str, role: str, topic: str, topics: list, post_goal: str) -> bool:
     combined = ' '.join([
         str(industry or ''),
         str(role or ''),
         str(topic or ''),
-        str(target_audience or ''),
         str(post_goal or ''),
         ' '.join([str(item or '') for item in (topics or [])])
     ]).lower()
@@ -3935,8 +4459,15 @@ def _is_crypto_requested(industry: str, role: str, topic: str, topics: list, tar
     return any(term in combined for term in crypto_terms)
 
 
-def _forbidden_terms_for_context(industry: str, role: str, topic: str, topics: list, target_audience: str, post_goal: str) -> list:
-    if _is_crypto_requested(industry, role, topic, topics, target_audience, post_goal):
+def _forbidden_terms_for_context(
+    industry: str,
+    role: str,
+    topic: str,
+    topics: list,
+    post_goal: str = '',
+    *_legacy_unused_args,
+) -> list:
+    if _is_crypto_requested(industry, role, topic, topics, post_goal):
         return []
     return [
         'crypto', 'cryptocurrency', 'web3', 'blockchain', 'defi', 'token', 'tokens', 'nft', 'nfts',
@@ -3952,8 +4483,567 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
             hits.append(term)
     return sorted(list(set(hits)))
 
-@app.route('/api/generate-preview', methods=['GET', 'POST'])
+
+# ── Production Grounding System ───────────────────────────────────────────────
+
+def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
+    """Generate 3-4 diverse search queries from user inputs to improve KB recall.
+
+    Instead of searching with just the topic string, we create semantically
+    varied queries so that relevant KB chunks are found even when the user's
+    topic wording doesn't exactly match the stored text.
+    """
+    queries = []
+    topic = (topic or '').strip()
+    industry = (industry or '').strip()
+    role = (role or '').strip()
+
+    # Q1 — the user's exact topic (highest priority)
+    if topic:
+        queries.append(topic)
+
+    # Q2 — topic contextualised with industry
+    if topic and industry:
+        queries.append(f"{topic} in {industry}")
+
+    # Q3 — topic contextualised with role perspective
+    if topic and role:
+        queries.append(f"{topic} from {role} perspective")
+
+    # Q4 — broader industry + role + goal combo (catch-all)
+    goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
+    broad_parts = [p for p in [industry, role, goal_label, topic] if p]
+    if broad_parts:
+        queries.append(' '.join(broad_parts))
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for q in queries:
+        q_lower = q.lower().strip()
+        if q_lower and q_lower not in seen:
+            seen.add(q_lower)
+            unique.append(q)
+    return unique or [topic or industry or 'general knowledge']
+
+
+def _multi_query_kb_search(rag, queries: list, file_id_arg, k_per_query: int = 4,
+                           strict_threshold: float = 0.75,
+                           relaxed_threshold: float = 0.68) -> list:
+    """Run multi-query retrieval against KB, deduplicate and rerank results.
+
+    1. Each query is searched at strict threshold first.
+    2. Any query that returns 0 hits is retried at relaxed threshold.
+    3. Results are deduplicated by chunk id and sorted by descending similarity.
+    """
+    all_hits = {}  # keyed by chunk id to deduplicate
+
+    for query in queries:
+        hits = rag.similarity_search(
+            query, k=k_per_query,
+            match_threshold=strict_threshold,
+            file_ids=file_id_arg,
+        )
+        if not hits:
+            hits = rag.similarity_search(
+                query, k=k_per_query,
+                match_threshold=relaxed_threshold,
+                file_ids=file_id_arg,
+            )
+        for hit in hits:
+            chunk_id = hit.get('id') or hit.get('document', '')[:80]
+            existing = all_hits.get(chunk_id)
+            if existing is None or float(hit.get('similarity', 0)) > float(existing.get('similarity', 0)):
+                all_hits[chunk_id] = hit
+
+    # Sort by similarity descending and return top results
+    ranked = sorted(all_hits.values(), key=lambda h: float(h.get('similarity', 0)), reverse=True)
+    return ranked
+
+
+_GROUNDING_FULL = 'grounded'       # ≥2 high-confidence KB hits
+_GROUNDING_PARTIAL = 'partial'     # 1 hit or low avg similarity
+_GROUNDING_NONE = 'ungrounded'     # no KB hits at all
+
+
+def _classify_grounding_level(kb_hits: list, kb_used: bool, kb_mode: str) -> str:
+    """Classify how well the generation is grounded in KB evidence.
+
+    Returns one of: 'grounded', 'partial', 'ungrounded'.
+    """
+    if kb_mode == 'no_kb' or not kb_used or not kb_hits:
+        return _GROUNDING_NONE
+
+    similarities = [float(h.get('similarity', 0)) for h in kb_hits if h]
+    if not similarities:
+        return _GROUNDING_NONE
+
+    avg_sim = sum(similarities) / len(similarities)
+    high_conf_count = sum(1 for s in similarities if s >= 0.78)
+
+    if high_conf_count >= 2 and avg_sim >= 0.77:
+        return _GROUNDING_FULL
+    elif len(similarities) >= 1 and avg_sim >= 0.68:
+        return _GROUNDING_PARTIAL
+    else:
+        return _GROUNDING_NONE
+
+
+def _build_grounding_prompt_rules(grounding_level: str, user_industry: str, kb_context: str) -> str:
+    """Return prompt section text calibrated to the grounding level.
+
+    GROUNDED  → allow specific claims, must cite KB excerpts.
+    PARTIAL   → mix KB + general insight, soften any unsupported claims.
+    UNGROUNDED→ insight-only mode, zero specific facts.
+    """
+    if grounding_level == _GROUNDING_FULL:
+        return f"""KNOWLEDGE BASE EXCERPTS — YOUR ONLY SOURCE OF TRUTH:
+{kb_context}
+
+GROUNDING RULES (STRICT — GROUNDED MODE):
+- Every factual claim, statistic, company name, product name, or specific example MUST come from the excerpts above.
+- If you want to make a point that is NOT covered in the excerpts, phrase it as a general observation or opinion — never as a fact.
+- Use phrases like "based on [topic from excerpt]" to root your points in real evidence.
+- If an excerpt is off-domain (not about {user_industry}), IGNORE it completely.
+- NEVER invent statistics, percentages, research studies, company names, or quotes."""
+
+    elif grounding_level == _GROUNDING_PARTIAL:
+        return f"""KNOWLEDGE BASE EXCERPTS (partial match — use with care):
+{kb_context}
+
+GROUNDING RULES (PARTIAL-CONFIDENCE MODE):
+- You have SOME relevant KB excerpts but coverage is incomplete.
+- For points covered by excerpts: make specific claims grounded in the excerpt content.
+- For points NOT covered by excerpts: use INSIGHT-ONLY framing — patterns, trade-offs, principles, and rhetorical questions. Do NOT present them as facts.
+- Use hedging language for unsupported claims: "in my experience", "a common pattern", "many teams find that".
+- NEVER invent statistics, percentages, research studies, company names, product names, or quotes.
+- If an excerpt is off-domain (not about {user_industry}), IGNORE it completely."""
+
+    else:  # UNGROUNDED
+        return f"""(No relevant knowledge base content matched this topic.)
+
+GROUNDING RULES (INSIGHT-ONLY MODE — NO KB AVAILABLE):
+- You have NO factual evidence from the user's knowledge base for this topic.
+- Write ONLY from general principles, widely-known industry patterns, and professional opinion.
+- Frame every point as a perspective, observation, or question — NOT as a factual claim.
+- Use language like: "I've seen teams struggle with…", "One pattern that keeps showing up…", "The question worth asking is…"
+- Absolutely ZERO invented statistics, percentages, company names, product names, research studies, or quotes.
+- Do NOT name specific companies, tools, or products unless they are universally known household names in {user_industry}.
+- Keep every statement defensible as opinion or widely-accepted wisdom."""
+
+
+def _verify_claims_against_kb(ai, post_text: str, kb_context: str, user_industry: str) -> dict:
+    """Post-generation claim verifier. Checks each factual claim against KB excerpts.
+
+    Returns dict with:
+      - 'has_issues': bool
+      - 'ungrounded_claims': list of strings (the problematic sentences)
+      - 'rewrite_instructions': str (guidance for auto-rewrite)
+    """
+    if not kb_context or not post_text:
+        return {'has_issues': False, 'ungrounded_claims': [], 'rewrite_instructions': ''}
+
+    verify_prompt = f"""You are a fact-checking assistant. Compare the LinkedIn post below against the knowledge base excerpts.
+
+TASK: Identify any sentence in the post that makes a SPECIFIC factual claim (statistic, percentage, company name, product name, research study, named person, specific date) that is NOT supported by the excerpts below.
+
+KNOWLEDGE BASE EXCERPTS:
+{kb_context[:3000]}
+
+POST TO VERIFY:
+{post_text}
+
+Return ONLY strict JSON (no markdown fences):
+{{"has_issues": true/false, "ungrounded_claims": ["sentence 1", "sentence 2"], "rewrite_instructions": "brief guidance on how to fix"}}
+
+If all claims are grounded or the post only contains opinions/observations, return:
+{{"has_issues": false, "ungrounded_claims": [], "rewrite_instructions": ""}}"""
+
+    try:
+        result = ai.generate(verify_prompt, max_tokens=300, temperature=0.0, task='evaluate')
+        raw = (result.get('text') or '').strip()
+        if raw.startswith('```'):
+            raw = re.sub(r'^```[a-zA-Z]*\n?', '', raw)
+            raw = re.sub(r'\n?```$', '', raw)
+        match = re.search(r'\{.*\}', raw, flags=re.DOTALL)
+        payload = json.loads(match.group(0) if match else raw)
+        return {
+            'has_issues': bool(payload.get('has_issues', False)),
+            'ungrounded_claims': list(payload.get('ungrounded_claims', [])),
+            'rewrite_instructions': str(payload.get('rewrite_instructions', '')),
+        }
+    except Exception as e:
+        logger.warning('Claim verification failed: %s — skipping', e)
+        return {'has_issues': False, 'ungrounded_claims': [], 'rewrite_instructions': ''}
+
+
+def _rewrite_ungrounded_claims(ai, post_text: str, verification: dict,
+                                user_industry: str, user_role: str, kb_context: str) -> str:
+    """Auto-rewrite a post to soften or remove ungrounded claims.
+
+    Takes the verification result and rewrites only the problematic parts,
+    converting hard factual claims into defensible insight/opinion framing.
+    """
+    if not verification.get('has_issues') or not verification.get('ungrounded_claims'):
+        return post_text
+
+    claims_list = '\n'.join(f'- {c}' for c in verification['ungrounded_claims'][:5])
+    guidance = verification.get('rewrite_instructions', '')
+
+    rewrite_prompt = f"""Rewrite the LinkedIn post below to fix grounding issues.
+
+PROBLEM: The following sentences make specific factual claims that are NOT supported by the knowledge base:
+{claims_list}
+
+{f'GUIDANCE: {guidance}' if guidance else ''}
+
+RULES FOR REWRITE:
+1. Keep the overall post structure, tone, and length the same.
+2. For each problematic sentence, convert it from a hard factual claim to an insight/opinion:
+   - Replace invented statistics with qualitative observations ("many teams find…", "a growing number of…")
+   - Replace invented company/product names with general references ("leading platforms", "several tools in the space")
+   - Replace invented research citations with experiential framing ("in my experience", "what I've seen work")
+3. Keep all sentences that ARE grounded — do not change what works.
+4. Stay in {user_industry} domain, {user_role} perspective.
+5. Do NOT add hashtags or preamble. Output ONLY the rewritten post body.
+
+ORIGINAL POST:
+{post_text}
+
+{f'AVAILABLE KB CONTEXT (for reference):{chr(10)}{kb_context[:1500]}' if kb_context else ''}"""
+
+    try:
+        result = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
+        rewritten = (result.get('text') or '').strip()
+        if rewritten and len(rewritten) > 50:
+            return rewritten
+    except Exception as e:
+        logger.warning('Claim rewrite failed: %s — keeping original', e)
+
+    return post_text
+
+
+# ── Chunk Quality Filter ──────────────────────────────────────────────────────
+
+def _filter_low_quality_chunks(kb_hits: list, min_quality: float = 0.35) -> list:
+    """Remove low-quality chunks (headers, footers, TOC, short fragments).
+
+    Uses RAGStore.score_chunk_quality for scoring.  Chunks below min_quality
+    are dropped.  Returns the filtered list (may be shorter than input).
+    """
+    from rag_system_pgvector import RAGStore
+    if not kb_hits:
+        return kb_hits
+    filtered = []
+    for hit in kb_hits:
+        doc = hit.get('document') or ''
+        quality = RAGStore.score_chunk_quality(doc)
+        hit['_chunk_quality'] = quality
+        if quality >= min_quality:
+            filtered.append(hit)
+        else:
+            logger.debug('Dropped low-quality chunk (q=%.2f): %s…', quality, doc[:60])
+    logger.info('Chunk quality filter: %d → %d chunks (min_quality=%.2f)',
+                len(kb_hits), len(filtered), min_quality)
+    return filtered
+
+
+# ── Cross-encoder proxy: keyword-overlap reranking ────────────────────────────
+
+def _rerank_with_keyword_boost(kb_hits: list, query_text: str,
+                                 vector_weight: float = 0.75,
+                                 keyword_weight: float = 0.25) -> list:
+    """Lightweight cross-encoder proxy using keyword-overlap scoring.
+
+    Reranks chunks by: vector_weight * original_similarity + keyword_weight * keyword_density.
+    No external model needed — uses token overlap as a cheap relevance signal.
+    """
+    if not kb_hits or not query_text:
+        return kb_hits
+
+    from rag_system_pgvector import RAGStore
+    query_keywords = RAGStore._extract_keywords(query_text)
+    if not query_keywords:
+        return kb_hits
+
+    for hit in kb_hits:
+        doc_lower = (hit.get('document') or '').lower()
+        kw_hits = sum(1 for kw in query_keywords if kw in doc_lower)
+        kw_density = kw_hits / len(query_keywords) if query_keywords else 0.0
+        original_sim = float(hit.get('similarity', 0))
+        boosted = vector_weight * original_sim + keyword_weight * kw_density
+        hit['_rerank_score'] = round(boosted, 4)
+        hit['similarity'] = round(boosted, 4)
+
+    kb_hits.sort(key=lambda h: h.get('_rerank_score', 0), reverse=True)
+    return kb_hits
+
+
+# ── KB Gap Analysis ───────────────────────────────────────────────────────────
+
+def _analyze_kb_coverage_gaps(topic: str, user_industry: str, user_role: str,
+                               kb_hits: list, grounding_level: str) -> dict:
+    """Analyse how well the KB covers the user's topic. Returns actionable suggestions.
+
+    Return dict: {
+      'coverage_pct': 0-100,
+      'gaps': [...list of missing sub-topics...],
+      'upload_suggestions': [...actionable file suggestions...],
+    }
+    """
+    result = {'coverage_pct': 0, 'gaps': [], 'upload_suggestions': []}
+
+    if not topic:
+        return result
+
+    # Simple heuristic: score coverage based on grounding level + hit quality
+    if grounding_level == _GROUNDING_FULL:
+        result['coverage_pct'] = 90
+        return result
+    elif grounding_level == _GROUNDING_PARTIAL:
+        result['coverage_pct'] = 50
+    else:
+        result['coverage_pct'] = 10
+
+    # Identify what the KB covers vs what the topic needs
+    topic_lower = topic.lower()
+    topic_keywords = set(re.findall(r'[a-zA-Z]{3,}', topic_lower))
+    topic_keywords -= {'the', 'and', 'for', 'how', 'why', 'what', 'with', 'from'}
+
+    covered_keywords = set()
+    if kb_hits:
+        for hit in kb_hits:
+            doc_lower = (hit.get('document') or '').lower()
+            for kw in topic_keywords:
+                if kw in doc_lower:
+                    covered_keywords.add(kw)
+
+    missing_keywords = topic_keywords - covered_keywords
+    if missing_keywords:
+        result['gaps'] = sorted(missing_keywords)[:5]
+
+    # Generate upload suggestions based on gaps
+    suggestions = []
+    if grounding_level == _GROUNDING_NONE:
+        suggestions.append(f"Upload a document about \"{topic}\" to get factual, grounded posts.")
+        if user_industry:
+            suggestions.append(f"Add {user_industry} research reports, whitepapers, or case studies.")
+    elif grounding_level == _GROUNDING_PARTIAL:
+        if missing_keywords:
+            suggestions.append(f"Your KB partially covers this topic. Add content about: {', '.join(sorted(missing_keywords)[:3])}.")
+        suggestions.append("Upload more detailed documents to improve grounding confidence.")
+
+    if user_role and grounding_level != _GROUNDING_FULL:
+        suggestions.append(f"Consider adding {user_role}-perspective analyses or frameworks for better role-specific grounding.")
+
+    result['upload_suggestions'] = suggestions[:3]
+    return result
+
+
+# ── Dynamic Instruction Packs from KB ─────────────────────────────────────────
+
+def _extract_dynamic_kb_context(kb_hits: list, user_industry: str, user_role: str) -> str:
+    """Extract vocabulary, themes, and domain-specific language from KB chunks.
+
+    Returns a short instruction supplement that adapts the prompt to the user's
+    own language/terminology, making the output feel more on-brand.
+    """
+    if not kb_hits:
+        return ''
+
+    # Collect unique terms that appear frequently across KB chunks
+    from collections import Counter
+    from rag_system_pgvector import RAGStore
+
+    all_text = ' '.join((h.get('document') or '') for h in kb_hits[:5])
+    keywords = RAGStore._extract_keywords(all_text, max_keywords=40)
+
+    # Count high-value domain terms (3+ chars, not generic)
+    industry_lower = (user_industry or '').lower()
+    role_lower = (user_role or '').lower()
+    generic_words = {
+        'the', 'and', 'for', 'that', 'this', 'with', 'from', 'have', 'been',
+        'will', 'are', 'was', 'can', 'but', 'not', 'our', 'your', 'their',
+        'more', 'than', 'also', 'about', 'into', 'most', 'other', 'some',
+        'just', 'like', 'make', 'made', 'when', 'what', 'how', 'which',
+        'each', 'such', 'very', 'use', 'used', 'using', 'new', 'way',
+    }
+
+    word_counts = Counter()
+    tokens = re.findall(r'[a-zA-Z]{3,}', all_text.lower())
+    for t in tokens:
+        if t not in generic_words and len(t) >= 4:
+            word_counts[t] += 1
+
+    # Extract domain-specific terms (appear 2+ times in KB but aren't stopwords)
+    domain_terms = [term for term, count in word_counts.most_common(20) if count >= 2]
+
+    if not domain_terms:
+        return ''
+
+    # Extract any named entities or proper nouns from the chunks (capitalised words)
+    proper_nouns = set()
+    for hit in kb_hits[:5]:
+        doc = hit.get('document') or ''
+        # Find capitalised multi-word phrases
+        for match in re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+', doc):
+            if len(match) > 5:
+                proper_nouns.add(match.strip())
+    # Limit
+    proper_nouns = sorted(proper_nouns)[:8]
+
+    parts = []
+    parts.append("KB VOCABULARY SUPPLEMENT (use these terms naturally when relevant):")
+    parts.append(f"  Domain terms: {', '.join(domain_terms[:12])}")
+    if proper_nouns:
+        parts.append(f"  Named entities from your KB: {', '.join(proper_nouns[:6])}")
+    parts.append(f"  These come from your uploaded documents — use them to make the post feel on-brand.")
+
+    return '\n'.join(parts)
+
+
+# ── Sentence-Level Grounding Scoring ──────────────────────────────────────────
+
+def _score_sentences_grounding(post_text: str, kb_hits: list, rag_store=None) -> list:
+    """Score each sentence in the post for KB grounding.
+
+    Uses embedding similarity between each sentence and the KB chunks.
+    Returns list of dicts: [{'sentence': str, 'score': float, 'level': str}, ...]
+
+    Levels: 'grounded' (≥0.75), 'partial' (≥0.60), 'ungrounded' (<0.60)
+    """
+    if not post_text or not kb_hits:
+        return []
+
+    # Split post into sentences
+    sentences = re.split(r'(?<=[.!?])\s+', post_text.strip())
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
+
+    if not sentences:
+        return []
+
+    # Get KB chunk texts
+    kb_texts = [(h.get('document') or '') for h in kb_hits if h.get('document')]
+    if not kb_texts:
+        return []
+
+    # If we have a rag_store with embedding capability, use semantic scoring
+    if rag_store:
+        try:
+            import numpy as np
+            sentence_embeddings = rag_store._encode_texts(sentences)
+            kb_embeddings = rag_store._encode_texts(kb_texts[:5])  # Top 5 chunks
+
+            results = []
+            for i, sent in enumerate(sentences):
+                sent_emb = sentence_embeddings[i]
+                # Compute max similarity against all KB chunks
+                max_sim = 0.0
+                for kb_emb in kb_embeddings:
+                    sim = float(np.dot(sent_emb, kb_emb) /
+                                (np.linalg.norm(sent_emb) * np.linalg.norm(kb_emb) + 1e-8))
+                    max_sim = max(max_sim, sim)
+
+                level = 'grounded' if max_sim >= 0.75 else ('partial' if max_sim >= 0.60 else 'ungrounded')
+                results.append({
+                    'sentence': sent[:200],
+                    'score': round(max_sim, 3),
+                    'level': level,
+                })
+            return results
+        except Exception as e:
+            logger.warning('Sentence-level grounding scoring failed: %s', e)
+
+    # Fallback: keyword overlap scoring
+    kb_combined = ' '.join(kb_texts).lower()
+    results = []
+    for sent in sentences:
+        words = set(re.findall(r'[a-zA-Z]{4,}', sent.lower()))
+        if not words:
+            results.append({'sentence': sent[:200], 'score': 0.0, 'level': 'ungrounded'})
+            continue
+        overlap = sum(1 for w in words if w in kb_combined) / len(words)
+        level = 'grounded' if overlap >= 0.6 else ('partial' if overlap >= 0.35 else 'ungrounded')
+        results.append({'sentence': sent[:200], 'score': round(overlap, 3), 'level': level})
+
+    return results
+
+
+# ── Author-Side Source Traceability ───────────────────────────────────────────
+
+def _build_source_traceability(kb_hits: list, post_text: str = '') -> list:
+    """Build source traceability map for the author's dashboard.
+
+    Returns a list of source objects that the author can inspect to verify
+    where content came from.  NOT shown to LinkedIn readers — author-only.
+
+    Returns: [{
+        'file': str,
+        'chunk_preview': str,
+        'similarity': float,
+        'chunk_quality': float,
+        'file_id': str,
+    }, ...]
+    """
+    if not kb_hits:
+        return []
+
+    sources = []
+    seen_files = set()
+    for hit in kb_hits[:6]:
+        meta = hit.get('metadata') or {}
+        file_name = os.path.basename(meta.get('source', 'Unknown'))
+        file_id = hit.get('file_id', '')
+        chunk_text = (hit.get('document') or '').strip()
+        sim = round(float(hit.get('similarity', 0)), 3)
+        quality = round(float(hit.get('_chunk_quality', 0.5)), 3)
+
+        source_key = f"{file_id}:{chunk_text[:50]}"
+        if source_key in seen_files:
+            continue
+        seen_files.add(source_key)
+
+        sources.append({
+            'file': file_name,
+            'chunk_preview': chunk_text[:300] + ('…' if len(chunk_text) > 300 else ''),
+            'similarity': sim,
+            'chunk_quality': quality,
+            'file_id': file_id,
+        })
+
+    return sources
+
+
+# ── Grounding Telemetry Logging ───────────────────────────────────────────────
+
+def _log_grounding_telemetry(user_id: str, generation_data: dict) -> None:
+    """Log grounding metrics for this generation to system_logs.
+
+    Tracks: grounding level, avg similarity, hit count, gap analysis,
+    rewrite status, and strict mode usage.  Used for analytics.
+    """
+    try:
+        from database.db_helper import get_db
+        db = get_db()
+        db.log('info', 'grounding_telemetry', user_id=user_id, metadata={
+            'grounding_level': generation_data.get('grounding_level', 'unknown'),
+            'avg_similarity': generation_data.get('avg_similarity', 0),
+            'kb_hits_count': generation_data.get('kb_hits_count', 0),
+            'coverage_pct': generation_data.get('coverage_pct', 0),
+            'strict_mode': generation_data.get('strict_mode', False),
+            'rewrite_applied': generation_data.get('rewrite_applied', False),
+            'kb_mode': generation_data.get('kb_mode', ''),
+            'topic': (generation_data.get('topic', '') or '')[:100],
+            'industry': generation_data.get('industry', ''),
+            'role': generation_data.get('role', ''),
+        })
+    except Exception as e:
+        logger.debug('Grounding telemetry log failed (non-critical): %s', e)
+
+
+@app.route('/api/generate-preview', methods=['POST'])
 @limiter.limit("10 per minute")
+@require_auth
 def generate_preview():
     """Generate a preview post"""
     try:
@@ -3966,9 +5056,7 @@ def generate_preview():
         
         req_data = request.get_json(silent=True) or {}
 
-        user_id = get_current_user_id()
-        if not is_valid_uuid(user_id):
-            return jsonify({'success': False, 'message': 'Authentication required to generate content'}), 401
+        user_id = g.user_id  # already validated by @require_auth
 
         can_generate, quota_meta = _check_generation_guardrail(user_id)
         if not can_generate:
@@ -3990,32 +5078,49 @@ def generate_preview():
             req_data['max_words'] = 220
             req_data.pop('topic', None)
             req_data.pop('topics', None)
-            req_data.pop('target_audience', None)
-            req_data.pop('post_goal', None)
-            req_data.pop('business_goal', None)
-            req_data.pop('audience_type', None)
-            req_data.pop('tone', None)
 
         config_obj = load_config(user_id)
-        ai = AIProvider(
-            config_obj.get('AI_PROVIDER', 'google'),
-            api_keys={
-                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
-            }
-        )
+        ai = _build_platform_ai_provider()
         user_topic = (req_data.get('topic') or '').strip()
-        user_industry = _single_value(req_data.get('industry') or config_obj.get('CONTENT_INDUSTRY', ''))
-        user_role = _single_value(req_data.get('role') or config_obj.get('USER_ROLE', ''))
-        target_audience = (req_data.get('target_audience') or config_obj.get('AUDIENCE_KEYWORDS', '') or '').strip()
-        post_tone = (req_data.get('tone') or config_obj.get('TONE', 'professional') or 'professional').strip().lower()
-        audience_type = (req_data.get('audience_type') or 'individual').strip().lower()
-        post_goal = (req_data.get('post_goal') or req_data.get('business_goal') or '').strip()
-        business_goal = post_goal
+        user_industry = _normalize_taxonomy_label(req_data.get('industry') or config_obj.get('CONTENT_INDUSTRY', ''), _INDUSTRY_LABELS)
+        user_role = _normalize_taxonomy_label(req_data.get('role') or config_obj.get('USER_ROLE', ''), _ROLE_LABELS)
+        post_tone = _normalize_tone_value(req_data.get('tone') or config_obj.get('TONE', 'professional') or 'professional')
+
+        raw_goal_value = str(
+            req_data.get('goal_preset')
+            or req_data.get('post_goal')
+            or req_data.get('business_goal')
+            or ''
+        ).strip()
+        if not raw_goal_value:
+            return jsonify({
+                'success': False,
+                'message': 'Post Goal is required. Please select a goal before generating.'
+            }), 400
+
+        goal_key, business_goal = _normalize_goal(raw_goal_value)
+        if goal_key == 'general_engagement':
+            return jsonify({
+                'success': False,
+                'message': 'Invalid Post Goal. Please choose one of the available goal presets.'
+            }), 400
+
+        post_goal = business_goal
+        audience_type = str(
+            req_data.get('audience_type')
+            or req_data.get('audienceType')
+            or 'individual'
+        ).strip().lower() or 'individual'
+        target_audience = str(
+            req_data.get('target_audience')
+            or req_data.get('targetAudience')
+            or config_obj.get('AUDIENCE_KEYWORDS', '')
+            or ''
+        ).strip()
         hashtag_count = clamp_int(req_data.get('hashtags', config_obj.get('HASHTAG_COUNT', 3)), 0, 10, 3)
         emoji_level = (req_data.get('emojis') or config_obj.get('EMOJI_USAGE', 'moderate') or 'moderate').strip().lower()
         topics = parse_content_topics(req_data, config_obj)
+        style_clone_mode = _normalize_style_clone_mode(req_data.get('style_clone_mode') or 'hybrid')
 
         kb_mode_raw = (req_data.get('kb_mode') or 'use_kb').strip().lower()
         if kb_mode_raw in {'no_kb', 'dont_use_kb', 'off'}:
@@ -4024,6 +5129,9 @@ def generate_preview():
             kb_mode = 'specific_files'
         else:
             kb_mode = 'use_kb'
+
+        # ── Strict grounding toggle ───────────────────────────────────────────
+        strict_grounding = bool(req_data.get('strict_grounding', False))
 
         workspace_id = (req_data.get('workspace_id') or '').strip()
         raw_specific_file_ids = req_data.get('specific_file_ids') or []
@@ -4064,13 +5172,13 @@ def generate_preview():
         
         fmt = random.choice(POST_FORMATS) if POST_FORMATS else 'article'
 
-        if user_industry or user_role or target_audience or topics:
+        if user_industry or user_role or topics:
             services = f"Professional insights for {user_industry or 'business and technology'} audiences, with focus on {user_role or 'strategy and execution'}."
         else:
             services = f"Professional insights for {user_industry or 'business and technology'} audiences, with focus on {user_role or 'leadership and execution'}."
 
         forbidden_terms = _forbidden_terms_for_context(
-            user_industry, user_role, user_topic, topics, target_audience, post_goal
+            user_industry, user_role, user_topic, topics, post_goal
         )
         selected_domain = user_industry or 'the selected industry'
         domain_guardrail = (
@@ -4086,7 +5194,7 @@ def generate_preview():
         use_style_clone = bool(req_data.get('use_style_clone', False))
         style_instruction = ""
         style_clone_active = False
-        if use_style_clone:
+        if use_style_clone and style_clone_mode != 'off':
             try:
                 sc_blob = (_ensure_user_feature_blob(user_id) or {}).get('style_clone') or {}
                 if sc_blob.get('enabled') and sc_blob.get('samples'):
@@ -4135,12 +5243,13 @@ def generate_preview():
                             + ", ".join(f'"{p}"' for p in sig_phrases[:4])
                         )
 
+                    style_mode_heading = "STRICT MODE — STYLE CLONE DOMINATES VOICE/FORMAT" if style_clone_mode == 'strict' else "HYBRID MODE — BLEND STYLE CLONE WITH ROLE/GOAL"
                     style_instruction = f"""
 ╔══════════════════════════════════════════════════════════════════╗
-║  STYLE CLONE — THIS OVERRIDES ALL OTHER VOICE/FORMAT RULES       ║
+║  STYLE CLONE — {style_mode_heading}       ║
 ╚══════════════════════════════════════════════════════════════════╝
-This post MUST be written in the user's exact personal voice. Every formatting,
-tone, and structural rule below REPLACES the generic defaults.
+Use the fingerprint below to shape writing style while honoring role, audience,
+domain, and post-goal constraints.
 
 VOICE FINGERPRINT:
 - Overall voice: {traits.get('style_summary', 'direct and analytical')}
@@ -4163,10 +5272,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
 ╚══════════════════════════════════════════════════════════════════╝"""
 
                     style_clone_active = True
-
-                    # Override derived values so downstream rules stay consistent
-                    if traits.get('tone'):
-                        tone_voice = traits['tone']
                     if trait_emoji_rule:
                         emoji_level = (traits.get('emoji_usage') or 'moderate').lower().split('/')[0].strip()
 
@@ -4185,14 +5290,7 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
         emoji_rule = emoji_rule_map.get((emoji_level or '').lower(), emoji_rule_map['moderate'])
 
         topic_hint = ', '.join(topics) if topics else 'industry trends and practical insights'
-        # audience_hint describes the reader TYPE — never used as literal copy in the post
-        if audience_type in {'agency', 'b2b', 'company'}:
-            audience_hint = f'B2B decision-makers and teams in the {user_industry} space'
-        else:
-            audience_hint = f'{user_industry} professionals and practitioners'
-        # Always use the computed descriptive label — never let the raw DB enum
-        # value (e.g. "Individual professional profile") bleed into post copy.
-        target_audience_hint = audience_hint
+        target_audience_hint = f"Professionals in {user_industry or 'this industry'}, specifically those in or working with {user_role or 'leadership roles'}."
 
         if word_count_mode == 'ai_random':
             random_target = random.randint(110, 230)
@@ -4208,6 +5306,7 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
         kb_selected_file_count = 0
         kb_selected_file_ids = []
         kb_hits = []
+        rag = None  # Initialise so it's available for sentence grounding
         try:
             # Get current user's ID (authenticated or test user)
             user_id = get_current_user_id()
@@ -4262,29 +5361,37 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         filtered = len(selected_file_ids) < len(user_file_ids)
                         file_id_arg = selected_file_ids if filtered else None
 
-                        # Pass 1: topic-focused search at strict threshold (0.75)
-                        topic_hits = rag.similarity_search(
-                            theme or topic_hint,
-                            k=4,
-                            match_threshold=0.75,
-                            file_ids=file_id_arg
+                        # ── Multi-query hybrid retrieval (production grounding) ──
+                        retrieval_queries = _expand_retrieval_queries(
+                            theme or topic_hint, user_industry, user_role, goal_key
                         )
 
-                        if topic_hits:
-                            kb_hits = topic_hits
-                        else:
-                            # Pass 2: broader fallback at relaxed threshold (0.68)
-                            broad_query = " ".join(
-                                part for part in [theme, user_industry, user_role] if part
-                            )
-                            broad_hits = rag.similarity_search(
-                                broad_query,
-                                k=4,
+                        # Phase 1: hybrid search (vector + keyword) per query
+                        all_hybrid_hits = {}
+                        for rq in retrieval_queries:
+                            hits = rag.hybrid_search(
+                                rq, k=4,
                                 match_threshold=0.68,
-                                file_ids=file_id_arg
+                                file_ids=file_id_arg,
+                                vector_weight=0.7,
+                                keyword_weight=0.3,
                             )
-                            if broad_hits:
-                                kb_hits = broad_hits
+                            for hit in hits:
+                                cid = hit.get('id') or hit.get('document', '')[:80]
+                                existing = all_hybrid_hits.get(cid)
+                                if existing is None or float(hit.get('similarity', 0)) > float(existing.get('similarity', 0)):
+                                    all_hybrid_hits[cid] = hit
+                        kb_hits = sorted(all_hybrid_hits.values(),
+                                         key=lambda h: float(h.get('similarity', 0)), reverse=True)
+
+                        # Phase 2: chunk quality filter
+                        kb_hits = _filter_low_quality_chunks(kb_hits, min_quality=0.35)
+
+                        # Phase 3: keyword-overlap reranking
+                        kb_hits = _rerank_with_keyword_boost(
+                            kb_hits, theme or topic_hint,
+                            vector_weight=0.75, keyword_weight=0.25
+                        )
 
                         if kb_hits:
                             kb_used = True
@@ -4306,18 +5413,102 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
             kb_state = 'error'
             kb_no_match = True  # KB was requested but failed — tell the user
-        
+
+        kb_avg_similarity = 0.0
+        if kb_hits:
+            similarities = [float(hit.get('similarity') or 0.0) for hit in kb_hits if hit is not None]
+            if similarities:
+                kb_avg_similarity = sum(similarities) / len(similarities)
+        kb_low_confidence = bool(kb_used and kb_avg_similarity < 0.76)
+
+        # ── Grounding level classification ────────────────────────────────────
+        grounding_level = _classify_grounding_level(kb_hits, kb_used, kb_mode)
+        logger.info('Grounding level: %s (avg_sim=%.3f, hits=%d, kb_mode=%s)',
+                     grounding_level, kb_avg_similarity, len(kb_hits), kb_mode)
+
+        # ── Strict grounding gate ─────────────────────────────────────────────
+        if strict_grounding and kb_mode != 'no_kb' and grounding_level == _GROUNDING_NONE:
+            gap_data = _analyze_kb_coverage_gaps(
+                theme or topic_hint, user_industry, user_role, kb_hits, grounding_level
+            )
+            return jsonify({
+                'success': False,
+                'strict_grounding_blocked': True,
+                'message': (
+                    'Strict Grounding is ON: your knowledge base has no relevant content for this topic. '
+                    'Upload documents about this topic or turn off Strict Grounding to generate insight-only posts.'
+                ),
+                'grounding': {
+                    'level': grounding_level,
+                    'label': 'Blocked — No KB Match',
+                    'description': 'Strict grounding prevented generation because no KB content matched.',
+                    'kb_hits_count': 0,
+                    'avg_similarity': 0,
+                },
+                'gap_analysis': gap_data,
+            }), 422
+
+        # ── Dynamic instruction pack supplement from KB ───────────────────────
+        dynamic_kb_supplement = ''
+        if kb_used and kb_hits:
+            dynamic_kb_supplement = _extract_dynamic_kb_context(kb_hits, user_industry, user_role)
+
         # ── Tone-to-voice map ─────────────────────────────────────────────────────
         _tone_voices = {
             'professional':   "Clear, confident, direct. Short declarative sentences. No filler words. Sound like a knowledgeable peer, not a press release.",
             'conversational': "Casual first-person. Like messaging a smart colleague. Use 'I', 'we', contractions. Short sentences. Real talk, not corporate jargon.",
             'authoritative':  "Opinion-forward, backed by logic. Make bold, decisive statements. Confident — not arrogant, but certain.",
-            'thought_leader': "Lead with a contrarian or surprising insight. Challenge the common assumptions people hold in this industry. Dense with ideas, zero filler.",
-            'inspirational':  "Story arc: challenge → insight → transformation. Make the reader feel something. Warm, genuine, personal — not motivational-poster cliché.",
+            'contrarian':     "Challenge conventional wisdom with evidence-backed arguments. Lead with what most people get wrong. Make the reader rethink their assumptions.",
             'storytelling':   "Open with a vivid personal scene or moment. Let the story carry the lesson naturally. Don't moralize — let the reader draw their own conclusion.",
             'educational':    "Deliver focused, specific insights. Each point standalone and immediately usable. Teach, don't preach.",
         }
+        _tone_templates = {
+            'professional': (
+                "- Hook pattern: sharp professional insight in one line.\n"
+                "- Body movement: problem -> practical implication -> concrete action.\n"
+                "- Sentence rhythm: mostly short declarative lines.\n"
+                "- Lexicon: precise business language, zero hype."
+            ),
+            'conversational': (
+                "- Hook pattern: candid first-person observation.\n"
+                "- Body movement: what I noticed -> why it matters -> what I changed.\n"
+                "- Sentence rhythm: short, natural, chat-like cadence.\n"
+                "- Lexicon: simple language, contractions allowed."
+            ),
+            'authoritative': (
+                "- Hook pattern: decisive claim with strong angle.\n"
+                "- Body movement: clear position -> evidence -> implication.\n"
+                "- Sentence rhythm: compact, assertive statements.\n"
+                "- Lexicon: expert terminology only where useful."
+            ),
+            'contrarian': (
+                "- Hook pattern: what most people get wrong about the topic.\n"
+                "- Body movement: challenge assumption -> explain why -> offer better frame.\n"
+                "- Sentence rhythm: sharp, provocative, but reasoned.\n"
+                "- Lexicon: direct language; avoid outrage framing."
+            ),
+            'storytelling': (
+                "- Hook pattern: specific scene or moment in first line.\n"
+                "- Body movement: scene -> tension -> lesson -> takeaway.\n"
+                "- Sentence rhythm: mixed sentence lengths with narrative flow.\n"
+                "- Lexicon: concrete sensory details over abstractions."
+            ),
+            'educational': (
+                "- Hook pattern: clear promise of practical learning.\n"
+                "- Body movement: 2-3 teachable points with real examples.\n"
+                "- Sentence rhythm: concise, scannable, high-signal lines.\n"
+                "- Lexicon: instructional verbs and actionable phrasing."
+            ),
+        }
         tone_voice = _tone_voices.get((post_tone or '').lower(), "Natural, human voice. Short sentences. No corporate fluff.")
+        tone_template = _tone_templates.get((post_tone or '').lower(), _tone_templates['professional'])
+
+        # ── Instruction Pack (auto-loaded for industry × role × goal) ─────────────
+        instruction_pack_text = _build_instruction_pack_text(user_industry, user_role, goal_key, config_obj=config_obj)
+
+        # ── Merge dynamic KB vocabulary supplement ────────────────────────────────
+        if dynamic_kb_supplement:
+            instruction_pack_text = (instruction_pack_text or '') + '\n\n' + dynamic_kb_supplement
 
         # ── Style Clone trait overrides (must run AFTER tone_voice is set) ────────
         sc_trait_overrides = {}
@@ -4329,6 +5520,15 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             except Exception:
                 pass
 
+        style_clone_strict = style_clone_active and style_clone_mode == 'strict'
+        if style_clone_active and sc_trait_overrides:
+            clone_tone = str(sc_trait_overrides.get('tone') or '').strip()
+            if clone_tone:
+                if style_clone_strict:
+                    tone_voice = clone_tone
+                else:
+                    tone_voice = f"{tone_voice} Blend in this personal writing cadence: {clone_tone}."
+
         # ── Goal-to-structure map ─────────────────────────────────────────────────
         _goal_structures = {
             'spark_comments':   "End the post with a genuinely open question that invites the reader to share their unique view.",
@@ -4339,8 +5539,23 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             'brand_awareness':  "Communicate one clear value or belief. Make it memorable in a single sentence.",
             'grow_network':     "Write from personal experience. Include a moment of genuine reflection or honest admission.",
         }
-        goal_key = (business_goal or '').lower().replace(' ', '_')
         goal_structure = _goal_structures.get(goal_key, "Deliver one clear, valuable idea. Make it skimmable and worth the reader's time.")
+
+        if style_clone_strict:
+            voice_rule_text = 'Follow the STYLE CLONE fingerprint exactly — it overrides tone guidance.'
+            structure_rule_text = 'Follow the structural pattern in the STYLE CLONE block above.'
+            format_rule_text = 'STYLE CLONE format rules take priority. Lists/single-line breaks are allowed when present in style clone references.'
+            style_clone_compliance_rule = '14. STYLE CLONE COMPLIANCE: The output MUST be stylistically indistinguishable from the reference posts provided above. If in doubt, re-read the references.'
+        elif style_clone_active:
+            voice_rule_text = 'Blend the STYLE CLONE fingerprint with role and post-goal constraints. Keep role perspective primary.'
+            structure_rule_text = 'Use STYLE CLONE cadence, but keep the goal-driven structure above.'
+            format_rule_text = 'Prefer prose readability; style-clone line-break rhythm is allowed when it improves authenticity.'
+            style_clone_compliance_rule = '14. STYLE CLONE COMPLIANCE: Mirror the personal cadence and phrasing patterns while preserving role, domain, and goal clarity.'
+        else:
+            voice_rule_text = 'Follow the TONE instruction above exactly.'
+            structure_rule_text = 'Follow the POST STRUCTURE above.'
+            format_rule_text = 'No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.'
+            style_clone_compliance_rule = ''
 
         _BANNED_PHRASES = (
             "In today's fast-paced world, In today's world, It's no secret, game changer, game-changer, "
@@ -4351,38 +5566,25 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             "holistic approach, ecosystem, value-add, going forward, circle back, take this to the next level"
         )
 
-        # ── Build KB section ──────────────────────────────────────────────────────
-        if kb_used and kb_context:
-            kb_section = f"""KNOWLEDGE BASE EXCERPTS (use these as your factual foundation):
-{kb_context}
-
-KB RULES:
-- Base ALL factual claims, examples, and statistics ONLY on the excerpts above.
-- If an excerpt is off-domain (not about {user_industry}), IGNORE it completely.
-- If no excerpt covers a point, keep that sentence general — never invent specifics."""
-        elif kb_no_match:
-            _kb_state_msgs = {
-                'no_match':  f"KB searched but no content matched the topic '{theme}'.",
-                'not_built': "KB is still indexing — embeddings not ready.",
-                'no_files':  "No KB files are selected or available.",
-                'error':     "KB lookup failed (service error).",
-            }
-            kb_section = (
-                f"({_kb_state_msgs.get(kb_state, 'KB unavailable.')} "
-                f"Generate from your own well-established knowledge of the {user_industry} industry. "
-                "Do not invent statistics, company names, product names, or research studies.)"
-            )
-        else:
-            kb_section = f"(No knowledge base excerpts provided — draw only on real, well-known facts about the {user_industry} industry. Do not invent statistics, company names, or research studies.)"
+        # ── Build KB section (grounding-level-aware) ─────────────────────────────
+        kb_section = _build_grounding_prompt_rules(grounding_level, user_industry, kb_context)
 
         prompt = f"""[DOMAIN LOCK — READ THIS FIRST]
 You are writing EXCLUSIVELY for the {user_industry} industry, from the perspective of a {user_role}.
 Every fact, insight, reference, statistic, and example MUST be grounded in the {user_industry} domain.
 Do NOT mention, reference, or borrow from any other industry or professional domain.
 
+{f'''━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ROLE × INDUSTRY × GOAL PLAYBOOK (follow these closely — they define HOW you write):
+
+{instruction_pack_text}
+''' if instruction_pack_text else ''}
 {style_instruction}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VOICE / TONE: {tone_voice}
+
+TONE EXECUTION TEMPLATE (follow exactly):
+{tone_template}
 
 POST STRUCTURE (goal: "{business_goal or 'general engagement'}"):
 {goal_structure}
@@ -4406,18 +5608,25 @@ STRICT RULES — every rule applies without exception:
 
 1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
 2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, research studies, product names, or quotes.
-3. VOICE: {'Follow the STYLE CLONE fingerprint above exactly — it overrides all other tone guidance.' if style_clone_active else f'Follow the TONE instruction above exactly.'}
-4. STRUCTURE: {'Follow the structural pattern in the STYLE CLONE block above.' if style_clone_active else 'Follow the POST STRUCTURE above.'}
+3. VOICE: {voice_rule_text}
+4. STRUCTURE: {structure_rule_text}
 5. LENGTH: {word_rule}
 6. EMOJI: {emoji_rule}
-7. FORMAT: {'The STYLE CLONE format rule above takes priority. Lists and single-line breaks are allowed if they match the reference posts.' if style_clone_active else 'No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.'}
+7. FORMAT: {format_rule_text}
 8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body.
 9. BANNED PHRASES — never write any of these: {_BANNED_PHRASES}
 10. HUMAN VOICE: Write like a real person would talk or write — not like an AI assistant, not like a press release, not like a corporate newsletter.
 11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
 12. TOPIC ANCHOR + HOOK: The very first sentence MUST be directly about "{theme}" AND must be under 120 characters. Short, punchy, curiosity-driven. Do not open with a generic industry question or a hook about your role/team. The post is about the topic, not about you.
 13. NO PROMPT ECHO: Never copy or paraphrase any instruction label from this prompt into the post. Do not use the reader description (WHO WILL READ THIS) as post copy.
-{'14. STYLE CLONE COMPLIANCE: The output MUST be stylistically indistinguishable from the reference posts provided above. If in doubt, re-read the references.' if style_clone_active else ''}
+14. OUTPUT CONTRACT: Structure must be: (a) Hook line, (b) 2-3 short body paragraphs, (c) final CTA/question line aligned to goal. Keep each paragraph 1-2 sentences.
+15. QUALITY CONTRACT: Include at least one concrete detail (specific scenario, metric range, or named mechanism). Avoid vague generic claims.
+16. GROUNDING MODE: {
+    'GROUNDED — all factual claims must trace to KB excerpts above. If a point is not in the excerpts, phrase it as opinion.' if grounding_level == _GROUNDING_FULL else
+    'PARTIAL — some KB excerpts available. Supported points can be specific; unsupported points must use insight-only framing (no invented facts).' if grounding_level == _GROUNDING_PARTIAL else
+    'INSIGHT-ONLY — no KB evidence available. Every statement must be defensible as opinion, observation, or widely-accepted wisdom. Zero invented facts.'
+}
+{style_clone_compliance_rule}
 
 FORMAT STYLE: {fmt}
 
@@ -4425,46 +5634,86 @@ Output ONLY the post text. No labels, no "Here is your post:", no preamble."""
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
-        # Add timeout for AI generation
         import time
-        start_time = time.time()
-        try:
-            result = ai.generate(prompt, max_tokens=500)
-        except Exception as e:
-            logger.error(f"AI generation failed after {time.time() - start_time:.2f}s: {e}")
-            return jsonify({'success': False, 'message': f"AI generation failed: {str(e)}"}), 500
-            
-        if not result or 'text' not in result:
-            logger.error(f"Invalid AI response: {result}")
-            return jsonify({'success': False, 'message': "AI returned invalid response"}), 400
-            
-        content = (result['text'] or '').strip()
-        
-        if not content:
-            return jsonify({'success': False, 'message': "Generated content is empty"}), 400
-        
-        generated_tags = normalize_hashtags(HASHTAG_RE.findall(content))
-        body = enforce_linkedin_quality(
-            remove_hashtags_from_body(content),
-            user_industry,
-            user_role,
-            theme,
-            target_audience_hint,
-            emoji_level,
-        )
 
-        if word_count_mode == 'custom_range':
-            word_total = words_count(body)
-            if word_total < min_words or word_total > max_words:
-                rewrite_prompt = f"""Rewrite the following LinkedIn post to be between {min_words} and {max_words} words.
+        # ── Request timeout budget (max wall-clock time for entire pipeline) ──
+        _REQUEST_BUDGET_SEC = float(os.getenv('GENERATION_TIMEOUT_SEC', '90'))
+        _request_start = time.time()
+
+        def _budget_remaining() -> float:
+            return max(0.0, _REQUEST_BUDGET_SEC - (time.time() - _request_start))
+
+        def _has_budget(min_sec: float = 10.0) -> bool:
+            """Return True if at least min_sec seconds remain in the request budget."""
+            return _budget_remaining() > min_sec
+
+        def _generate_once(generation_prompt: str) -> str:
+            start_time = time.time()
+            try:
+                result = ai.generate(generation_prompt, max_tokens=500, task='generate')
+            except Exception as e:
+                logger.error(f"AI generation failed after {time.time() - start_time:.2f}s: {e}")
+                raise
+
+            if not result or 'text' not in result:
+                logger.error(f"Invalid AI response: {result}")
+                raise ValueError('AI returned invalid response')
+
+            text = (result.get('text') or '').strip()
+            if not text:
+                raise ValueError('Generated content is empty')
+            return text
+
+        def _post_process_generated(raw_text: str):
+            generated_tags_local = normalize_hashtags(HASHTAG_RE.findall(raw_text))
+            body_local = enforce_linkedin_quality(
+                remove_hashtags_from_body(raw_text),
+                user_industry,
+                user_role,
+                theme,
+                target_audience_hint,
+                emoji_level,
+            )
+
+            if word_count_mode == 'custom_range':
+                word_total = words_count(body_local)
+                if word_total < min_words or word_total > max_words:
+                    rewrite_prompt = f"""Rewrite the following LinkedIn post to be between {min_words} and {max_words} words.
 Preserve meaning, tone, and practical value.
 Do not include hashtags in the body.
-\nPost:\n{body}\n"""
+\nPost:\n{body_local}\n"""
+                    try:
+                        rewrite = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
+                        rewritten_text = (rewrite.get('text') or '').strip()
+                        if rewritten_text:
+                            body_local = enforce_linkedin_quality(
+                                remove_hashtags_from_body(rewritten_text),
+                                user_industry,
+                                user_role,
+                                theme,
+                                target_audience_hint,
+                                emoji_level,
+                            )
+                    except Exception as rewrite_error:
+                        logger.warning("Word-range rewrite fallback failed: %s", rewrite_error)
+
+                body_local = enforce_word_ceiling(body_local, max_words)
+
+            forbidden_hits_local = _find_forbidden_terms(body_local, forbidden_terms)
+            if forbidden_hits_local:
+                rewrite_prompt = f"""Rewrite the LinkedIn post below while keeping the same intent, tone, and structure.
+Hard rule: remove any references to these forbidden terms: {', '.join(forbidden_hits_local)}.
+Keep the post focused strictly on: {selected_domain} and role: {user_role or 'professional'}.
+Do not add markdown symbols (no ** or bullets) and keep readable short paragraphs.
+
+Post:
+{body_local}
+"""
                 try:
-                    rewrite = ai.generate(rewrite_prompt, max_tokens=500)
+                    rewrite = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
                     rewritten_text = (rewrite.get('text') or '').strip()
                     if rewritten_text:
-                        body = enforce_linkedin_quality(
+                        body_local = enforce_linkedin_quality(
                             remove_hashtags_from_body(rewritten_text),
                             user_industry,
                             user_role,
@@ -4473,34 +5722,97 @@ Do not include hashtags in the body.
                             emoji_level,
                         )
                 except Exception as rewrite_error:
-                    logger.warning("Word-range rewrite fallback failed: %s", rewrite_error)
+                    logger.warning("Domain guardrail rewrite failed: %s", rewrite_error)
 
-            body = enforce_word_ceiling(body, max_words)
+            return body_local, generated_tags_local
 
-        forbidden_hits = _find_forbidden_terms(body, forbidden_terms)
-        if forbidden_hits:
-            rewrite_prompt = f"""Rewrite the LinkedIn post below while keeping the same intent, tone, and structure.
-Hard rule: remove any references to these forbidden terms: {', '.join(forbidden_hits)}.
-Keep the post focused strictly on: {selected_domain} and role: {user_role or 'professional'}.
-Do not add markdown symbols (no ** or bullets) and keep readable short paragraphs.
+        try:
+            first_draft_raw = _generate_once(prompt)
+        except Exception as first_error:
+            return _safe_api_error('AI generation failed. Please try again.', first_error)
 
-Post:
-{body}
-"""
+        body, generated_tags = _post_process_generated(first_draft_raw)
+        evaluation = _evaluate_post_quality(ai, body, theme, goal_key)
+
+        quality_threshold = clamp_int(req_data.get('quality_threshold', 75), 60, 95, 75)
+        retry_cap_rate = 0.35
+        try:
+            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '0.35')))
+        except Exception:
+            retry_cap_rate = 0.35
+        retry_cap_rate = max(0.0, min(1.0, retry_cap_rate))
+
+        retry_attempted = False
+        retry_allowed = random.random() < retry_cap_rate
+        selected_draft = 'draft_1'
+        second_evaluation = None
+
+        if evaluation.get('score', 0) < quality_threshold and retry_allowed and _has_budget(20):
+            retry_attempted = True
+            feedback_issues = evaluation.get('issues') or [
+                'Improve hook specificity and topic anchoring',
+                'Increase clarity and concrete detail',
+                'Strengthen CTA quality'
+            ]
+            retry_prompt = f"""{prompt}
+
+REVISION PASS (DRAFT 2) — IMPROVE QUALITY:
+- Previous draft score: {evaluation.get('score', 0)}/100
+- Fix these issues first: {'; '.join(feedback_issues[:4])}
+- Keep domain lock, same topic, same goal, same tone template.
+- Hook must be sharper and clearly topic-anchored.
+- CTA must be specific and naturally invite response.
+- Keep concrete and practical; avoid generic statements.
+
+Output ONLY the revised post text."""
             try:
-                rewrite = ai.generate(rewrite_prompt, max_tokens=500)
-                rewritten_text = (rewrite.get('text') or '').strip()
-                if rewritten_text:
+                second_draft_raw = _generate_once(retry_prompt)
+                second_body, second_generated_tags = _post_process_generated(second_draft_raw)
+                second_evaluation = _evaluate_post_quality(ai, second_body, theme, goal_key)
+
+                if second_evaluation.get('score', 0) > evaluation.get('score', 0):
+                    body = second_body
+                    generated_tags = second_generated_tags
+                    evaluation = second_evaluation
+                    selected_draft = 'draft_2'
+            except Exception as retry_error:
+                logger.warning('Second draft retry failed, keeping first draft: %s', retry_error)
+
+        # ── Post-generation claim verification & auto-rewrite ─────────────────
+        claim_verification = {'has_issues': False, 'ungrounded_claims': [], 'rewrite_instructions': ''}
+        grounding_rewrite_applied = False
+
+        if grounding_level in (_GROUNDING_FULL, _GROUNDING_PARTIAL) and kb_context and _has_budget(15):
+            # Only verify when we have KB context to check against
+            claim_verification = _verify_claims_against_kb(ai, body, kb_context, user_industry)
+            if claim_verification.get('has_issues') and _has_budget(10):
+                logger.info('Claim verification found %d ungrounded claims — auto-rewriting',
+                            len(claim_verification.get('ungrounded_claims', [])))
+                rewritten_body = _rewrite_ungrounded_claims(
+                    ai, body, claim_verification, user_industry, user_role, kb_context
+                )
+                if rewritten_body != body:
                     body = enforce_linkedin_quality(
-                        remove_hashtags_from_body(rewritten_text),
-                        user_industry,
-                        user_role,
-                        theme,
-                        target_audience_hint,
-                        emoji_level,
+                        remove_hashtags_from_body(rewritten_body),
+                        user_industry, user_role, theme, target_audience_hint, emoji_level,
                     )
-            except Exception as rewrite_error:
-                logger.warning("Domain guardrail rewrite failed: %s", rewrite_error)
+                    body = enforce_word_ceiling(body, max_words)
+                    grounding_rewrite_applied = True
+                    logger.info('Grounding rewrite applied successfully')
+        elif grounding_level == _GROUNDING_NONE and kb_mode != 'no_kb' and _has_budget(15):
+            # Ungrounded mode with KB requested — run a lighter self-check
+            claim_verification = _verify_claims_against_kb(ai, body, '', user_industry)
+            if claim_verification.get('has_issues') and _has_budget(10):
+                rewritten_body = _rewrite_ungrounded_claims(
+                    ai, body, claim_verification, user_industry, user_role, ''
+                )
+                if rewritten_body != body:
+                    body = enforce_linkedin_quality(
+                        remove_hashtags_from_body(rewritten_body),
+                        user_industry, user_role, theme, target_audience_hint, emoji_level,
+                    )
+                    body = enforce_word_ceiling(body, max_words)
+                    grounding_rewrite_applied = True
 
         candidate_tags = derive_hashtag_candidates(theme, user_industry, user_role, topics)
         merged_tags = normalize_hashtags(generated_tags + candidate_tags)
@@ -4511,8 +5823,39 @@ Post:
         else:
             content = body
         
-        logger.info(f"Successfully generated preview: {content[:100]}...")
-        
+        _elapsed = time.time() - _request_start
+        logger.info(f"Successfully generated preview ({_elapsed:.1f}s / {_REQUEST_BUDGET_SEC}s budget): {content[:100]}...")
+
+        # ── Sentence-level grounding analysis (author-side only) ──────────────
+        sentence_grounding = []
+        try:
+            if kb_used and kb_hits:
+                sentence_grounding = _score_sentences_grounding(body, kb_hits, rag_store=rag)
+        except Exception as sg_err:
+            logger.debug('Sentence grounding scoring failed (non-critical): %s', sg_err)
+
+        # ── Source traceability (author-side) ─────────────────────────────────
+        source_traceability = _build_source_traceability(kb_hits, body)
+
+        # ── KB gap analysis ───────────────────────────────────────────────────
+        gap_analysis = _analyze_kb_coverage_gaps(
+            theme or topic_hint, user_industry, user_role, kb_hits, grounding_level
+        )
+
+        # ── Grounding telemetry ───────────────────────────────────────────────
+        _log_grounding_telemetry(user_id, {
+            'grounding_level': grounding_level,
+            'avg_similarity': kb_avg_similarity,
+            'kb_hits_count': len(kb_hits),
+            'coverage_pct': gap_analysis.get('coverage_pct', 0),
+            'strict_mode': strict_grounding,
+            'rewrite_applied': grounding_rewrite_applied,
+            'kb_mode': kb_mode,
+            'topic': theme or topic_hint,
+            'industry': user_industry,
+            'role': user_role,
+        })
+
         _increment_monthly_usage(user_id, posts_generated=1, api_calls=1)
 
         return jsonify({
@@ -4526,6 +5869,30 @@ Post:
             'kb_no_match': kb_no_match,
             'kb_state': kb_state,
             'kb_sources': sorted(list(set(kb_sources))),
+            'grounding': {
+                'level': grounding_level,
+                'label': {
+                    _GROUNDING_FULL: 'KB-Grounded',
+                    _GROUNDING_PARTIAL: 'Partially Grounded',
+                    _GROUNDING_NONE: 'Insight Mode',
+                }.get(grounding_level, 'Unknown'),
+                'description': {
+                    _GROUNDING_FULL: 'All claims are backed by your knowledge base.',
+                    _GROUNDING_PARTIAL: 'Some claims are KB-backed; others are framed as insights.',
+                    _GROUNDING_NONE: 'No KB match found. Content is opinion and insight-based only.',
+                }.get(grounding_level, ''),
+                'kb_hits_count': len(kb_hits),
+                'avg_similarity': round(kb_avg_similarity, 3),
+                'claim_verification': {
+                    'ran': bool(claim_verification.get('has_issues') is not None and kb_context),
+                    'issues_found': claim_verification.get('has_issues', False),
+                    'ungrounded_claims_count': len(claim_verification.get('ungrounded_claims', [])),
+                    'auto_rewrite_applied': grounding_rewrite_applied,
+                },
+                'sentence_scores': sentence_grounding,
+                'source_traceability': source_traceability,
+            },
+            'gap_analysis': gap_analysis,
             'settings_applied': {
                 'industry': user_industry,
                 'role': user_role,
@@ -4541,15 +5908,37 @@ Post:
                 'kb_selected_file_count': kb_selected_file_count,
                 'kb_selected_file_ids': kb_selected_file_ids,
                 'audience_type': audience_type,
-                'business_goal': business_goal,
-                'post_goal': post_goal,
                 'target_audience': target_audience,
-                'tone': post_tone
+                'business_goal': business_goal,
+                'goal_key': goal_key,
+                'post_goal': post_goal,
+                'tone': post_tone,
+                'style_clone_mode': style_clone_mode,
+                'strict_grounding': strict_grounding,
+                'kb_avg_similarity': round(kb_avg_similarity, 3),
+                'kb_low_confidence': kb_low_confidence,
+                'grounding_level': grounding_level,
+                'grounding_rewrite_applied': grounding_rewrite_applied,
+                'quality_score': evaluation.get('score', 0),
+                'quality_threshold': quality_threshold,
+                'quality_retry_allowed': retry_allowed,
+                'quality_retry_attempted': retry_attempted,
+                'selected_draft': selected_draft,
+                'retry_cap_rate': retry_cap_rate,
+                'quality_metrics': {
+                    'clarity': evaluation.get('clarity', 0),
+                    'novelty': evaluation.get('novelty', 0),
+                    'specificity': evaluation.get('specificity', 0),
+                    'hook': evaluation.get('hook', 0),
+                    'cta': evaluation.get('cta', 0),
+                },
+                'quality_issues': evaluation.get('issues', []),
+                'draft_2_quality_score': second_evaluation.get('score', 0) if isinstance(second_evaluation, dict) else None
             }
         })
     except Exception as e:
         logger.exception("Generate preview failed")
-        return jsonify({'success': False, 'message': f"Generation Error: {str(e)}"}), 500
+        return _safe_api_error('Generation Error', e)
 
 @app.route('/api/posts', methods=['GET'])
 @require_auth
@@ -4563,9 +5952,7 @@ def get_posts():
         ]
         return jsonify({'success': True, 'posts': posts[-10:][::-1]})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
-
-
+        return _safe_api_error('An unexpected error occurred', e)
 @app.route('/api/clear-post-history', methods=['POST'])
 @require_auth
 def clear_post_history():
@@ -4593,7 +5980,7 @@ def clear_post_history():
         })
     except Exception as e:
         logger.exception("Failed to clear post history")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/analytics', methods=['GET'])
@@ -4614,7 +6001,7 @@ def get_analytics():
         return jsonify({'success': True, 'analytics': analytics})
     except Exception as e:
         logger.exception("Failed to compute analytics")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/sync-linkedin-analytics', methods=['POST'])
@@ -4636,7 +6023,7 @@ def sync_linkedin_analytics():
         return jsonify(result), status_code
     except Exception as e:
         logger.exception("Failed to sync LinkedIn analytics")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 @app.route('/api/schedule-post', methods=['POST'])
 @require_auth
@@ -4703,8 +6090,7 @@ def schedule_post():
         return jsonify({'success': True, 'message': f'Post scheduled for {schedule_time}'})
     except Exception as e:
         logger.exception("Failed to schedule post")
-        return jsonify({'success': False, 'message': f"Scheduling failed: {str(e)}"})
-
+        return _safe_api_error('Scheduling failed', e)
 @app.route('/api/scheduled-posts', methods=['GET'])
 @require_auth
 def get_scheduled_posts():
@@ -4728,7 +6114,7 @@ def get_scheduled_posts():
         return jsonify({'success': True, 'posts': scheduled_posts})
     except Exception as e:
         logger.exception("Failed to load scheduled posts")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 @app.route('/api/reschedule-post', methods=['POST'])
 @require_auth
@@ -4775,7 +6161,7 @@ def reschedule_post():
         return jsonify({'success': True, 'message': 'Post rescheduled successfully'})
     except Exception as e:
         logger.exception("Failed to reschedule post")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 @app.route('/api/cancel-scheduled-post', methods=['POST'])
 @require_auth
@@ -4808,7 +6194,7 @@ def cancel_scheduled_post():
         return jsonify({'success': True, 'message': 'Scheduled post canceled'})
     except Exception as e:
         logger.exception("Failed to cancel scheduled post")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 @app.route('/api/post-now', methods=['POST'])
 @require_auth
@@ -4835,14 +6221,7 @@ def post_now():
             logger.info(f"Posting preview content ({len(content)} chars)")
         else:
             # Generate new content
-            ai = AIProvider(
-                config_obj.get('AI_PROVIDER', 'google'),
-                api_keys={
-                    'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                    'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                    'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
-                }
-            )
+            ai = _build_platform_ai_provider()
             user_industry = (data.get('industry') or config_obj.get('CONTENT_INDUSTRY') or '').strip()
             user_role = (data.get('role') or config_obj.get('USER_ROLE') or '').strip()
             neutral_themes = [
@@ -4873,7 +6252,7 @@ Format: {fmt}
 
 Write ONLY the post content, nothing else."""
             
-            result = ai.generate(prompt, max_tokens=500)
+            result = ai.generate(prompt, max_tokens=500, task='generate')
             content = result['text'].strip()
             
             # Generate relevant hashtags based on theme
@@ -4931,8 +6310,7 @@ Write ONLY the post content, nothing else."""
         })
     except Exception as e:
         logger.exception("Failed to post now")
-        return jsonify({'success': False, 'message': f"Posting failed: {str(e)}"})
-
+        return _safe_api_error('Posting failed', e)
 # ============= KNOWLEDGE BASE & MODEL TRAINING ENDPOINTS =============
 
 @app.route('/api/upload-knowledge-base', methods=['POST'])
@@ -5101,86 +6479,7 @@ def upload_knowledge_base():
         })
     except Exception as e:
         logger.exception("Knowledge base upload failed")
-        return jsonify({'success': False, 'message': f'Upload failed: {str(e)}'}), 500
-
-@app.route('/api/personas', methods=['GET', 'POST'])
-def manage_personas():
-    """Get or update AI personas and writing styles"""
-    try:
-        personas_file = 'data/personas.json'
-        
-        # Default personas if none exist
-        default_personas = {
-            'professional': {
-                'name': 'Professional Advisor',
-                'description': 'Formal, authoritative, industry expert tone',
-                'tone': 'professional',
-                'language': 'English',
-                'style': 'formal',
-                'keywords': ['industry', 'expertise', 'strategic', 'insight'],
-                'emoji_usage': 'minimal',
-                'hashtag_count': 3
-            },
-            'casual_friendly': {
-                'name': 'Friendly Innovator',
-                'description': 'Casual, approachable, conversational tone',
-                'tone': 'casual',
-                'language': 'English',
-                'style': 'conversational',
-                'keywords': ['innovation', 'growth', 'community', 'value'],
-                'emoji_usage': 'moderate',
-                'hashtag_count': 5
-            },
-            'thought_leader': {
-                'name': 'Thought Leader',
-                'description': 'Insightful, visionary, trend-focused',
-                'tone': 'inspirational',
-                'language': 'English',
-                'style': 'narrative',
-                'keywords': ['future', 'vision', 'transformation', 'impact'],
-                'emoji_usage': 'strategic',
-                'hashtag_count': 4
-            },
-            'storyteller': {
-                'name': 'Storyteller',
-                'description': 'Narrative-driven, emotional connection',
-                'tone': 'narrative',
-                'language': 'English',
-                'style': 'story-based',
-                'keywords': ['experience', 'journey', 'learning', 'growth'],
-                'emoji_usage': 'adaptive',
-                'hashtag_count': 3
-            }
-        }
-        
-        if request.method == 'GET':
-            # Return personas
-            personas = default_personas
-            if os.path.exists(personas_file):
-                try:
-                    with open(personas_file, 'r') as f:
-                        personas = json.load(f)
-                except:
-                    pass
-            return jsonify({'success': True, 'personas': personas})
-        
-        else:  # POST
-            # Update personas
-            data = request.get_json()
-            if not data or 'personas' not in data:
-                return jsonify({'success': False, 'message': 'Invalid persona data'}), 400
-            
-            os.makedirs('data', exist_ok=True)
-            with open(personas_file, 'w') as f:
-                json.dump(data['personas'], f, indent=2)
-            
-            return jsonify({
-                'success': True,
-                'message': 'Personas updated successfully'
-            })
-    except Exception as e:
-        logger.exception("Persona management failed")
-        return jsonify({'success': False, 'message': f'Failed: {str(e)}'}), 500
+        return _safe_api_error('Upload failed', e)
 
 @app.route('/api/train-model', methods=['POST'])
 @require_auth
@@ -5230,7 +6529,7 @@ def train_model():
         })
     except Exception as e:
         logger.exception("Model training failed")
-        return jsonify({'success': False, 'message': f'Training failed: {str(e)}'}), 500
+        return _safe_api_error('Training failed', e)
 
 
 @app.route('/api/train-last-kb-file', methods=['POST'])
@@ -5305,7 +6604,7 @@ def train_last_kb_file():
         })
     except Exception as e:
         logger.exception('Latest-file training failed')
-        return jsonify({'success': False, 'message': f'Failed to index latest file: {str(e)}'}), 500
+        return _safe_api_error('Failed to index latest file', e)
 
 @app.route('/api/knowledge-base-status', methods=['GET'])
 @require_auth
@@ -5392,10 +6691,7 @@ def knowledge_base_status():
         return jsonify(response)
     except Exception as e:
         logger.exception("Knowledge base status check failed")
-        return jsonify({
-            'success': False,
-            'message': f'Status check failed: {str(e)}'
-        }), 500
+        return _safe_api_error('Status check failed', e)
 
 @app.route('/api/list-knowledge-base-files', methods=['GET'])
 @require_auth
@@ -5482,10 +6778,7 @@ def list_knowledge_base_files():
         })
     except Exception as e:
         logger.exception("Failed to list files")
-        return jsonify({
-            'success': False,
-            'message': f'Failed to list files: {str(e)}'
-        }), 500
+        return _safe_api_error('Failed to list knowledge base files', e)
 
 
 @app.route('/api/kb-file-options', methods=['GET'])
@@ -5515,7 +6808,7 @@ def kb_file_options():
         return jsonify({'success': True, 'files': options, 'count': len(options)})
     except Exception as e:
         logger.exception('Failed to list KB file options')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/kb-workspaces', methods=['GET'])
@@ -5530,7 +6823,7 @@ def list_kb_workspaces():
         return jsonify({'success': True, 'workspaces': blob.get('kb_workspaces', [])})
     except Exception as e:
         logger.exception('Failed to list KB workspaces')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/kb-workspaces', methods=['POST'])
@@ -5568,7 +6861,7 @@ def save_kb_workspace():
         return jsonify({'success': True, 'workspace': normalized, 'workspaces': workspaces})
     except Exception as e:
         logger.exception('Failed to save KB workspace')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/kb-workspaces/<workspace_id>', methods=['DELETE'])
@@ -5591,7 +6884,7 @@ def delete_kb_workspace(workspace_id):
         return jsonify({'success': True, 'workspaces': next_workspaces})
     except Exception as e:
         logger.exception('Failed to delete KB workspace')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/generation-presets', methods=['GET'])
@@ -5606,7 +6899,7 @@ def list_generation_presets():
         return jsonify({'success': True, 'presets': blob.get('generation_presets', [])})
     except Exception as e:
         logger.exception('Failed to list generation presets')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/generation-presets/save', methods=['POST'])
@@ -5653,7 +6946,7 @@ def save_generation_preset():
         return jsonify({'success': True, 'presets': presets})
     except Exception as e:
         logger.exception('Failed to save generation preset')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
 
 
 @app.route('/api/generation-presets/<preset_id>', methods=['DELETE'])
@@ -5672,7 +6965,8 @@ def delete_generation_preset(preset_id):
         return jsonify({'success': True, 'presets': next_presets})
     except Exception as e:
         logger.exception('Failed to delete generation preset')
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return _safe_api_error('An unexpected error occurred', e)
+
 
 @app.route('/api/delete-knowledge-base-file', methods=['POST'])
 @require_auth
@@ -5740,10 +7034,7 @@ def delete_knowledge_base_file():
         })
     except Exception as e:
         logger.exception("Delete knowledge base file failed")
-        return jsonify({
-            'success': False,
-            'message': f'Delete failed: {str(e)}'
-        }), 500
+        return _safe_api_error('Delete failed', e)
 
 # ============= ENTERPRISE PREMIUM FEATURES =============
 
@@ -5803,115 +7094,17 @@ def get_roles():
 @app.route('/api/generate-preview-premium', methods=['POST'])
 @require_auth
 def generate_preview_premium():
-    """Enhanced content generation with industry/role personalization"""
-    try:
-        data = request.get_json() or {}
-        industry = data.get('industry', 'tech')
-        role = data.get('role', 'cto')
-        topic = data.get('topic', '')
-        hashtags_count = int(data.get('hashtags', 3))
-        emoji_level = data.get('emojis', 'moderate')
-        custom_topics = data.get('topics', [])
-        
-        user_id = get_current_user_id()
-        config_obj = load_config(user_id)
-        ai_provider = config_obj.get('AI_PROVIDER', 'google')
-        
-        # Build enhanced prompt based on industry and role
-        industry_context = {
-            'tech': 'Software engineering, cloud computing, and digital innovation',
-            'finance': 'Financial systems, blockchain, and modern banking',
-            'healthcare': 'Healthcare technology, patient care, and medical innovation',
-            'crypto': 'Cryptocurrency, blockchain, DeFi, and web3 technologies',
-            'saas': 'Software as a service, product-market fit, and scaling startups',
-            'ecommerce': 'E-commerce, customer experience, and digital commerce trends'
-        }
-        
-        role_perspective = {
-            'ceo': 'strategic business decisions and company vision',
-            'cto': 'technical architecture and technology decisions',
-            'dev': 'hands-on coding, best practices, and technical tools',
-            'pm': 'user experience, product strategy, and metrics',
-            'hr': 'company culture, hiring, and employee engagement',
-            'finance': 'financial optimization and business metrics',
-            'ops': 'operational efficiency and process improvement',
-            'marketing': 'growth strategies and audience engagement',
-            'sales': 'customer relationships and business development'
-        }
-        
-        emoji_prompt = {
-            'none': 'Do not use any emojis.',
-            'minimal': 'Use 1-2 emojis strategically.',
-            'moderate': 'Use 2-4 emojis to enhance readability. (Recommended)',
-            'high': 'Use 5-8 emojis to maximize engagement.'
-        }
-        
-        topic_str = ', '.join(custom_topics) if custom_topics else 'industry trends, insights, or announcements'
+    """DEPRECATED — use /api/generate-preview instead (includes grounding system).
 
-        _premium_tone_voices = {
-            'professional':   "Clear, confident, direct. Short declarative sentences. No filler words. Knowledgeable peer, not press release.",
-            'conversational': "Casual first-person. Like messaging a smart colleague. Use 'I', 'we', contractions.",
-            'authoritative':  "Opinion-forward, backed by logic. Bold, decisive statements.",
-            'thought_leader': "Lead with a contrarian insight. Challenge assumptions. Dense ideas, zero filler.",
-            'inspirational':  "Story arc: challenge → insight → transformation. Warm, genuine, human.",
-        }
-        _premium_banned = (
-            "In today's fast-paced world, In today's world, It's no secret, game changer, game-changer, "
-            "paradigm shift, leverage, synergy, cutting-edge, best practices, at the end of the day, "
-            "think outside the box, move the needle, exciting, thrilled, delighted to share, Dive into, "
-            "Unlock, Revolutionize, seamlessly, robust, scalable solution, stakeholders, actionable insights, "
-            "transformative, empower, innovative solution, disruptive, holistic approach, ecosystem, value-add"
-        )
-
-        prompt = f"""[DOMAIN LOCK — READ THIS FIRST]
-You are writing EXCLUSIVELY for the {industry} industry, from the perspective of a {role}.
-Every fact, insight, reference, and example MUST be grounded in the {industry} domain.
-Do NOT borrow from any other industry or domain.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONTEXT: {industry_context.get(industry, industry)}
-ROLE PERSPECTIVE: {role_perspective.get(role, 'experienced professional')} in {industry}
-TOPICS TO COVER: {topic_str}
-SPECIFIC TOPIC: {topic if topic else 'Most relevant current trend in ' + industry}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-STRICT RULES:
-1. DOMAIN LOCK: Every sentence grounded in {industry}. No crossover to other industries.
-2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, or research studies.
-3. VOICE: Clear, direct, first-person where natural. No corporate jargon.
-4. STRUCTURE: Open with a sharp hook (first 6 words must stop the scroll). 2-3 short body paragraphs. Close with a CTA or open question.
-5. LENGTH: 150-250 words.
-6. EMOJI: {emoji_prompt.get(emoji_level, 'Use 2-4 strategic emojis')}.
-7. NO MARKDOWN: No **, no ***, no bullet-point dashes — flowing prose only.
-8. HASHTAGS: Place exactly {hashtags_count} hashtags at the very end only. None in the body.
-9. BANNED PHRASES — never write: {_premium_banned}
-10. HUMAN VOICE: Write like a real person, not an AI assistant or press release.
-
-Output ONLY the post text. No labels, no preamble."""
-
-        ai = AIProvider(
-            ai_provider,
-            api_keys={
-                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', '')
-            }
-        )
-        result = ai.generate(prompt, max_tokens=800)
-        content = result.get('text', result.get('content', '')).strip()
-        content = clean_linkedin_body(remove_hashtags_from_body(content))
-        
-        return jsonify({
-            'success': True,
-            'content': content,
-            'industry': industry,
-            'role': role,
-            'hashtags_count': hashtags_count,
-            'emoji_level': emoji_level
-        })
-    except Exception as e:
-        logger.exception(f"Premium preview generation failed: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 400
+    This endpoint previously ran a separate, ungrounded generation pipeline.
+    It is kept as a stub so any stale client requests get a clear error instead
+    of a 404.
+    """
+    return jsonify({
+        'success': False,
+        'message': 'This endpoint is deprecated. Use /api/generate-preview instead.',
+        'deprecated': True,
+    }), 410
 
 @app.route('/api/enterprise-stats', methods=['GET'])
 @require_auth
@@ -5945,7 +7138,7 @@ def get_enterprise_stats():
         })
     except Exception as e:
         logger.exception(f"Failed to get stats: {e}")
-        return jsonify({'error': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STYLE CLONE
@@ -5961,7 +7154,7 @@ def get_style():
         return jsonify({'success': True, 'style': blob.get('style_clone') or {}})
     except Exception as e:
         logger.exception('get_style failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 
 @app.route('/api/style/save', methods=['POST'])
@@ -5980,14 +7173,7 @@ def save_style_samples():
         samples = samples[:15]
 
         config_obj = load_config(user_id)
-        ai = AIProvider(
-            config_obj.get('AI_PROVIDER', 'google'),
-            api_keys={
-                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', ''),
-            }
-        )
+        ai = _build_platform_ai_provider()
 
         samples_text = "\n\n---\n\n".join(f"Sample {i+1}:\n{s}" for i, s in enumerate(samples))
         analysis_prompt = f"""Study these {len(samples)} LinkedIn posts written by the same person. Extract their unique writing fingerprint.
@@ -6010,7 +7196,7 @@ Return a JSON object with EXACTLY these keys:
 
 Output ONLY valid JSON. No prose, no markdown fences."""
 
-        result = ai.generate(analysis_prompt, max_tokens=600)
+        result = ai.generate(analysis_prompt, max_tokens=600, task='analysis')
         raw = (result.get('text') or '').strip()
         if raw.startswith('```'):
             raw = raw.split('```')[1]
@@ -6034,7 +7220,7 @@ Output ONLY valid JSON. No prose, no markdown fences."""
         return jsonify({'success': True, 'style': style_data})
     except Exception as e:
         logger.exception('save_style_samples failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 
 @app.route('/api/style/toggle', methods=['POST'])
@@ -6052,7 +7238,7 @@ def toggle_style_clone():
         _save_user_feature_blob(user_id, blob)
         return jsonify({'success': True, 'enabled': enabled})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -6096,14 +7282,7 @@ def repurpose_content():
                 return jsonify({'success': False, 'message': f'Could not fetch URL: {fetch_err}'}), 400
 
         config_obj = load_config(user_id)
-        ai = AIProvider(
-            config_obj.get('AI_PROVIDER', 'google'),
-            api_keys={
-                'GOOGLE_API_KEY': config_obj.get('GOOGLE_API_KEY', ''),
-                'OPENAI_API_KEY': config_obj.get('OPENAI_API_KEY', ''),
-                'ANTHROPIC_API_KEY': config_obj.get('ANTHROPIC_API_KEY', ''),
-            }
-        )
+        ai = _build_platform_ai_provider()
 
         extract_prompt = f"""Extract exactly 5 specific, valuable insights from this content. Return ONLY a JSON array of 5 strings (each under 20 words). No prose.
 
@@ -6112,7 +7291,7 @@ CONTENT:
 
 Output: ["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"]"""
 
-        extract_result = ai.generate(extract_prompt, max_tokens=300)
+        extract_result = ai.generate(extract_prompt, max_tokens=300, task='analysis')
         raw_points = (extract_result.get('text') or '').strip()
         if raw_points.startswith('```'):
             raw_points = raw_points.split('```')[1]
@@ -6156,7 +7335,7 @@ STRICT RULES:
 - End with 3-4 relevant hashtags on the final line
 - Output ONLY the post text"""
 
-            gen_result = ai.generate(gen_prompt, max_tokens=400)
+            gen_result = ai.generate(gen_prompt, max_tokens=400, task='repurpose')
             full_text = gen_result.get('text') or ''
             post_body = clean_linkedin_body(remove_hashtags_from_body(full_text))
             hashtags = normalize_hashtags(HASHTAG_RE.findall(full_text))
@@ -6172,7 +7351,7 @@ STRICT RULES:
         })
     except Exception as e:
         logger.exception('repurpose_content failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -6261,7 +7440,7 @@ def get_best_time():
         })
     except Exception as e:
         logger.exception('get_best_time failed: %s', e)
-        return jsonify({'success': False, 'message': str(e)}), 400
+        return _safe_api_error('Request failed', e, 400)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,37 @@
+cost_usd,error,goal_key,industry,latency_ms,ok,prompt_id,provider,quality_score,role,tone,topic
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0717,google,0,CTO,educational,technical debt
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0717,openai,0,CTO,educational,technical debt
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0717,claude,0,CTO,educational,technical debt
+0.0,dry-run,build_authority,GenAI,0,True,p_0326,google,0,Ops Leader,professional,team productivity
+0.0,dry-run,build_authority,GenAI,0,True,p_0326,openai,0,Ops Leader,professional,team productivity
+0.0,dry-run,build_authority,GenAI,0,True,p_0326,claude,0,Ops Leader,professional,team productivity
+0.0,dry-run,grow_network,Healthcare,0,True,p_1493,google,0,Sales Lead,authoritative,AI workflow
+0.0,dry-run,grow_network,Healthcare,0,True,p_1493,openai,0,Sales Lead,authoritative,AI workflow
+0.0,dry-run,grow_network,Healthcare,0,True,p_1493,claude,0,Sales Lead,authoritative,AI workflow
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0855,google,0,Sales Lead,storytelling,onboarding
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0855,openai,0,Sales Lead,storytelling,onboarding
+0.0,dry-run,educate_audience,E-commerce,0,True,p_0855,claude,0,Sales Lead,storytelling,onboarding
+0.0,dry-run,build_authority,SaaS,0,True,p_0008,google,0,CEO,conversational,founder lessons
+0.0,dry-run,build_authority,SaaS,0,True,p_0008,openai,0,CEO,conversational,founder lessons
+0.0,dry-run,build_authority,SaaS,0,True,p_0008,claude,0,CEO,conversational,founder lessons
+0.0,dry-run,spark_comments,SaaS,0,True,p_0073,google,0,Marketing Lead,professional,team productivity
+0.0,dry-run,spark_comments,SaaS,0,True,p_0073,openai,0,Marketing Lead,professional,team productivity
+0.0,dry-run,spark_comments,SaaS,0,True,p_0073,claude,0,Marketing Lead,professional,team productivity
+0.0,dry-run,build_authority,SaaS,0,True,p_0002,google,0,CEO,professional,hiring strategy
+0.0,dry-run,build_authority,SaaS,0,True,p_0002,openai,0,CEO,professional,hiring strategy
+0.0,dry-run,build_authority,SaaS,0,True,p_0002,claude,0,CEO,professional,hiring strategy
+0.0,dry-run,brand_awareness,Healthcare,0,True,p_1428,google,0,Ops Leader,contrarian,technical debt
+0.0,dry-run,brand_awareness,Healthcare,0,True,p_1428,openai,0,Ops Leader,contrarian,technical debt
+0.0,dry-run,brand_awareness,Healthcare,0,True,p_1428,claude,0,Ops Leader,contrarian,technical debt
+0.0,dry-run,generate_leads,FinTech,0,True,p_1180,google,0,Marketing Lead,storytelling,product launch
+0.0,dry-run,generate_leads,FinTech,0,True,p_1180,openai,0,Marketing Lead,storytelling,product launch
+0.0,dry-run,generate_leads,FinTech,0,True,p_1180,claude,0,Marketing Lead,storytelling,product launch
+0.0,dry-run,spark_comments,FinTech,0,True,p_1213,google,0,Ops Leader,storytelling,pricing
+0.0,dry-run,spark_comments,FinTech,0,True,p_1213,openai,0,Ops Leader,storytelling,pricing
+0.0,dry-run,spark_comments,FinTech,0,True,p_1213,claude,0,Ops Leader,storytelling,pricing
+0.0,dry-run,grow_network,E-commerce,0,True,p_0851,google,0,Sales Lead,contrarian,hiring strategy
+0.0,dry-run,grow_network,E-commerce,0,True,p_0851,openai,0,Sales Lead,contrarian,hiring strategy
+0.0,dry-run,grow_network,E-commerce,0,True,p_0851,claude,0,Sales Lead,contrarian,hiring strategy
+0.0,dry-run,generate_leads,Web3,0,True,p_0436,google,0,CEO,professional,founder lessons
+0.0,dry-run,generate_leads,Web3,0,True,p_0436,openai,0,CEO,professional,founder lessons
+0.0,dry-run,generate_leads,Web3,0,True,p_0436,claude,0,CEO,professional,founder lessons

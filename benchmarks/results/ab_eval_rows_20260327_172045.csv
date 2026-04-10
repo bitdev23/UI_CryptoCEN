@@ -1,0 +1,11 @@
+cost_usd,error,goal_key,industry,latency_ms,ok,prompt_id,provider,quality_score,role,tone,topic
+0.0,GOOGLE_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,google,0,CTO,educational,technical debt
+0.0,OPENAI_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,openai,0,CTO,educational,technical debt
+0.0,ANTHROPIC_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,claude,0,CTO,educational,technical debt
+0.0,DEEPSEEK_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,deepseek,0,CTO,educational,technical debt
+0.0,XAI_API_KEY not set,educate_audience,E-commerce,0,False,p_0717,xai,0,CTO,educational,technical debt
+0.0,GOOGLE_API_KEY not set,build_authority,GenAI,0,False,p_0326,google,0,Ops Leader,professional,team productivity
+0.0,OPENAI_API_KEY not set,build_authority,GenAI,0,False,p_0326,openai,0,Ops Leader,professional,team productivity
+0.0,ANTHROPIC_API_KEY not set,build_authority,GenAI,0,False,p_0326,claude,0,Ops Leader,professional,team productivity
+0.0,DEEPSEEK_API_KEY not set,build_authority,GenAI,0,False,p_0326,deepseek,0,Ops Leader,professional,team productivity
+0.0,XAI_API_KEY not set,build_authority,GenAI,0,False,p_0326,xai,0,Ops Leader,professional,team productivity

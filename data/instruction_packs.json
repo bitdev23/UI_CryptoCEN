@@ -1,0 +1,236 @@
+{
+  "_doc": "Role × Industry Instruction Packs. Merged at runtime to produce rich, domain-specific prompt enrichment for every (industry, role, goal) combination.",
+
+  "industries": {
+    "tech": {
+      "label": "Technology & Software",
+      "vocabulary": ["ARR", "MRR", "sprint", "ship", "deploy", "infra", "API", "SLA", "latency", "uptime", "churn", "DAU", "MAU", "NPS"],
+      "proof_types": ["shipping cadence metrics", "incident post-mortems", "performance benchmarks", "customer migration stories", "open-source adoption stats"],
+      "metrics_readers_respect": ["deployment frequency", "MTTR", "customer NPS delta", "revenue per engineer", "time-to-value"],
+      "angles": ["build vs buy trade-offs", "scaling bottlenecks nobody talks about", "why fast iteration beats perfect planning", "real cost of tech debt"],
+      "banned_cliches": ["disruptive technology", "bleeding edge", "next-gen platform"],
+      "audience_context": "Readers are technical or semi-technical. They distrust vague claims and respect specifics."
+    },
+    "finance": {
+      "label": "Finance & Banking",
+      "vocabulary": ["yield", "basis points", "AUM", "compliance", "risk-adjusted", "drawdown", "alpha", "hedge", "liquidity", "fintech", "RegTech", "KYC", "AML"],
+      "proof_types": ["regulatory outcome data", "portfolio performance windows", "cost-saving case studies", "audit findings", "compliance timeline improvements"],
+      "metrics_readers_respect": ["cost-to-income ratio", "risk-adjusted return", "time-to-compliance", "fraud detection rate", "customer onboarding time"],
+      "angles": ["regulation as competitive advantage", "hidden costs of legacy systems", "why compliance speed matters more than compliance cost", "trust as a product feature"],
+      "banned_cliches": ["fintech revolution", "banking the unbanked", "democratize finance"],
+      "audience_context": "Readers are risk-aware professionals. They value precision and distrust hyperbole."
+    },
+    "healthcare": {
+      "label": "Healthcare & Pharma",
+      "vocabulary": ["patient outcomes", "clinical trials", "EHR", "FDA", "HIPAA", "telehealth", "formulary", "real-world evidence", "care pathway", "population health"],
+      "proof_types": ["clinical trial results", "patient outcome improvements", "regulatory approval timelines", "cost-per-outcome data", "workflow efficiency gains"],
+      "metrics_readers_respect": ["patient satisfaction scores", "readmission rates", "time-to-diagnosis", "clinical trial enrollment velocity", "cost per QALY"],
+      "angles": ["patient experience beyond the clinical", "why interoperability is still broken", "AI in diagnostics — hype vs reality", "pharma pipeline transparency"],
+      "banned_cliches": ["revolutionize healthcare", "patient-centric (without specifics)", "healthcare disruption"],
+      "audience_context": "Readers are clinicians, administrators, or pharma professionals. They require evidence-backed claims and regulatory awareness."
+    },
+    "ecommerce": {
+      "label": "E-Commerce & Retail",
+      "vocabulary": ["AOV", "conversion rate", "cart abandonment", "LTV", "ROAS", "SKU", "fulfillment", "D2C", "marketplace", "omnichannel", "attribution"],
+      "proof_types": ["A/B test results", "conversion lift data", "customer cohort analysis", "fulfillment speed improvements", "retention curve changes"],
+      "metrics_readers_respect": ["conversion rate", "AOV", "customer LTV", "ROAS", "repeat purchase rate", "cart recovery rate"],
+      "angles": ["why most A/B tests are run wrong", "the hidden cost of free shipping", "retention > acquisition math", "brand vs performance marketing tension"],
+      "banned_cliches": ["omnichannel experience", "seamless shopping journey", "customer-centric approach"],
+      "audience_context": "Readers are growth-minded operators. They want numbers, tactics, and things they can implement this week."
+    },
+    "crypto": {
+      "label": "Cryptocurrency & Blockchain",
+      "vocabulary": ["TVL", "on-chain", "DeFi", "yield farming", "gas fees", "smart contract", "DAO", "tokenomics", "liquidity pool", "MEV", "L2", "rollup"],
+      "proof_types": ["on-chain data analysis", "protocol performance metrics", "governance outcomes", "security audit results", "adoption growth curves"],
+      "metrics_readers_respect": ["TVL growth", "active addresses", "transaction volume", "gas cost reduction", "governance participation rate"],
+      "angles": ["why most DeFi yields are unsustainable", "governance theater vs real decentralization", "the bridge security problem nobody solves", "institutional adoption blockers"],
+      "banned_cliches": ["to the moon", "WAGMI", "web3 will change everything", "trustless future"],
+      "audience_context": "Readers are crypto-native. They respect on-chain evidence and distrust vaporware narratives."
+    },
+    "web3": {
+      "label": "Web3",
+      "vocabulary": ["dApp", "smart contract", "DAO", "token-gated", "composability", "interoperability", "ZK-proof", "rollup", "layer 2", "account abstraction", "soulbound"],
+      "proof_types": ["dApp usage metrics", "developer ecosystem growth", "DAO governance outcomes", "ZK benchmark comparisons", "interop protocol adoption"],
+      "metrics_readers_respect": ["developer count", "dApp DAU", "cross-chain volume", "governance proposal passage rate", "gas optimization %"],
+      "angles": ["UX is the real adoption bottleneck", "why composability > features", "identity without surveillance", "the developer experience gap"],
+      "banned_cliches": ["web3 revolution", "decentralize everything", "trustless by default"],
+      "audience_context": "Readers are builders, investors, or operators in the decentralized space. They value technical depth and honest assessments."
+    },
+    "genai": {
+      "label": "Generative AI",
+      "vocabulary": ["LLM", "RAG", "fine-tuning", "prompt engineering", "inference cost", "hallucination", "RLHF", "context window", "embedding", "vector DB", "agent", "multi-modal"],
+      "proof_types": ["benchmark comparisons", "cost-per-token analysis", "hallucination rate studies", "deployment case studies with before/after metrics", "user satisfaction scores"],
+      "metrics_readers_respect": ["accuracy/hallucination rate", "inference latency", "cost per 1K tokens", "user retention after AI feature launch", "task completion rate"],
+      "angles": ["why most AI features are demos not products", "the eval problem nobody talks about", "RAG vs fine-tuning — when each wins", "AI cost curves and what they mean for startups"],
+      "banned_cliches": ["AI will replace humans", "transformative AI", "unprecedented capabilities", "the AI revolution"],
+      "audience_context": "Readers are AI practitioners, product leaders, or technical founders. They want concrete how, not aspirational what."
+    },
+    "virtual_assistant": {
+      "label": "Virtual Assistant / BPO",
+      "vocabulary": ["SLA", "task delegation", "SOPs", "turnaround time", "FTE equivalent", "onboarding", "utilization rate", "billable hours", "QA score", "client retention"],
+      "proof_types": ["time-saved case studies", "cost comparison vs full-time hire", "quality score improvements", "client retention data", "scaling timeline examples"],
+      "metrics_readers_respect": ["cost per task", "turnaround time", "error rate", "client satisfaction score", "FTE savings ratio"],
+      "angles": ["why delegation is a skill not a shortcut", "the hidden cost of not having SOPs", "how to hire your first VA without losing quality", "scaling operations without scaling headcount"],
+      "banned_cliches": ["work smarter not harder", "10x your productivity", "outsource everything"],
+      "audience_context": "Readers are founders, ops leaders, or agency owners looking to scale efficiently. They want proof it works and how to start."
+    },
+    "saas": {
+      "label": "SaaS & Startups",
+      "vocabulary": ["MRR", "ARR", "churn rate", "CAC", "LTV", "NRR", "product-led growth", "freemium", "onboarding", "activation", "expansion revenue", "burn rate"],
+      "proof_types": ["cohort analysis results", "pricing experiment outcomes", "onboarding funnel data", "expansion revenue growth", "churn reduction tactics with numbers"],
+      "metrics_readers_respect": ["net revenue retention", "CAC payback period", "activation rate", "expansion MRR %", "logo churn vs revenue churn"],
+      "angles": ["why most SaaS pricing is leaving money on the table", "the activation metric your onboarding ignores", "PLG is not free — the real cost", "when to raise vs when to grow slower"],
+      "banned_cliches": ["hockey stick growth", "disrupting the industry", "move fast and break things"],
+      "audience_context": "Readers are founders, PMs, or growth operators. They respect specifics and operators who share real numbers."
+    },
+    "supply_chain": {
+      "label": "Supply Chain & Logistics",
+      "vocabulary": ["lead time", "safety stock", "throughput", "3PL", "last-mile", "procurement", "demand planning", "warehouse management", "freight rate", "dock-to-stock"],
+      "proof_types": ["lead time reduction case studies", "cost-per-unit improvements", "inventory optimization results", "carrier performance benchmarks", "demand forecast accuracy gains"],
+      "metrics_readers_respect": ["order fulfillment rate", "inventory turns", "freight cost per unit", "on-time delivery %", "forecast accuracy %"],
+      "angles": ["why visibility doesn't solve supply chain problems alone", "the real bottleneck is decision speed not data", "nearshoring math — when it works and when it doesn't", "carrier relationship vs rate shopping"],
+      "banned_cliches": ["supply chain disruption", "unprecedented times", "resilient supply chain"],
+      "audience_context": "Readers are ops leaders, procurement heads, or logistics managers. They want practical, executable insights."
+    }
+  },
+
+  "roles": {
+    "ceo": {
+      "label": "CEO / Founder",
+      "perspective": "Write from the vantage point of someone who makes the final call. You see strategy, people, product, and market simultaneously. You have authority but use it through insight, not title.",
+      "authority_signals": ["reference decisions you've made", "share trade-offs you've navigated", "show systems-level thinking", "connect execution to business outcomes"],
+      "audience_relationship": "Your readers see you as a peer leader or someone they aspire to learn from. They want your honest perspective, not recruitment marketing.",
+      "writing_style": "Decisive, clear, opinionated but not preachy. Short sentences. Every paragraph earns its place. No hedging unless the uncertainty itself is the insight."
+    },
+    "cto": {
+      "label": "CTO / VP Engineering",
+      "perspective": "Write as someone who bridges engineering execution and business strategy. You understand both code and customer impact. Your credibility comes from technical depth applied to real problems.",
+      "authority_signals": ["reference architectural decisions", "share engineering trade-offs", "connect technical choices to business outcomes", "mention team scaling challenges"],
+      "audience_relationship": "Readers are engineers, technical founders, or other engineering leaders. They respect substance and will spot hand-waving immediately.",
+      "writing_style": "Precise, structured, technically grounded. You can be opinionated but always show the reasoning chain. Avoid buzzwords — use specific technical terms correctly."
+    },
+    "dev": {
+      "label": "Software Developer",
+      "perspective": "Write as a practitioner in the trenches. Your authority comes from doing the work, not managing it. You've hit the bugs, read the docs, and shipped the code.",
+      "authority_signals": ["reference specific technologies or patterns", "share debugging stories", "give implementable tips", "show real code decisions not theory"],
+      "audience_relationship": "Readers are fellow devs or technical IC's. They want practical value they can use today.",
+      "writing_style": "Direct, no-nonsense, slightly informal. Technical terms used precisely. Short paragraphs. Teach through example, not lecture."
+    },
+    "pm": {
+      "label": "Product Manager",
+      "perspective": "Write as the person holding the intersection of user needs, business goals, and engineering constraints. Your insights come from prioritization battles and user discovery.",
+      "authority_signals": ["reference product decisions and their outcomes", "share frameworks you've actually used", "connect user behavior to product strategy"],
+      "audience_relationship": "Readers are other PMs, founders, or cross-functional leaders. They want clarity on *how* to think about product problems.",
+      "writing_style": "Structured, analytical but human. You think in frameworks but communicate in stories. Always connect back to user impact."
+    },
+    "hr": {
+      "label": "HR / People Ops",
+      "perspective": "Write as someone who sees the human system behind the business. Your insights connect people practices to business performance. You understand both policy and culture.",
+      "authority_signals": ["reference retention or engagement outcomes", "share hiring or culture experiment results", "connect people decisions to company performance"],
+      "audience_relationship": "Readers are HR peers, founders, or managers. They want actionable people insights, not corporate HR-speak.",
+      "writing_style": "Warm but evidence-driven. You care about people AND outcomes. Avoid HR jargon — write like a business leader who specializes in people."
+    },
+    "finance_role": {
+      "label": "Finance / CFO",
+      "perspective": "Write as someone who sees the business through numbers. Your insights reveal what the data actually says vs what people assume. You turn financial complexity into clear decisions.",
+      "authority_signals": ["reference financial metrics and what they revealed", "share cost decisions and their outcomes", "connect finance to strategic optionality"],
+      "audience_relationship": "Readers are finance peers, founders, or C-suite. They respect precision and data-backed insights.",
+      "writing_style": "Precise, analytical, quietly confident. Let the numbers tell the story. Short declarative statements. Avoid qualitative fluff."
+    },
+    "ops": {
+      "label": "Operations",
+      "perspective": "Write as the person who makes things run. You see the gap between strategy decks and actual execution. Your insights come from systems, processes, and the messy reality of scaling.",
+      "authority_signals": ["reference process improvements with outcomes", "share scaling challenges you've solved", "connect operational efficiency to business results"],
+      "audience_relationship": "Readers are ops leaders, COOs, or founders scaling their teams. They want practical, repeatable approaches.",
+      "writing_style": "Practical, systematic, no-BS. You think in processes and bottlenecks. Write like someone who solves problems, not someone who theorizes about them."
+    },
+    "marketing": {
+      "label": "Marketing / Growth",
+      "perspective": "Write as someone who connects product to market. Your authority comes from campaigns run, channels tested, and growth metrics moved. You understand attention, messaging, and distribution.",
+      "authority_signals": ["reference campaign results or experiments", "share channel-specific insights with data", "connect marketing tactics to revenue or pipeline"],
+      "audience_relationship": "Readers are other marketers, founders, or growth operators. They want tactics and honest data, not case-study theater.",
+      "writing_style": "Energetic but data-grounded. You can be bold in your claims if you back them up. Write with the clarity of someone who writes copy for a living."
+    },
+    "sales": {
+      "label": "Sales",
+      "perspective": "Write as someone on the revenue front line. You talk to customers daily and understand their objections, pain points, and decision processes better than anyone in the company.",
+      "authority_signals": ["reference deal outcomes or pipeline insights", "share objection patterns and how you handled them", "connect sales observations to product or market insights"],
+      "audience_relationship": "Readers are other sales professionals, founders, or revenue leaders. They want real talk about what works in conversations and pipelines.",
+      "writing_style": "Conversational, direct, story-driven. You think in conversations and relationships. Short punchy sentences. End with something actionable or thought-provoking."
+    },
+    "bde": {
+      "label": "Business Development (BDE)",
+      "perspective": "Write as someone who creates new opportunities from scratch — partnerships, markets, channels. You see patterns across conversations and turn them into business strategy.",
+      "authority_signals": ["reference partnership or market-entry outcomes", "share outreach patterns and response data", "connect BD insights to strategic growth"],
+      "audience_relationship": "Readers are other BD professionals, startup founders, or growth leaders. They want actionable outreach and partnership insights.",
+      "writing_style": "Strategic yet tactical. You think in relationships and market gaps. Clear, confident, and direct. Always end with a concrete takeaway or prompt for engagement."
+    }
+  },
+
+  "goals": {
+    "spark_comments": {
+      "label": "Spark Comments & Discussion",
+      "structural_modifier": "End with a genuinely open question that invites diverse perspectives. The question should be specific enough to spark real answers, not so broad it feels generic. Frame it so readers can answer from their own experience.",
+      "hook_style": "Open with a strong opinion or counterintuitive observation that people will want to agree or disagree with.",
+      "cta_pattern": "Close with a 1-line question. No 'What do you think?' — be specific: 'What's the biggest [X] you've seen in [context]?'"
+    },
+    "drive_visibility": {
+      "label": "Drive Profile Visits",
+      "structural_modifier": "Open with the most scroll-stopping line possible. Use curiosity gap — reveal enough to hook but not enough to satisfy. The body should reward the click with genuine insight.",
+      "hook_style": "First line must create urgency or surprise in under 80 characters. Use a number, a contradiction, or a bold claim.",
+      "cta_pattern": "End by hinting at depth: 'I've documented the full breakdown — link in the first comment' or 'Follow for more breakdowns like this.'"
+    },
+    "build_authority": {
+      "label": "Build Thought Leadership",
+      "structural_modifier": "Lead with an insight that shows original thinking — something the reader hasn't heard phrased this way before. Support it with tight logic or a specific example. No fluff.",
+      "hook_style": "Open with a declarative insight that signals expertise. Not a question — a statement that makes the reader think 'I need to hear more.'",
+      "cta_pattern": "Close with a forward-looking implication or a principle the reader can adopt. No explicit CTA needed — the authority IS the CTA."
+    },
+    "generate_leads": {
+      "label": "Generate Leads",
+      "structural_modifier": "Name a specific pain point your target audience faces. Show you understand it deeply. Offer one piece of genuine value, then create a natural opening for conversation.",
+      "hook_style": "Open by naming the problem your audience has — in their words, not yours. Make them feel seen.",
+      "cta_pattern": "Low-pressure close: 'DM me if you want the template' or 'Reply \"send\" and I'll share the framework.' Never hard-sell."
+    },
+    "educate_audience": {
+      "label": "Educate Audience",
+      "structural_modifier": "Deliver 2-3 focused insights that are each standalone and immediately useful. Structure for skimmability — each insight should be digestible in one read.",
+      "hook_style": "Open with what the reader will learn — be specific. '3 things I learned about [X] after [Y]' or a quick before/after contrast.",
+      "cta_pattern": "End with a signal for more: 'Save this for later' or 'What would you add to this list?'"
+    },
+    "brand_awareness": {
+      "label": "Brand Awareness",
+      "structural_modifier": "Communicate one clear value or belief that defines you or your company. Make it memorable in a single line. Support it with a brief story or example.",
+      "hook_style": "Open with the core belief or value proposition — stated boldly and simply.",
+      "cta_pattern": "Close by reinforcing identity: 'This is what we stand for' or 'This is why we built [X].' Invite alignment, not action."
+    },
+    "grow_network": {
+      "label": "Grow Network",
+      "structural_modifier": "Write from personal experience. Include a moment of genuine reflection, vulnerability, or honest admission. Make the reader feel like they know you a little better after reading.",
+      "hook_style": "Open with a personal moment or confession. Not 'I'm excited to share' — something real: a failure, a pivot, an unexpected lesson.",
+      "cta_pattern": "End by inviting connection: 'If this resonates, I'd love to connect' or 'Who else has been through this? Let's talk.'"
+    }
+  },
+
+  "_fallbacks": {
+    "industry": {
+      "vocabulary": [],
+      "proof_types": ["case studies", "before/after metrics", "real examples with outcomes"],
+      "metrics_readers_respect": ["revenue impact", "time saved", "efficiency gains", "customer satisfaction"],
+      "angles": ["what most people get wrong", "the hidden cost of the status quo", "simple changes with outsized impact"],
+      "banned_cliches": [],
+      "audience_context": "Readers are professionals who value specifics over generalities."
+    },
+    "role": {
+      "perspective": "Write as a knowledgeable professional with hands-on experience. Your authority comes from doing the work.",
+      "authority_signals": ["reference real decisions you've made", "share outcomes not just opinions", "connect your insights to practical impact"],
+      "audience_relationship": "Readers are peers or aspiring professionals. They want honest, useful perspectives.",
+      "writing_style": "Clear, direct, human. Short sentences. Every sentence earns its place."
+    },
+    "goal": {
+      "structural_modifier": "Deliver one clear, valuable idea. Make it skimmable and worth the reader's time.",
+      "hook_style": "Open with the most interesting sentence you can — not a generic question.",
+      "cta_pattern": "Close by giving the reader something to do or think about."
+    }
+  }
+}

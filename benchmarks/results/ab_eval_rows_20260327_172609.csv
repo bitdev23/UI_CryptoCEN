@@ -1,0 +1,2 @@
+clarity,completion_tokens,cost_usd,cta,error,goal_key,hook,industry,latency_ms,model,novelty,ok,prompt_id,prompt_tokens,provider,quality_score,role,specificity,text_preview,tone,topic,total_tokens
+100,155,0.00174,32,,educate_audience,60,E-commerce,10674,grok-3-mini,76,True,p_0717,95,xai,67,CTO,51,"In the fast-paced world of e-commerce, technical debt can quietly undermine your operations, turning innovative features into maintenance headaches. It's essentially the trade-off we make when we rush code to meet deadli",educational,technical debt,250

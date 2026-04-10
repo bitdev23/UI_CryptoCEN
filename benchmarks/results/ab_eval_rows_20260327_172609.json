@@ -1,0 +1,26 @@
+[
+  {
+    "prompt_id": "p_0717",
+    "provider": "xai",
+    "ok": true,
+    "quality_score": 67,
+    "latency_ms": 10674,
+    "cost_usd": 0.00174,
+    "error": "",
+    "industry": "E-commerce",
+    "role": "CTO",
+    "tone": "educational",
+    "goal_key": "educate_audience",
+    "topic": "technical debt",
+    "model": "grok-3-mini",
+    "clarity": 100,
+    "novelty": 76,
+    "specificity": 51,
+    "hook": 60,
+    "cta": 32,
+    "prompt_tokens": 95,
+    "completion_tokens": 155,
+    "total_tokens": 250,
+    "text_preview": "In the fast-paced world of e-commerce, technical debt can quietly undermine your operations, turning innovative features into maintenance headaches. It's essentially the trade-off we make when we rush code to meet deadli"
+  }
+]

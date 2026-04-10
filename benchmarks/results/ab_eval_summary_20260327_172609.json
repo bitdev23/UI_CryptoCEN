@@ -1,0 +1,14 @@
+{
+  "summary": [
+    {
+      "provider": "xai",
+      "count": 1,
+      "avg_score": 67,
+      "p50_score": 67,
+      "avg_latency_ms": 10674,
+      "avg_cost_usd": 0.00174,
+      "total_cost_usd": 0.0017,
+      "error_rate": 0.0
+    }
+  ]
+}

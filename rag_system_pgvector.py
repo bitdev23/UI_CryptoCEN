@@ -4,6 +4,7 @@ Replaces ChromaDB with PostgreSQL pgvector for scalable multi-tenant architectur
 """
 from typing import List, Tuple, Optional, Dict
 import os
+import re
 import threading
 import hashlib
 import numpy as np
@@ -14,7 +15,32 @@ logger = logging.getLogger("contentai.rag")
 
 _MODEL_SINGLETON = None
 _MODEL_LOCK = threading.Lock()
-EMBEDDING_DIM = 384
+
+# ── Configurable embedding model ──────────────────────────────────────────────
+# Change these env vars when upgrading to a larger model (e.g. all-mpnet-base-v2).
+# After changing, you MUST rebuild all KB embeddings for every user.
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
+
+# ── Stop words for keyword search ─────────────────────────────────────────────
+_KEYWORD_STOP_WORDS = frozenset({
+    'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'shall',
+    'should', 'may', 'might', 'must', 'can', 'could', 'about', 'above',
+    'after', 'again', 'against', 'all', 'am', 'and', 'any', 'as', 'at',
+    'because', 'before', 'below', 'between', 'both', 'but', 'by', 'down',
+    'during', 'each', 'few', 'for', 'from', 'further', 'get', 'got',
+    'he', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his',
+    'how', 'i', 'if', 'in', 'into', 'it', 'its', 'itself', 'just',
+    'me', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'now',
+    'of', 'off', 'on', 'once', 'only', 'or', 'other', 'our', 'ours',
+    'ourselves', 'out', 'over', 'own', 'same', 'she', 'so', 'some',
+    'such', 'than', 'that', 'their', 'theirs', 'them', 'themselves',
+    'then', 'there', 'these', 'they', 'this', 'those', 'through', 'to',
+    'too', 'under', 'until', 'up', 'us', 'very', 'we', 'what', 'when',
+    'where', 'which', 'while', 'who', 'whom', 'why', 'with', 'you',
+    'your', 'yours', 'yourself', 'yourselves',
+})
 
 
 class RAGStore:
@@ -40,16 +66,16 @@ class RAGStore:
         logger.info(f"RAGStore initialized for user {user_id}")
     
     def _get_model(self):
-        """Lazy load the embedding model"""
+        """Lazy load the embedding model (model name from EMBEDDING_MODEL env var)"""
         global _MODEL_SINGLETON
         if _MODEL_SINGLETON is None:
             with _MODEL_LOCK:
                 if _MODEL_SINGLETON is None:
-                    logger.info("Loading SentenceTransformer model...")
+                    logger.info("Loading SentenceTransformer model: %s", EMBEDDING_MODEL)
                     from sentence_transformers import SentenceTransformer
                     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-                    _MODEL_SINGLETON = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
-                    logger.info("SentenceTransformer model loaded")
+                    _MODEL_SINGLETON = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
+                    logger.info("SentenceTransformer model loaded: %s (dim=%d)", EMBEDDING_MODEL, EMBEDDING_DIM)
         return _MODEL_SINGLETON
 
     def _embedding_backend(self) -> str:
@@ -306,6 +332,189 @@ class RAGStore:
         except Exception as e:
             logger.exception(f"Failed to delete embeddings: {e}")
             return False
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Keyword Search (BM25-proxy via SQL ILIKE)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _extract_keywords(text: str, max_keywords: int = 6) -> List[str]:
+        """Extract meaningful keywords from text, removing stop words."""
+        tokens = re.findall(r'[a-zA-Z0-9]+', (text or '').lower())
+        keywords = [t for t in tokens if t not in _KEYWORD_STOP_WORDS and len(t) >= 3]
+        # Deduplicate while preserving order
+        seen = set()
+        unique = []
+        for kw in keywords:
+            if kw not in seen:
+                seen.add(kw)
+                unique.append(kw)
+        return unique[:max_keywords]
+
+    def keyword_search(self, query: str, k: int = 6,
+                       file_ids: Optional[List[str]] = None) -> List[Dict]:
+        """Search KB chunks using keyword matching (SQL ILIKE).
+
+        Returns results in the same format as similarity_search, with a
+        pseudo-similarity score computed from keyword hit density.
+        """
+        keywords = self._extract_keywords(query)
+        if not keywords:
+            return []
+
+        try:
+            # Build OR condition: chunk_text ILIKE %kw1% OR chunk_text ILIKE %kw2% ...
+            conditions = ','.join(f'chunk_text.ilike.%{kw}%' for kw in keywords)
+            q = (self.db.client.table('kb_embeddings')
+                 .select('id, file_id, chunk_text, metadata')
+                 .eq('user_id', self.user_id)
+                 .or_(conditions)
+                 .limit(k * 2))  # Fetch extra, we'll score and trim
+
+            if file_ids:
+                q = q.in_('file_id', file_ids)
+
+            result = q.execute()
+            rows = result.data if result.data else []
+
+            # Score each row by keyword density
+            formatted = []
+            for row in rows:
+                text_lower = (row.get('chunk_text') or '').lower()
+                hits = sum(1 for kw in keywords if kw in text_lower)
+                # Pseudo-similarity: fraction of keywords matched (0..1)
+                kw_score = hits / len(keywords) if keywords else 0.0
+                if kw_score <= 0:
+                    continue
+                formatted.append({
+                    'document': row.get('chunk_text', ''),
+                    'metadata': row.get('metadata') or {},
+                    'similarity': round(kw_score * 0.85, 4),  # Cap at 0.85 to avoid dominating vector
+                    'distance': round(1.0 - kw_score * 0.85, 4),
+                    'file_id': row.get('file_id'),
+                    'id': row.get('id'),
+                    '_source': 'keyword',
+                })
+
+            # Sort by score descending, return top k
+            formatted.sort(key=lambda h: h['similarity'], reverse=True)
+            logger.info("Keyword search found %d hits for %d keywords", len(formatted[:k]), len(keywords))
+            return formatted[:k]
+
+        except Exception as e:
+            logger.warning("Keyword search failed: %s — returning empty", e)
+            return []
+
+    def hybrid_search(self, query: str, k: int = 4,
+                      match_threshold: float = 0.7,
+                      file_ids: Optional[List[str]] = None,
+                      vector_weight: float = 0.7,
+                      keyword_weight: float = 0.3) -> List[Dict]:
+        """Hybrid search combining vector similarity + keyword matching.
+
+        Results are merged, deduplicated by chunk id, and scored with
+        a weighted combination: vector_weight * vector_sim + keyword_weight * kw_sim.
+        """
+        # Run both searches in sequence (can't parallelise Supabase calls easily)
+        vector_hits = self.similarity_search(
+            query, k=k, match_threshold=match_threshold, file_ids=file_ids
+        )
+        keyword_hits = self.keyword_search(query, k=k, file_ids=file_ids)
+
+        # Merge by chunk id
+        merged = {}
+        for hit in vector_hits:
+            cid = hit.get('id') or hit.get('document', '')[:80]
+            merged[cid] = {
+                **hit,
+                '_vector_sim': float(hit.get('similarity', 0)),
+                '_keyword_sim': 0.0,
+                '_source': 'vector',
+            }
+
+        for hit in keyword_hits:
+            cid = hit.get('id') or hit.get('document', '')[:80]
+            if cid in merged:
+                # Already found by vector — boost with keyword score
+                merged[cid]['_keyword_sim'] = float(hit.get('similarity', 0))
+                merged[cid]['_source'] = 'both'
+            else:
+                merged[cid] = {
+                    **hit,
+                    '_vector_sim': 0.0,
+                    '_keyword_sim': float(hit.get('similarity', 0)),
+                    '_source': 'keyword',
+                }
+
+        # Compute hybrid score
+        for cid, hit in merged.items():
+            hybrid = (vector_weight * hit['_vector_sim'] +
+                      keyword_weight * hit['_keyword_sim'])
+            hit['similarity'] = round(hybrid, 4)
+            hit['distance'] = round(1.0 - hybrid, 4)
+
+        ranked = sorted(merged.values(), key=lambda h: h['similarity'], reverse=True)
+        logger.info("Hybrid search: %d vector + %d keyword → %d merged results",
+                     len(vector_hits), len(keyword_hits), len(ranked[:k]))
+        return ranked[:k]
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Chunk Quality Scoring
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def score_chunk_quality(chunk_text: str) -> float:
+        """Score a chunk's information quality on a 0-1 scale.
+
+        Low scores indicate: headers, footers, table-of-contents,
+        very short fragments, boilerplate, or non-informative text.
+        """
+        text = (chunk_text or '').strip()
+        if not text:
+            return 0.0
+
+        score = 1.0
+        word_count = len(text.split())
+
+        # Penalise very short chunks
+        if word_count < 10:
+            score *= 0.2
+        elif word_count < 20:
+            score *= 0.5
+        elif word_count < 40:
+            score *= 0.75
+
+        # Penalise chunks that are mostly numbers / special chars (tables, TOC)
+        alpha_ratio = sum(1 for c in text if c.isalpha()) / max(len(text), 1)
+        if alpha_ratio < 0.4:
+            score *= 0.3
+
+        # Penalise chunks that look like table-of-contents or page headers
+        lines = text.split('\n')
+        if len(lines) > 2:
+            short_lines = sum(1 for l in lines if len(l.strip()) < 15)
+            if short_lines / len(lines) > 0.7:
+                score *= 0.3  # Mostly very short lines = TOC or list
+
+        # Penalise boilerplate patterns
+        lower = text.lower()
+        boilerplate_markers = [
+            'table of contents', 'page ', 'copyright', 'all rights reserved',
+            'confidential', 'disclaimer', '...', '___', '---',
+            'header', 'footer', 'appendix', 'references',
+        ]
+        boilerplate_hits = sum(1 for m in boilerplate_markers if m in lower)
+        if boilerplate_hits >= 2:
+            score *= 0.3
+        elif boilerplate_hits == 1:
+            score *= 0.6
+
+        # Bonus for chunks with complete sentences
+        sentence_endings = sum(1 for c in text if c in '.!?')
+        if sentence_endings >= 2 and word_count >= 30:
+            score = min(score * 1.1, 1.0)
+
+        return round(max(0.0, min(1.0, score)), 3)
 
 
 def create_rag_store(user_id: str) -> RAGStore:

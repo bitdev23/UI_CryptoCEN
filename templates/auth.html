@@ -1255,6 +1255,7 @@
                      =============================================================--> 
             <script>
             'use strict';
+            var _tokenStore = sessionStorage;   // tokens in sessionStorage (XSS-safe)
 
             window.VELANK_USER = {
                 firstName : '',
@@ -1380,8 +1381,8 @@
 
                     if (data.success && data.access_token) {
                         // Store tokens
-                        localStorage.setItem('access_token', data.access_token);
-                        if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+                        _tokenStore.setItem('access_token', data.access_token);
+                        if (data.refresh_token) _tokenStore.setItem('refresh_token', data.refresh_token);
 
                         // Build user object from API response
                         const user = data.user || {};
@@ -1488,10 +1489,10 @@
                         } else {
                             // Store tokens from API response if they exist
                             if (data.access_token) {
-                                localStorage.setItem('access_token', data.access_token);
+                                _tokenStore.setItem('access_token', data.access_token);
                             }
                             if (data.refresh_token) {
-                                localStorage.setItem('refresh_token', data.refresh_token);
+                                _tokenStore.setItem('refresh_token', data.refresh_token);
                             }
 
                             // Build user object from API response

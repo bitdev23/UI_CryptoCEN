@@ -1,0 +1,44 @@
+{
+  "summary": [
+    {
+      "provider": "openai",
+      "count": 60,
+      "avg_score": 71.18,
+      "p50_score": 68.0,
+      "avg_latency_ms": 8234.8,
+      "avg_cost_usd": 0.00039,
+      "total_cost_usd": 0.0234,
+      "error_rate": 0.0
+    },
+    {
+      "provider": "claude",
+      "count": 60,
+      "avg_score": 79.37,
+      "p50_score": 81.5,
+      "avg_latency_ms": 8190.4,
+      "avg_cost_usd": 0.003494,
+      "total_cost_usd": 0.2096,
+      "error_rate": 0.0167
+    },
+    {
+      "provider": "deepseek",
+      "count": 60,
+      "avg_score": 77.55,
+      "p50_score": 79.0,
+      "avg_latency_ms": 7634.7,
+      "avg_cost_usd": 0.000196,
+      "total_cost_usd": 0.0118,
+      "error_rate": 0.0
+    },
+    {
+      "provider": "xai",
+      "count": 60,
+      "avg_score": 70.32,
+      "p50_score": 70.5,
+      "avg_latency_ms": 12784.0,
+      "avg_cost_usd": 0.001519,
+      "total_cost_usd": 0.0911,
+      "error_rate": 0.0
+    }
+  ]
+}

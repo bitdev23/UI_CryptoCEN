@@ -4,8 +4,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
-def setup_logging(log_path: str = "valtrilabs.log") -> logging.Logger:
-    logger = logging.getLogger("valtrilabs")
+def setup_logging(log_path: str = "velank.log") -> logging.Logger:
+    logger = logging.getLogger("velank")
     logger.setLevel(logging.DEBUG)
     if not logger.handlers:
         fh = RotatingFileHandler(log_path, maxBytes=5_000_000, backupCount=3)

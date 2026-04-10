@@ -1224,6 +1224,15 @@
             const postsCtx = document.getElementById('postsChart');
             const userCtx = document.getElementById('userChart');
 
+            if (!postsCtx || !userCtx) {
+                return;
+            }
+
+            if (typeof Chart !== 'function') {
+                console.warn('Chart.js is unavailable; skipping chart rendering.');
+                return;
+            }
+
             if (postsChart) postsChart.destroy();
             if (userChart) userChart.destroy();
 
@@ -1876,9 +1885,26 @@
             if (tbody && !currentUsers.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading users...</td></tr>';
             }
-            await loadOverview(currentChartRange);
-            await loadUsers();
-            await loadAuditLogs();
+
+            try {
+                await loadOverview(currentChartRange);
+            } catch (err) {
+                console.warn('Admin overview failed:', err);
+                showToast(err.message || 'Overview temporarily unavailable', 'error', 3000);
+            }
+
+            try {
+                await loadUsers();
+            } catch (err) {
+                console.error('Admin users load failed:', err);
+                showToast(err.message || 'Failed to load users', 'error', 5000);
+            }
+
+            try {
+                await loadAuditLogs();
+            } catch (err) {
+                console.warn('Admin audit logs failed:', err);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {

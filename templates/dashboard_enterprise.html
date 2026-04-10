@@ -6,6 +6,9 @@
     <title>Velank AI</title>
     <!-- ═══ Immediate auth gate: redirect before any HTML renders ═══ -->
     <script>
+        // ── Token storage: use sessionStorage for tokens (XSS-safe) ──
+        // Non-sensitive profile data (user_id, email, name) stays in localStorage.
+        var _tokenStore = sessionStorage;
         (function () {
             try {
                 // If Supabase redirected to / with #access_token= in the hash
@@ -16,7 +19,7 @@
                     window.location.replace('/auth/callback' + hash);
                     return;
                 }
-                if (!localStorage.getItem('access_token')) {
+                if (!_tokenStore.getItem('access_token')) {
                     window.location.replace('/login');
                 }
             } catch (_) {}
@@ -4689,14 +4692,36 @@
         }
         .creator-v4 .cv-topic-box textarea::placeholder { color: var(--cv-dim) }
 
+        .creator-v4 #cv-sec-topic .cv-sec-body {
+            border: 1px solid var(--cv-border);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,255,0.96));
+            padding: 0.85rem;
+        }
+        .creator-v4 #cv-sec-topic .cv-sec-desc {
+            margin-bottom: 0.62rem;
+            color: var(--cv-text2);
+        }
+        .creator-v4 .cv-topic-box {
+            border: 1px solid var(--cv-border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--cv-s2);
+            box-shadow: 0 10px 24px rgba(79, 91, 142, 0.06);
+        }
+        .creator-v4 .cv-topic-box textarea {
+            min-height: 166px;
+            padding: 16px 18px;
+        }
+
         /* Embedded generate row inside topic box */
         .creator-v4 .cv-topic-gen-row {
             position: relative; z-index: 1;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: linear-gradient(135deg, rgba(79,144,255,0.04), rgba(124,91,255,0.03), transparent);
+            justify-content: flex-end;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, rgba(79,144,255,0.035), rgba(124,91,255,0.025), transparent);
             border-top: 1px solid var(--cv-border);
             border-radius: 0 0 11px 11px;
             gap: 10px;
@@ -4721,10 +4746,24 @@
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
+            margin-left: auto;
         }
         .creator-v4 .cv-topic-gen-actions .cv-btn-gen {
             padding: 9px 20px;
             font-size: 12.5px;
+        }
+
+        body.dark-mode .creator-v4 #cv-sec-topic .cv-sec-body {
+            background: linear-gradient(180deg, rgba(20,26,39,0.95), rgba(19,25,38,0.92));
+            border-color: rgba(128, 149, 195, 0.26);
+        }
+        body.dark-mode .creator-v4 .cv-topic-box {
+            border-color: rgba(128, 149, 195, 0.26);
+            box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45);
+        }
+        body.dark-mode .creator-v4 .cv-topic-gen-row {
+            background: linear-gradient(135deg, rgba(79,144,255,0.10), rgba(124,91,255,0.08), transparent);
+            border-top-color: rgba(128, 149, 195, 0.24);
         }
         .creator-v4 .cv-generate-progress {
             display: none;
@@ -7451,6 +7490,9 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         .creator-v4 .cv-preset-chip:hover {
             border-color: #c7d2fe;
@@ -7458,9 +7500,23 @@
             background: #eef2ff;
         }
         .creator-v4 .cv-preset-chip.active {
-            border-color: #c7d2fe;
+            border-color: #818cf8;
             color: #3730a3;
             background: #e0e7ff;
+            box-shadow: 0 0 0 1px #818cf8;
+        }
+        .creator-v4 .cv-preset-chip:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 2px;
+        }
+        .creator-v4 .cv-preset-chip .chip-icon {
+            font-size: 0.72rem;
+        }
+        .creator-v4 .cv-config-mode-desc {
+            font-size: 0.7rem;
+            color: var(--text-secondary, #64748b);
+            margin-top: 2px;
+            margin-left: 2px;
         }
         .creator-v4 .cv-advanced-toggle {
             border: 1px solid #dbe3f4;
@@ -7498,6 +7554,85 @@
         }
         .creator-v4 #cv-sec-config.cv-advanced-collapsed .cv-sec-config-advanced {
             display: none;
+        }
+
+        /* ── Accessibility: focus-visible outlines ── */
+        .creator-v4 .cv-cfg-select:focus-visible,
+        .creator-v4 .cv-cfg-block input:focus-visible,
+        .creator-v4 .cv-cfg-block select:focus-visible {
+            outline: 2px solid #6366f1;
+            outline-offset: 1px;
+            border-color: #818cf8;
+        }
+        .creator-v4 .cv-cfg-block input:disabled,
+        .creator-v4 .cv-cfg-block input[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: #f1f5f9;
+        }
+
+        /* Persona action row */
+        .creator-v4 .cv-persona-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-left: auto;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
+        }
+        .creator-v4 .cv-persona-actions .btn-icon-only {
+            padding: 0.36rem 0.55rem;
+            min-width: 0;
+        }
+        .creator-v4 .cv-persona-delete {
+            color: #e05252 !important;
+            border-color: #f3c6c6 !important;
+        }
+        .creator-v4 .cv-persona-delete:hover {
+            background: #fef2f2 !important;
+        }
+        /* Overflow dropdown */
+        .creator-v4 .cv-persona-overflow {
+            position: relative;
+        }
+        .creator-v4 .cv-persona-overflow-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            z-index: 200;
+            min-width: 160px;
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border-color, #dbe3f4);
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+            padding: 0.3rem 0;
+        }
+        .creator-v4 .cv-persona-overflow-menu button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.45rem 0.85rem;
+            background: none;
+            border: none;
+            font-size: 0.8rem;
+            color: var(--text-primary, #1e293b);
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .creator-v4 .cv-persona-overflow-menu button:hover {
+            background: var(--hover-bg, #f1f5f9);
+        }
+        body.dark-mode .creator-v4 .cv-persona-overflow-menu {
+            background: #1e2433;
+            border-color: #2d3450;
+        }
+        body.dark-mode .creator-v4 .cv-persona-overflow-menu button {
+            color: #c9d3ef;
+        }
+        body.dark-mode .creator-v4 .cv-persona-overflow-menu button:hover {
+            background: #252d42;
         }
 
         .creator-v4 .cv-quality-meter {
@@ -13372,6 +13507,26 @@
         .kb-v4 .files-empty-state i { font-size: 2rem; color: var(--text-tertiary); }
         .kb-v4 .files-empty-state h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
         .kb-v4 .files-empty-state p { font-size: 12px; color: var(--text-tertiary); max-width: 340px; }
+        .kb-v4 .files-empty-state .kb-empty-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 38px;
+            padding: 0.56rem 1rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            margin-top: 0.2rem;
+        }
+        .kb-v4 .files-empty-state .kb-empty-upload-btn svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            display: block;
+        }
         /* Outline + ghost btn overrides for dark context */
         .kb-v4 .btn.btn-outline {
             background: transparent;
@@ -18818,12 +18973,6 @@
         <div class="cv-sec-body">
           <div class="cv-sec-desc">Give the AI a topic, angle, or insight. Specific inputs produce sharper, more authentic posts.</div>
 
-          <!-- Mode toggle -->
-          <div class="cv-topic-mode-toggle">
-            <button class="cv-tm-btn active" type="button" onclick="switchTopicMode('free')"><i class="fas fa-pen-fancy"></i> Free Write</button>
-            <button class="cv-tm-btn" type="button" onclick="switchTopicMode('structured')"><i class="fas fa-list-check"></i> Structured</button>
-          </div>
-
           <!-- Free write -->
           <div class="cv-freewrite-mode" id="cv-freewrite-mode">
             <div class="cv-topic-box">
@@ -18850,16 +18999,13 @@
               </div>
               <!-- Embedded Generate Row -->
               <div class="cv-topic-gen-row">
-                <div class="cv-topic-gen-info">
-                  <div class="cv-gen-summary cv-topic-gen-pills" id="cv-gen-summary-pills">
-                    <span>Tech</span><span>CEO</span><span>Medium</span><span>Professional</span>
-                  </div>
-                </div>
                 <div class="cv-topic-gen-actions">
-                  <div class="cv-tb-pill"><span class="cv-cred-dot"></span> 1 credit</div>
-                  <button class="cv-btn-gen" onclick="generatePost()" type="button"><i class="fas fa-wand-magic-sparkles"></i> Generate</button>
+                                    <!-- Persona badge hidden — re-enable with persona UI -->
+                                    <div class="cv-tb-pill" id="cv-active-persona-badge" style="display:none !important;"></div>
+                                    <button class="cv-btn-gen" onclick="generatePost()" type="button" title="Shortcuts: ⌘/Ctrl + Enter Generate" aria-label="Generate (⌘/Ctrl + Enter)"><i class="fas fa-wand-magic-sparkles"></i> Generate</button>
                 </div>
               </div>
+                            <div id="cv-applied-summary" class="form-hint" style="display:none; margin-top:0.5rem;"></div>
                             <div class="cv-generate-progress" id="cv-generate-progress">
                                 <div class="cv-generate-progress-label">
                                     <span><i class="fas fa-spinner fa-spin"></i> <span class="cv-generate-progress-text" id="cv-generate-progress-text">Generating your LinkedIn post...</span></span>
@@ -18877,36 +19023,9 @@
                                 </div>
                             </div>
             </div>
-                        <p class="cv-shortcut-hint">Shortcuts: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> Generate · <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> Publish</p>
-            <p class="form-hint" style="margin-top:6px;">Enter a topic or leave blank for AI to decide based on your Knowledge Base</p>
           </div>
 
           <!-- Structured (hidden, kept for JS compat) -->
-          <div class="cv-structured-mode" id="cv-structured-mode" style="display:none;">
-            <div class="cv-prompt-grid">
-              <div class="cv-pb-field">
-                <label>Main Idea</label>
-                <input type="text" placeholder="What's the core message?" id="cv-struct-idea">
-              </div>
-              <div class="cv-pb-field">
-                <label>Key Points</label>
-                <textarea rows="2" placeholder="List 2-3 supporting points..." id="cv-struct-points"></textarea>
-              </div>
-              <div class="cv-pb-field">
-                <label>Call to Action</label>
-                <input type="text" placeholder="What should readers do?" id="cv-struct-cta">
-              </div>
-              <div class="cv-pb-field">
-                <label>Goal</label>
-                <select id="cv-struct-goal">
-                  <option>Generate discussion</option>
-                  <option>Share expertise</option>
-                  <option>Drive leads</option>
-                  <option>Build authority</option>
-                </select>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -18936,6 +19055,22 @@
         <details id="kb-advanced-details"></details>
         <div id="kb-workspace-preview-post"></div>
         <div id="kb-post-template-feedback"></div>
+
+        <!-- ── Strict Grounding Toggle ── -->
+        <div id="strict-grounding-row" style="margin-top:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bg-secondary, #f8f9fa);border:1px solid var(--border-color, #e2e8f0);">
+          <label class="toggle-switch" style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer;">
+            <input type="checkbox" id="strict-grounding-toggle" style="opacity:0;width:0;height:0;" onchange="_syncStrictGroundingVisual();saveCreatorDraftState();">
+            <span id="strict-grounding-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;border-radius:20px;transition:0.3s;" onclick="var cb=document.getElementById('strict-grounding-toggle');cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));"><span id="strict-grounding-thumb" style="position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:white;border-radius:50%;transition:0.3s;display:block;"></span></span>
+          </label>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:0.82rem;color:var(--text-primary, #1e293b);">
+              <i class="fas fa-shield-halved" style="color:#dc2626;margin-right:4px;"></i>Strict Grounding
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-secondary, #64748b);margin-top:1px;">
+              Block generation when KB has no match for the topic. Only produces fully grounded content.
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ══ SECTION 2: Configuration ══ -->
@@ -18955,19 +19090,18 @@
           <span class="cv-sec-summary-item" id="cfg-role-pill">CEO / Founder</span>
           <span class="cv-sec-summary-item" id="cfg-tone-pill">Professional</span>
           <span class="cv-sec-summary-item" id="cfg-length-pill">Medium</span>
-          <span class="cv-sec-summary-item" id="cfg-options-pill">2 active</span>
+          <span class="cv-sec-summary-item" id="cfg-goal-pill">—</span>
+          <span class="cv-sec-summary-item" id="cfg-options-pill">0 active</span>
           <span class="cv-sec-summary-item" id="cfg-he-pill">3# · Balanced</span>
         </div>
         <div class="cv-sec-body">
           <div class="cv-sec-desc">Industry context, writing voice, post length, and format options shape the entire tone and structure.</div>
                     <div class="cv-preset-row">
-                        <div class="cv-preset-chips" id="cv-writing-presets">
-                            <button type="button" class="cv-preset-chip active" data-preset="balanced" onclick="applyWritingPreset('balanced', this)">Balanced</button>
-                            <button type="button" class="cv-preset-chip" data-preset="thought-leader" onclick="applyWritingPreset('thought-leader', this)">Thought Leader</button>
-                            <button type="button" class="cv-preset-chip" data-preset="engagement" onclick="applyWritingPreset('engagement', this)">Engagement</button>
-                            <button type="button" class="cv-preset-chip" data-preset="educational" onclick="applyWritingPreset('educational', this)">Educational</button>
+                        <div class="cv-preset-chips" id="cv-config-mode-switch" role="tablist" aria-label="Configuration detail level">
+                            <button type="button" class="cv-preset-chip active" data-mode="quick" role="tab" aria-selected="true" aria-controls="cv-cfg-grid" onclick="setConfigUxMode('quick', this)"><i class="fas fa-bolt chip-icon"></i> Quick</button>
+                            <button type="button" class="cv-preset-chip" data-mode="advanced" role="tab" aria-selected="false" aria-controls="cv-cfg-grid" onclick="setConfigUxMode('advanced', this)"><i class="fas fa-sliders chip-icon"></i> Advanced</button>
                         </div>
-                        <button type="button" class="cv-advanced-toggle" id="cv-advanced-toggle" onclick="toggleConfigAdvanced()">Show advanced</button>
+                        <span class="cv-config-mode-desc" id="cv-config-mode-desc" aria-live="polite">Essentials only — Industry, Role, Tone, Length &amp; Goal</span>
                     </div>
                     <div class="cv-style-suggest" id="cv-style-suggest" style="display:none;">
                         <div class="cv-style-suggest-text" id="cv-style-suggest-text"></div>
@@ -18976,15 +19110,19 @@
           <div class="cv-cfg-grid">
 
             <!-- ── Industry ── -->
-            <div class="cv-cfg-block cb-blue" id="cfg-industry">
-              <div class="cv-cb-title"><span class="cv-cb-dot dot-blue"></span> Industry</div>
-              <select id="industry-select" class="cv-cfg-select" onchange="onIndustryChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('industry');">
+            <div class="cv-cfg-block cb-blue" id="cfg-industry" role="group" aria-labelledby="cfg-industry-label">
+              <div class="cv-cb-title" id="cfg-industry-label"><span class="cv-cb-dot dot-blue"></span> Industry</div>
+              <select id="industry-select" class="cv-cfg-select" aria-label="Select your industry" onchange="onIndustryChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('industry');">
                 <option value="tech">Technology &amp; Software</option>
                 <option value="finance">Finance &amp; Banking</option>
                 <option value="healthcare">Healthcare &amp; Pharma</option>
                 <option value="ecommerce">E-Commerce &amp; Retail</option>
                 <option value="crypto">Cryptocurrency &amp; Blockchain</option>
+                                <option value="web3">Web3</option>
+                                <option value="genai">GenAI</option>
+                                <option value="virtual_assistant">Virtual Assistant</option>
                 <option value="saas">SaaS &amp; Startups</option>
+                                <option value="supply_chain">Supply Chain &amp; Logistics</option>
                 <option value="custom">Custom...</option>
               </select>
               <div id="creator-industry-custom-wrap" class="creator-custom-inline" style="display:none;">
@@ -19000,9 +19138,9 @@
             </div>
 
             <!-- ── Role ── -->
-            <div class="cv-cfg-block cb-violet" id="cfg-role">
-              <div class="cv-cb-title"><span class="cv-cb-dot dot-violet"></span> Your Role</div>
-              <select id="role-select" class="cv-cfg-select" onchange="onRoleChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('role');">
+            <div class="cv-cfg-block cb-violet" id="cfg-role" role="group" aria-labelledby="cfg-role-label">
+              <div class="cv-cb-title" id="cfg-role-label"><span class="cv-cb-dot dot-violet"></span> Your Role</div>
+              <select id="role-select" class="cv-cfg-select" aria-label="Select your role" onchange="onRoleChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('role');">
                 <option value="ceo">CEO / Founder</option>
                 <option value="cto">CTO / VP Engineering</option>
                 <option value="dev">Software Developer</option>
@@ -19011,6 +19149,8 @@
                 <option value="finance">Finance / CFO</option>
                 <option value="ops">Operations</option>
                 <option value="marketing">Marketing / Growth</option>
+                                <option value="sales">Sales</option>
+                                <option value="bde">Business Development (BDE)</option>
                 <option value="custom">Custom...</option>
               </select>
               <div id="creator-role-custom-wrap" class="creator-custom-inline" style="display:none;">
@@ -19026,13 +19166,14 @@
             </div>
 
             <!-- ── Tone ── -->
-            <div class="cv-cfg-block cb-teal" id="cfg-tone">
-              <div class="cv-cb-title"><span class="cv-cb-dot dot-teal"></span> Tone</div>
-              <select id="post-tone" class="cv-cfg-select" onchange="syncCreatorReplicaControls();saveCreatorDraftState();">
+            <div class="cv-cfg-block cb-teal" id="cfg-tone" role="group" aria-labelledby="cfg-tone-label">
+              <div class="cv-cb-title" id="cfg-tone-label"><span class="cv-cb-dot dot-teal"></span> Tone</div>
+              <select id="post-tone" class="cv-cfg-select" aria-label="Select writing tone" onchange="syncCreatorReplicaControls();saveCreatorDraftState();">
                 <option value="professional" selected>Professional</option>
                 <option value="conversational">Conversational</option>
-                <option value="authoritative">Thought Leader</option>
-                <option value="inspirational">Inspirational</option>
+                <option value="authoritative">Authoritative</option>
+                <option value="contrarian">Contrarian</option>
+                <option value="storytelling">Storytelling</option>
                 <option value="educational">Educational</option>
               </select>
               <!-- Hidden tone grid for JS compat -->
@@ -19040,9 +19181,9 @@
             </div>
 
             <!-- ── Post Length ── -->
-            <div class="cv-cfg-block cb-teal" id="cfg-length">
-              <div class="cv-cb-title"><span class="cv-cb-dot dot-teal"></span> Post Length</div>
-              <select id="cv-length-select" class="cv-cfg-select" onchange="onLengthDropdownChange(this.value)">
+            <div class="cv-cfg-block cb-teal" id="cfg-length" role="group" aria-labelledby="cfg-length-label">
+              <div class="cv-cb-title" id="cfg-length-label"><span class="cv-cb-dot dot-teal"></span> Post Length</div>
+              <select id="cv-length-select" class="cv-cfg-select" aria-label="Select post length" onchange="onLengthDropdownChange(this.value)">
                 <option value="short">Short (60–120 words)</option>
                 <option value="medium" selected>Medium (120–220 words)</option>
                 <option value="long">Long (220–360 words)</option>
@@ -19069,55 +19210,41 @@
               </div>
             </div>
 
-            <!-- ── Audience & Post Goal ── -->
-            <div class="cv-cfg-block cb-amber cv-sec-config-advanced" id="cfg-options">
-              <div class="cv-cb-title"><span class="cv-cb-dot dot-amber"></span> Audience & Post Goal <span class="cv-cb-count" id="cv-optCount">2 on</span></div>
+                        <div class="cv-cfg-block cb-violet cv-sec-config-advanced" id="cfg-style-clone-mode">
+                            <div class="cv-cb-title"><span class="cv-cb-dot dot-violet"></span> Style Clone Mode</div>
+                            <select id="style-clone-mode" class="cv-cfg-select" onchange="saveCreatorDraftState();syncCreatorReplicaControls();">
+                                <option value="hybrid" selected>Hybrid (recommended)</option>
+                                <option value="strict">Strict Clone</option>
+                                <option value="off">Off</option>
+                            </select>
+                            <p class="form-hint" style="margin-top:0.45rem;">Hybrid keeps your role/goal strategy while blending your cloned writing style.</p>
+                        </div>
 
-              <!-- Audience -->
-              <div class="creator-section" style="margin-bottom:0.5rem;">
-                <div class="creator-mini-label">Target Audience</div>
-                <select id="audience-preset" class="cv-cfg-select" onchange="onAudiencePresetChange(this.value)">
-                  <option value="startup-founders">Startup Founders</option>
-                  <option value="developers">Developers & Engineers</option>
-                  <option value="c-suite">C-Suite Executives</option>
-                  <option value="hr-recruiters">HR & Recruiters</option>
-                  <option value="marketing">Marketing Professionals</option>
-                  <option value="investors">Investors & VCs</option>
-                  <option value="product-managers">Product Managers</option>
-                  <option value="general" selected>General / All Professionals</option>
-                  <option value="custom">Custom…</option>
-                </select>
-                <div id="audience-custom-wrap" style="display:none;margin-top:0.4rem;">
-                  <input id="target-audience" class="cv-cfg-select" placeholder="e.g. startup founders, HR managers" style="width:100%;" oninput="updateCfgRowPills()">
-                </div>
-                <!-- hidden selects for JS compat -->
-                <select id="audience-type" style="display:none;">
-                  <option value="individual" selected>Individual professional</option>
-                  <option value="agency">B2B agency / company page</option>
-                </select>
+            <!-- ── Post Goal (always visible — Quick mode) ── -->
+            <div class="cv-cfg-block cb-amber" id="cfg-goal" role="group" aria-labelledby="cfg-goal-label">
+              <div class="cv-cb-title" id="cfg-goal-label"><span class="cv-cb-dot dot-amber"></span> Post Goal <span style="color:#ff6b6b;font-size:0.8em;">*</span></div>
+              <select id="goal-preset" class="cv-cfg-select" aria-label="Select a goal for this post" aria-required="true" onchange="onGoalPresetChange(this.value)">
+                <option value="" disabled selected>Select a goal for this post…</option>
+                <option value="spark-comments">Spark Comments &amp; Discussion</option>
+                <option value="drive-visits">Drive Profile Visits</option>
+                <option value="generate-leads">Generate Leads</option>
+                <option value="build-authority">Build Thought Leadership</option>
+                <option value="grow-network">Grow Network</option>
+                <option value="educate">Educate Audience</option>
+                <option value="brand-awareness">Brand Awareness</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <div id="goal-custom-wrap" style="display:none;margin-top:0.4rem;">
+                <input id="post-goal" class="cv-cfg-select" placeholder="e.g. spark comments, drive profile visits" aria-label="Custom post goal" style="width:100%;" disabled oninput="updateCfgRowPills();saveCreatorDraftState();">
               </div>
+              <p id="role-goal-hint" class="form-hint" style="display:none; margin-top:0.35rem;"></p>
+            </div>
 
-              <!-- Post Goal -->
-              <div class="creator-section" style="margin-bottom:0.5rem;">
-                <div class="creator-mini-label">Post Goal</div>
-                <select id="goal-preset" class="cv-cfg-select" onchange="onGoalPresetChange(this.value)">
-                  <option value="spark-comments" selected>Spark Comments & Discussion</option>
-                  <option value="drive-visits">Drive Profile Visits</option>
-                  <option value="generate-leads">Generate Leads</option>
-                  <option value="build-authority">Build Thought Leadership</option>
-                  <option value="grow-network">Grow Network</option>
-                  <option value="educate">Educate Audience</option>
-                  <option value="brand-awareness">Brand Awareness</option>
-                  <option value="custom">Custom…</option>
-                </select>
-                <div id="goal-custom-wrap" style="display:none;margin-top:0.4rem;">
-                  <input id="post-goal" class="cv-cfg-select" placeholder="e.g. spark comments, drive profile visits" style="width:100%;" oninput="updateCfgRowPills()">
-                </div>
-              </div>
-
-              <!-- Content Focus -->
+            <!-- ── Content Focus (Advanced only) ── -->
+            <div class="cv-cfg-block cb-amber cv-sec-config-advanced" id="cfg-options" role="group" aria-labelledby="cfg-options-label">
+              <div class="cv-cb-title" id="cfg-options-label"><span class="cv-cb-dot dot-amber"></span> Content Focus <span class="cv-cb-count" id="cv-optCount">0 on</span></div>
               <div class="creator-section">
-                <div class="creator-mini-label">Content Focus</div>
+                <div class="creator-mini-label">Content Focus <span style="font-size:0.85em;color:#999;">(optional)</span></div>
                 <div class="checkbox-group" id="content-topics-group" style="grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.2rem;">
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-trends" value="trends"><label for="topic-trends">Trends</label></div>
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-tips" value="tips"><label for="topic-tips">Tips</label></div>
@@ -19126,6 +19253,7 @@
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-personal" value="personal"><label for="topic-personal">Personal</label></div>
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-product" value="product"><label for="topic-product">Product</label></div>
                 </div>
+                <p class="form-hint" style="margin-top:0.45rem;"><strong>What's this?</strong> Choose content angles to weave into your post (e.g. include case study evidence, recent trends). This is <u>different from Tone</u> — which controls how you <em>write</em>. Content Focus is <em>what</em> you write about.</p>
               </div>
             </div>
 
@@ -19188,7 +19316,7 @@
       </div>
       <div class="cv-gen-rhs">
         <div class="cv-tb-pill"><span class="cv-cred-dot"></span> 1 credit</div>
-        <button class="cv-btn-gen" onclick="generatePost()" type="button"><i class="fas fa-wand-magic-sparkles"></i> Generate Post</button>
+        <button class="cv-btn-gen" onclick="generatePost()" type="button" title="Shortcuts: ⌘/Ctrl + Enter Generate" aria-label="Generate (⌘/Ctrl + Enter)"><i class="fas fa-wand-magic-sparkles"></i> Generate Post</button>
       </div>
     </div>
 
@@ -19200,7 +19328,7 @@
       <div class="cv-float-status">
         <span class="cv-float-label"><span class="cv-fl-dot"></span> Ready</span>
       </div>
-      <button class="cv-btn-gen" onclick="generatePost()" type="button"><i class="fas fa-wand-magic-sparkles"></i> Generate</button>
+    <button class="cv-btn-gen" onclick="generatePost()" type="button" title="Shortcuts: ⌘/Ctrl + Enter Generate" aria-label="Generate (⌘/Ctrl + Enter)"><i class="fas fa-wand-magic-sparkles"></i> Generate</button>
     </div>
   </div>
 
@@ -19292,7 +19420,7 @@
     <div class="cv-pv-footer">
       <button class="cv-pv-btn" onclick="openScheduleModal()"><i class="fas fa-calendar"></i> Schedule</button>
       <button class="cv-pv-btn" onclick="regeneratePost()"><i class="fas fa-arrows-rotate"></i> Regenerate</button>
-      <button class="cv-pv-btn cv-pv-btn-primary" onclick="postNow()"><i class="fas fa-paper-plane"></i> Publish</button>
+    <button class="cv-pv-btn cv-pv-btn-primary" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Publish</button>
     </div>
   </div>
 
@@ -19399,13 +19527,13 @@
   <div class="creator-panel creator-col-what"></div>
   <div class="creator-panel creator-col-how"><div class="creator-col-body creator-left-shell"></div><div class="creator-generate-footer"></div></div>
   <div class="creator-bottom-bar">
-    <button class="btn btn-primary btn-generate" onclick="generatePost()">
+    <button class="btn btn-primary btn-generate" onclick="generatePost()" title="Shortcuts: ⌘/Ctrl + Enter Generate" aria-label="Generate (⌘/Ctrl + Enter)">
       <i class="fas fa-wand-magic-sparkles"></i> Generate LinkedIn Post
     </button>
     <div class="creator-bottom-actions">
       <button class="cba-btn" onclick="copyPost()" title="Copy post"><i class="far fa-copy"></i> Copy</button>
       <button class="cba-btn" onclick="regeneratePost()" title="Regenerate"><i class="fas fa-arrows-rotate"></i> Regen</button>
-      <button class="cba-btn" onclick="postNow()" title="Publish now"><i class="fas fa-paper-plane"></i> Publish</button>
+    <button class="cba-btn" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Publish</button>
     </div>
   </div>
 </div>
@@ -19685,6 +19813,10 @@
                             <i class="fas fa-folder-open"></i>
                             <h4>No files uploaded yet</h4>
                             <p>Upload your first document to start building your knowledge base.</p>
+                            <button class="btn btn-primary kb-empty-upload-btn" onclick="document.getElementById('kb-file')?.click()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M20 16.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5"></path></svg>
+                                <span>Upload Your First File</span>
+                            </button>
                         </div>
                     </div>
 
@@ -19746,7 +19878,7 @@
                     <div class="st2-hero-icon"><i class="fas fa-sliders"></i></div>
                     <div>
                         <div class="st2-hero-title">Settings</div>
-                        <div class="st2-hero-desc">Configure your AI provider, LinkedIn connection, schedule defaults, and account preferences.</div>
+                        <div class="st2-hero-desc">Configure your LinkedIn connection, post defaults, schedule, and account preferences.</div>
                     </div>
                 </div>
 
@@ -19754,9 +19886,8 @@
                     <aside class="settings-v2-nav">
                         <div class="settings-v2-nav-title">Settings</div>
                         <button class="settings-v2-nav-item active" onclick="showSettingsSection('ai', this)">
-                            <span class="settings-v2-nav-icon"><i class="fas fa-robot"></i></span>
-                            <span>AI Provider</span>
-                            <span id="settings-dot-ai" class="settings-v2-dot"></span>
+                            <span class="settings-v2-nav-icon"><i class="fas fa-sliders"></i></span>
+                            <span>Post Defaults</span>
                         </button>
                         <button class="settings-v2-nav-item" onclick="showSettingsSection('linkedin', this)">
                             <span class="settings-v2-nav-icon"><i class="fas fa-link"></i></span>
@@ -19792,54 +19923,8 @@
                     <div class="settings-v2-content">
                         <section id="settings-pane-ai" class="settings-v2-pane active">
                             <div class="settings-v2-header">
-                                <h2>🤖 AI Provider</h2>
-                                <p>Configure the AI model that powers your LinkedIn post generation.</p>
-                            </div>
-
-                            <div class="card settings-v2-card">
-                                <div class="settings-v2-card-head">
-                                    <div class="settings-v2-card-head-left">
-                                        <span class="settings-v2-card-icon"><i class="fas fa-robot"></i></span>
-                                        <div>
-                                            <div class="settings-v2-card-title">AI Configuration</div>
-                                            <div class="settings-v2-card-sub">Select your provider and connect your API key</div>
-                                        </div>
-                                    </div>
-                                    <span id="settings-ai-connection-badge" class="settings-v2-chip settings-v2-chip-success">Connected</span>
-                                </div>
-                                <div class="settings-v2-card-body">
-                                    <div id="settings-ai-connection-strip" class="settings-v2-strip settings-v2-strip-success">
-                                        <div>
-                                            <div id="settings-ai-connection-title" class="settings-v2-strip-title">AI provider connected</div>
-                                            <div id="settings-ai-connection-sub" class="settings-v2-strip-sub">Key detected and ready for generation</div>
-                                        </div>
-                                        <span id="settings-ai-connection-state" class="settings-v2-chip settings-v2-chip-success">Active</span>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>AI Provider</label>
-                                        <select id="ai-provider" onchange="updateAISettings()">
-                                            <option value="google">Google Gemini</option>
-                                            <option value="openai">OpenAI GPT-4</option>
-                                            <option value="anthropic">Claude (Anthropic)</option>
-                                        </select>
-                                        <p id="settings-provider-hint" class="form-hint">Recommended · Best quality-to-cost for content generation</p>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>API Key</label>
-                                        <div class="settings-v2-input-wrap">
-                                            <input type="password" id="api-key" placeholder="••••••••••••">
-                                            <button class="settings-v2-eye-btn" type="button" onclick="toggleInputVisibility('api-key', this)"><i class="fas fa-eye"></i></button>
-                                        </div>
-                                        <p class="form-hint" id="ai-key-status">No key connected for selected provider.</p>
-                                    </div>
-
-                                    <div class="settings-v2-actions">
-                                        <button class="btn btn-primary" onclick="saveAISettings()"><i class="fas fa-floppy-disk"></i> Update AI Settings</button>
-                                        <button class="btn btn-danger" onclick="clearAIProviderKey()"><i class="fas fa-link-slash"></i> Disconnect Key</button>
-                                    </div>
-                                </div>
+                                <h2>⚙️ Post Defaults</h2>
+                                <p>Customize default tone, length, and style applied to every new post.</p>
                             </div>
 
                             <div class="card settings-v2-card">
@@ -20416,7 +20501,7 @@
                     <div class="hlp-hero-icon"><i class="fas fa-book-open"></i></div>
                     <div>
                         <div class="hlp-hero-title">Help Center</div>
-                        <div class="hlp-hero-desc">Everything you need to get started — from API setup and knowledge base workflows to advanced features like Style Clone, Repurpose, and Best Time analytics.</div>
+                        <div class="hlp-hero-desc">Everything you need to get started — from platform-managed AI generation and knowledge base workflows to advanced features like Style Clone, Repurpose, and Best Time analytics.</div>
                     </div>
                 </div>
 
@@ -20430,8 +20515,8 @@
                     <div class="hlp-quickstart-grid">
                         <div class="hlp-qs-card">
                             <div class="hlp-qs-num"><i class="fas fa-key"></i></div>
-                            <div class="hlp-qs-title">Connect AI Provider</div>
-                            <div class="hlp-qs-desc">Go to Settings and paste your API key from Gemini, Anthropic, or OpenAI.</div>
+                            <div class="hlp-qs-title">AI Ready by Default</div>
+                            <div class="hlp-qs-desc">No API key setup required. The platform auto-routes across DeepSeek, OpenAI, Claude, and xAI.</div>
                         </div>
                         <div class="hlp-qs-card">
                             <div class="hlp-qs-num"><i class="fas fa-cloud-arrow-up"></i></div>
@@ -20444,25 +20529,33 @@
                             <div class="hlp-qs-desc">Set audience, tone, and goal — then generate, refine, and post to LinkedIn.</div>
                         </div>
                     </div>
+                    <div class="hlp-card" style="margin-top:0.9rem;">
+                        <div class="hlp-card-title"><i class="fas fa-rotate-right"></i> Need a guided walkthrough again?</div>
+                        <p style="margin:0 0 0.85rem; color:var(--text-secondary);">Reopen the first-time onboarding flow and follow the same guided path to generate your first post quickly.</p>
+                        <button class="btn btn-secondary" type="button" onclick="openFirstRunOnboarding()">
+                            <i class="fas fa-compass"></i> Replay Onboarding Guide
+                        </button>
+                    </div>
 
-                    <!-- AI API Keys & LinkedIn Setup -->
+                    <!-- AI Routing & LinkedIn Setup -->
                     <div class="hlp-section-title">
                         <div class="hlp-section-icon hlp-section-icon--violet"><i class="fas fa-key"></i></div>
                         Setup & Credentials
                     </div>
                     <div class="help-grid">
                         <div class="help-card">
-                            <h3><i class="fas fa-wand-magic-sparkles"></i> Get AI API Keys</h3>
-                            <p>Use your own key for the model provider selected in Settings &rarr; AI Provider.</p>
+                            <h3><i class="fas fa-wand-magic-sparkles"></i> AI Routing (Managed)</h3>
+                            <p>LLM providers and API keys are managed by the platform for reliability, cost control, and automatic fallback.</p>
                             <ul class="help-list">
-                                <li><strong>Gemini:</strong> Open Google AI Studio, create/select a project, then generate an API key from the API Keys section.</li>
-                                <li><strong>Anthropic:</strong> Open Anthropic Console, create a key under API Keys, copy it once, and store it securely.</li>
-                                <li><strong>OpenAI:</strong> Open OpenAI dashboard, create a new secret key in API Keys, then paste into this app.</li>
+                                <li><strong>Primary:</strong> DeepSeek handles default generation for best cost-performance.</li>
+                                <li><strong>Fallback 1:</strong> OpenAI handles overflow and provider-side throttling events.</li>
+                                <li><strong>Fallback 2:</strong> Claude is used as premium quality backstop.</li>
+                                <li><strong>Fallback 3:</strong> xAI is available as final fallback.</li>
                             </ul>
                             <div class="help-pill-list">
-                                <span class="help-pill"><i class="fas fa-paste"></i> Paste key in Settings</span>
-                                <span class="help-pill"><i class="fas fa-check"></i> Click Update AI Settings</span>
-                                <span class="help-pill"><i class="fas fa-layer-group"></i> One provider at a time</span>
+                                <span class="help-pill"><i class="fas fa-lock"></i> BYOK disabled</span>
+                                <span class="help-pill"><i class="fas fa-shield"></i> Server-managed keys</span>
+                                <span class="help-pill"><i class="fas fa-layer-group"></i> Automatic fallback routing</span>
                             </div>
                         </div>
 
@@ -20613,10 +20706,10 @@
                         </details>
 
                         <details class="help-faq">
-                            <summary>How do I verify API key and LinkedIn setup?</summary>
+                            <summary>How do I verify AI and LinkedIn setup?</summary>
                             <div class="help-faq-body">
-                                <p>In Settings, save your AI key and LinkedIn credentials, then generate a sample post and use Post Now or Schedule.</p>
-                                <p>If anything fails, re-check key validity, token expiry, and person URN format.</p>
+                                <p>AI routing is managed automatically by the platform. In Settings, only confirm LinkedIn credentials and then generate a sample post.</p>
+                                <p>If anything fails, re-check token expiry, person URN format, and network connectivity.</p>
                             </div>
                         </details>
 
@@ -21353,6 +21446,7 @@
             customWrap.style.display = showCustom ? showMode : 'none';
         }
         updateCreatorCustomFeedback('role');
+        updateRoleGoalHint();
     }
 
     function getIndustryValue() {
@@ -21718,11 +21812,14 @@
             industry: getIndustryValue(),
             role: getRoleValue(),
             tone: document.getElementById('post-tone')?.value || 'professional',
+            styleCloneMode: document.getElementById('style-clone-mode')?.value || 'hybrid',
             hashtags: document.getElementById('hashtag-count')?.value || '3',
             emoji: document.getElementById('emoji-level')?.value || 'moderate',
             targetAudience: document.getElementById('target-audience')?.value || '',
+            goalPreset: document.getElementById('goal-preset')?.value || '',
             postGoal: document.getElementById('post-goal')?.value || '',
             postText: getEditablePostText(),
+            strictGrounding: document.getElementById('strict-grounding-toggle')?.checked || false,
             timestamp: Date.now()
         };
     }
@@ -21751,13 +21848,31 @@
 
         if (topic && !topic.value) topic.value = state.topic || '';
         if (targetAudience && !targetAudience.value) targetAudience.value = state.targetAudience || '';
-        if (postGoal && !postGoal.value) postGoal.value = state.postGoal || '';
         if (hashtag && state.hashtags) hashtag.value = String(state.hashtags);
         if (state.tone) setSelectValue('post-tone', state.tone);
+        if (state.styleCloneMode) setSelectValue('style-clone-mode', state.styleCloneMode);
         if (state.emoji) setSelectValue('emoji-level', state.emoji);
+
+        // Restore goal preset first, then custom value
+        if (state.goalPreset) {
+            setSelectValue('goal-preset', state.goalPreset);
+            onGoalPresetChange(state.goalPreset);
+        }
+        if (state.goalPreset === 'custom' && postGoal && state.postGoal) {
+            postGoal.value = state.postGoal;
+        } else if (postGoal && !postGoal.value && state.postGoal) {
+            postGoal.value = state.postGoal;
+        }
 
         if (state.industry) creatorSelectIndustry(state.industry);
         if (state.role) creatorSelectRole(state.role);
+
+        // Restore strict grounding toggle
+        const sgToggle = document.getElementById('strict-grounding-toggle');
+        if (sgToggle && state.strictGrounding) {
+            sgToggle.checked = true;
+            _syncStrictGroundingVisual();
+        }
 
         if (state.postText) {
             setEditablePostText(state.postText);
@@ -21924,6 +22039,11 @@
         linkedinConnected: false,
         kbReady: false
     };
+    let hasAttemptedFirstTimeOnboarding = false;
+    let postHistoryLoaded = false;
+    let userProfileLoaded = false;
+    let ftuWizardStep = 1;
+    let ftuStepAdvanceTimer = null;
     const KB_DEFAULT_TEMPLATE_ID = 'ws_all_files';
     const KB_CREATE_TEMPLATE_VALUE = '__create_new_template__';
     let authRefreshPromise = null;
@@ -21935,6 +22055,8 @@
     let kbTemplateModalMode = 'create';
     let kbTemplateModalWorkspaceId = null;
     let generationPresetsCache = [];
+    let personaProfilesCache = [];
+    let activePersonaId = '';
     let latestAnalyticsSnapshot = null;
     let latestBillingSnapshot = null;
     let latestBillingPlans = [];
@@ -21961,7 +22083,7 @@
 
     function getAuthHeaders() {
         const headers = { 'Content-Type': 'application/json' };
-        const token = localStorage.getItem('access_token');
+        const token = _tokenStore.getItem('access_token');
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
@@ -21973,7 +22095,7 @@
             return authRefreshPromise;
         }
 
-        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshToken = _tokenStore.getItem('refresh_token');
         if (!refreshToken) {
             return false;
         }
@@ -21990,9 +22112,9 @@
                     return false;
                 }
 
-                localStorage.setItem('access_token', data.access_token);
+                _tokenStore.setItem('access_token', data.access_token);
                 if (data.refresh_token) {
-                    localStorage.setItem('refresh_token', data.refresh_token);
+                    _tokenStore.setItem('refresh_token', data.refresh_token);
                 }
                 return true;
             } catch {
@@ -22006,7 +22128,7 @@
     }
 
     async function verifyCurrentAccessToken() {
-        const token = localStorage.getItem('access_token');
+        const token = _tokenStore.getItem('access_token');
         if (!token) {
             return false;
         }
@@ -22031,8 +22153,8 @@
         authExpiryHandled = true;
         showToast('warning', 'Your session expired. Please sign in again.', 'fas fa-user-clock');
         setTimeout(() => {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
+            _tokenStore.removeItem('access_token');
+            _tokenStore.removeItem('refresh_token');
             localStorage.removeItem('user_id');
             localStorage.removeItem('user_email');
             localStorage.removeItem('first_name');
@@ -22051,7 +22173,7 @@
         const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
         const buildAuthHeaders = () => {
             const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
-            const latestToken = localStorage.getItem('access_token');
+            const latestToken = _tokenStore.getItem('access_token');
             if (latestToken) {
                 headers['Authorization'] = `Bearer ${latestToken}`;
             }
@@ -22105,14 +22227,7 @@
     }
 
     function hasConnectedAIKey(config) {
-        const provider = (config.AI_PROVIDER || 'google').toLowerCase();
-        const field = provider === 'openai'
-            ? 'OPENAI_API_KEY'
-            : provider === 'anthropic' || provider === 'claude'
-                ? 'ANTHROPIC_API_KEY'
-                : 'GOOGLE_API_KEY';
-        const value = (config[field] || '').trim();
-        return value.length > 0;
+        return true;
     }
 
     function getConnectionOverrideKey(type) {
@@ -22132,11 +22247,7 @@
     }
 
     function isAiConnectedForUi(config = runtimeConfig) {
-        const override = getConnectionOverride('ai');
-        if (override !== null) {
-            return override;
-        }
-        return false;
+        return true;
     }
 
     function isLinkedInConnectedForUi(config = runtimeConfig) {
@@ -22158,7 +22269,7 @@
         const steps = [
             {
                 done: !!onboardingState.apiConnected,
-                text: 'Connect an AI provider key in Settings',
+                text: 'Platform AI routing is enabled',
                 actionLabel: onboardingState.apiConnected ? 'Configured' : 'Open Settings',
                 action: "switchTab('settings')"
             },
@@ -22227,6 +22338,232 @@
         renderOnboardingChecklist();
     }
 
+    function getFirstRunOnboardingKey() {
+        const identity = (
+            localStorage.getItem('user_id')
+            || localStorage.getItem('user_email')
+            || ''
+        ).trim();
+        if (!identity) {
+            return '';
+        }
+        return `ftu_onboarding_seen_${identity}`;
+    }
+
+    function reconcileFirstRunOnboardingIdentity(userId, userEmail) {
+        const normalizedUserId = String(userId || '').trim();
+        const normalizedEmail = String(userEmail || '').trim().toLowerCase();
+
+        if (!normalizedUserId || !normalizedEmail) {
+            return;
+        }
+
+        const emailIdentityMapKey = `ftu_identity_user_for_email_${normalizedEmail}`;
+        const previousUserIdForEmail = String(localStorage.getItem(emailIdentityMapKey) || '').trim();
+
+        // If the same email now points to a different auth user, treat it as a fresh account.
+        // This happens after admin deletion + re-signup with the same email.
+        if (previousUserIdForEmail && previousUserIdForEmail !== normalizedUserId) {
+            localStorage.removeItem(`ftu_onboarding_seen_${normalizedEmail}`);
+        }
+
+        localStorage.setItem(emailIdentityMapKey, normalizedUserId);
+    }
+
+    function hasSeenFirstRunOnboarding() {
+        const key = getFirstRunOnboardingKey();
+        if (!key) {
+            return false;  // identity not yet loaded — treat as not seen, not as already seen
+        }
+        return localStorage.getItem(key) === '1';
+    }
+
+    function markFirstRunOnboardingSeen() {
+        const key = getFirstRunOnboardingKey();
+        if (!key) {
+            return;
+        }
+        localStorage.setItem(key, '1');
+    }
+
+    function showFirstRunOnboardingFeedback(message = '', type = 'info') {
+        const feedback = document.getElementById('ftu-feedback');
+        if (!feedback) {
+            return;
+        }
+        feedback.textContent = String(message || '').trim();
+        feedback.classList.remove('is-success', 'is-info');
+        feedback.classList.add(type === 'success' ? 'is-success' : 'is-info');
+        feedback.classList.toggle('is-visible', Boolean(message));
+    }
+
+    function clearFirstRunOnboardingTransition() {
+        if (ftuStepAdvanceTimer) {
+            clearTimeout(ftuStepAdvanceTimer);
+            ftuStepAdvanceTimer = null;
+        }
+    }
+
+    function handleFirstRunOnboardingNext() {
+        const current = Number(ftuWizardStep || 1);
+        if (current >= 3) {
+            startOnboardingPostFlow(true);
+            return;
+        }
+
+        if (current === 1) {
+            showFirstRunOnboardingFeedback('Great — setup is ready. Next, choose how to create your first draft.', 'success');
+            setFirstRunOnboardingStep(2);
+            return;
+        }
+
+        showFirstRunOnboardingFeedback('Perfect — moving to launch step…', 'success');
+        const nextBtn = document.getElementById('ftu-next-btn');
+        const backBtn = document.getElementById('ftu-back-btn');
+        if (nextBtn) nextBtn.disabled = true;
+        if (backBtn) backBtn.disabled = true;
+
+        clearFirstRunOnboardingTransition();
+        ftuStepAdvanceTimer = setTimeout(() => {
+            setFirstRunOnboardingStep(3);
+            showFirstRunOnboardingFeedback('You’re all set — click Generate to complete onboarding.', 'info');
+            if (nextBtn) nextBtn.disabled = false;
+            if (backBtn) backBtn.disabled = false;
+            ftuStepAdvanceTimer = null;
+        }, 520);
+    }
+
+    function setFirstRunOnboardingStep(step) {
+        const normalized = Math.min(3, Math.max(1, Number(step) || 1));
+        ftuWizardStep = normalized;
+
+        document.querySelectorAll('.ftu-panel').forEach(panel => {
+            const panelStep = Number(panel.dataset.step || '1');
+            panel.classList.toggle('is-active', panelStep === normalized);
+        });
+
+        document.querySelectorAll('.ftu-progress-step').forEach(stepEl => {
+            const stepNumber = Number(stepEl.dataset.step || '1');
+            stepEl.classList.toggle('is-active', stepNumber === normalized);
+            stepEl.classList.toggle('is-done', stepNumber < normalized);
+        });
+
+        const backBtn = document.getElementById('ftu-back-btn');
+        const nextBtn = document.getElementById('ftu-next-btn');
+        const editorBtn = document.getElementById('ftu-editor-action');
+
+        if (backBtn) {
+            backBtn.style.visibility = normalized === 1 ? 'hidden' : 'visible';
+            backBtn.disabled = false;
+            backBtn.onclick = () => setFirstRunOnboardingStep(normalized - 1);
+        }
+
+        if (editorBtn) {
+            editorBtn.style.display = normalized === 3 ? '' : 'none';
+        }
+
+        if (nextBtn) {
+            if (normalized < 3) {
+                nextBtn.innerHTML = '<i class="fas fa-arrow-right"></i> Next';
+                nextBtn.disabled = false;
+                nextBtn.onclick = () => handleFirstRunOnboardingNext();
+            } else {
+                nextBtn.innerHTML = '<i class="fas fa-bolt"></i> Generate My First Post';
+                nextBtn.disabled = false;
+                nextBtn.onclick = () => startOnboardingPostFlow(true);
+            }
+        }
+
+        if (normalized === 1) {
+            showFirstRunOnboardingFeedback('Step 1 of 3 — quick setup check.', 'info');
+        }
+    }
+
+    function openFirstRunOnboarding() {
+        const overlay = document.getElementById('ftu-onboarding-overlay');
+        if (!overlay) {
+            return;
+        }
+        const firstName = (localStorage.getItem('first_name') || '').trim();
+        const title = document.getElementById('ftu-title');
+        if (title) {
+            title.textContent = firstName
+                ? `Welcome ${firstName} — let's create your first post`
+                : "Welcome — let's create your first post";
+        }
+        clearFirstRunOnboardingTransition();
+        setFirstRunOnboardingStep(1);
+        overlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        const primaryBtn = document.getElementById('ftu-next-btn');
+        if (primaryBtn) {
+            setTimeout(() => primaryBtn.focus(), 40);
+        }
+    }
+
+    function closeFirstRunOnboarding(markSeen = true) {
+        const overlay = document.getElementById('ftu-onboarding-overlay');
+        if (!overlay) {
+            return;
+        }
+        clearFirstRunOnboardingTransition();
+        overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+        showFirstRunOnboardingFeedback('', 'info');
+        if (markSeen) {
+            markFirstRunOnboardingSeen();
+        }
+    }
+
+    function maybeShowFirstRunOnboarding() {
+        if (hasAttemptedFirstTimeOnboarding) {
+            return;
+        }
+        if (!postHistoryLoaded || !userProfileLoaded) {
+            // wait until both post history AND user profile are loaded before deciding
+            return;
+        }
+        const hasPreviousPosts = Array.isArray(postHistoryCache) && postHistoryCache.length > 0;
+        if (hasPreviousPosts || hasSeenFirstRunOnboarding()) {
+            hasAttemptedFirstTimeOnboarding = true;
+            return;
+        }
+        hasAttemptedFirstTimeOnboarding = true;
+        openFirstRunOnboarding();
+    }
+
+    function startOnboardingPostFlow(autoGenerate = false) {
+        closeFirstRunOnboarding(true);
+        switchTab('content-creator');
+        setTimeout(() => {
+            const goalPreset = document.getElementById('goal-preset');
+            if (goalPreset && !goalPreset.value) {
+                goalPreset.value = 'spark-comments';
+                if (typeof onGoalPresetChange === 'function') {
+                    onGoalPresetChange('spark-comments');
+                }
+            }
+
+            const topicInput = document.getElementById('topic-input');
+            if (topicInput && !String(topicInput.value || '').trim()) {
+                topicInput.value = '3 practical lessons from building AI workflows that save time without sacrificing quality';
+                if (typeof updateTopicCounter === 'function') {
+                    updateTopicCounter();
+                }
+            }
+
+            if (topicInput) {
+                topicInput.focus();
+            }
+            if (typeof saveCreatorDraftState === 'function') {
+                saveCreatorDraftState();
+            }
+            if (autoGenerate && typeof generatePost === 'function') {
+                generatePost();
+            }
+        }, 260);
+    }
+
     function renderDashboardQuickTip() {
         const tipEl = document.getElementById('dashboard-quick-tip-text');
         if (!tipEl || !DASHBOARD_QUICK_TIPS.length) {
@@ -22278,6 +22615,21 @@
         pill.textContent = formatted;
     }
 
+    function _renderGroundingBadge(ctx) {
+        const g = ctx.grounding;
+        if (!g || !g.level) return '';
+        const badgeMap = {
+            grounded:    { icon: 'fas fa-shield-check',        color: '#16a34a', bg: '#dcfce7', label: 'KB-Grounded',        desc: 'All claims backed by your knowledge base.' },
+            partial:     { icon: 'fas fa-shield-halved',       color: '#d97706', bg: '#fef3c7', label: 'Partially Grounded', desc: 'Some claims KB-backed; others insight-only.' },
+            ungrounded:  { icon: 'fas fa-lightbulb',           color: '#dc2626', bg: '#fee2e2', label: 'Insight Mode',       desc: 'No KB match. Opinion & insight-based only.' },
+        };
+        const b = badgeMap[g.level] || badgeMap.ungrounded;
+        const verifyNote = g.claim_verification?.auto_rewrite_applied
+            ? '<span style="font-size:0.72rem;opacity:0.85;margin-left:6px;">(auto-verified & corrected)</span>'
+            : '';
+        return `<span class="insight-chip grounding-badge" style="animation:insightsFadeIn 0.3s ease 0.01s both;background:${b.bg};color:${b.color};border:1px solid ${b.color}30;font-weight:600;" title="${escapeHtml(b.desc)}"><i class="${b.icon}" style="margin-right:4px;"></i>${escapeHtml(b.label)}${verifyNote}</span>`;
+    }
+
     function renderGenerationInsights(context) {
         const panel = document.getElementById('generation-insights');
         if (!panel) {
@@ -22313,6 +22665,8 @@
             ${noMatchWarning}
             <div class="insight-title" style="animation:insightsFadeIn 0.3s ease both;"><i class="fas fa-circle-info"></i> Why this post was generated this way</div>
             <div class="insight-chips">
+                ${_renderGroundingBadge(ctx)}
+                ${ctx.strict_grounding ? '<span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.02s both;background:#fef2f2;color:#dc2626;border:1px solid #dc262630;font-weight:600;"><i class="fas fa-shield-halved" style="margin-right:4px;"></i>Strict Mode ON</span>' : ''}
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.05s both;"><strong>Industry:</strong> ${escapeHtml(ctx.industry || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.1s both;"><strong>Role:</strong> ${escapeHtml(ctx.role || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.15s both;"><strong>Tone:</strong> ${escapeHtml(ctx.tone || 'Professional')}</span>
@@ -22321,8 +22675,80 @@
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.3s both;"><strong>Template:</strong> ${escapeHtml(templateName)}</span>
                 <span class="insight-chip ${(ctx.kb_no_match && ctx.kb_mode !== 'no_kb') ? 'insight-chip--warn' : ''}" style="animation:insightsFadeIn 0.3s ease 0.35s both;"><strong>Knowledge Source:</strong> ${escapeHtml(kbDetails)}</span>
             </div>
+            ${_renderSentenceGrounding(ctx)}
+            ${_renderSourceTraceability(ctx)}
+            ${_renderGapAnalysis(ctx)}
         `;
         panel.style.display = 'block';
+    }
+
+    /* ── Sentence-level grounding indicators (author-side only) ── */
+    function _renderSentenceGrounding(ctx) {
+        const g = ctx.grounding;
+        if (!g || !g.sentence_scores || !g.sentence_scores.length) return '';
+        const levelColors = { grounded: '#16a34a', partial: '#d97706', ungrounded: '#dc2626' };
+        const levelIcons = { grounded: 'fa-circle-check', partial: 'fa-circle-half-stroke', ungrounded: 'fa-circle-xmark' };
+        const levelLabels = { grounded: 'Grounded', partial: 'Partial', ungrounded: 'Ungrounded' };
+        const rows = g.sentence_scores.slice(0, 10).map((s, i) => {
+            const c = levelColors[s.level] || '#94a3b8';
+            const icon = levelIcons[s.level] || 'fa-circle-question';
+            const lbl = levelLabels[s.level] || s.level;
+            const pct = Math.round((s.score || 0) * 100);
+            return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-color, #f1f5f9);">
+                <i class="fas ${icon}" style="color:${c};margin-top:2px;flex-shrink:0;" title="${lbl} (${pct}%)"></i>
+                <span style="font-size:0.78rem;color:var(--text-primary, #334155);line-height:1.4;">${escapeHtml(s.sentence)}</span>
+                <span style="font-size:0.68rem;color:${c};white-space:nowrap;margin-left:auto;flex-shrink:0;font-weight:600;">${pct}%</span>
+            </div>`;
+        }).join('');
+        return `<details style="margin-top:10px;animation:insightsFadeIn 0.3s ease 0.4s both;">
+            <summary style="cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--text-primary, #1e293b);"><i class="fas fa-magnifying-glass-chart" style="margin-right:5px;color:#6366f1;"></i>Sentence Grounding Analysis</summary>
+            <div style="margin-top:6px;padding:8px 10px;background:var(--bg-secondary, #f8f9fa);border-radius:8px;">${rows}</div>
+        </details>`;
+    }
+
+    /* ── Source traceability panel (author-side only — NOT for LinkedIn readers) ── */
+    function _renderSourceTraceability(ctx) {
+        const g = ctx.grounding;
+        if (!g || !g.source_traceability || !g.source_traceability.length) return '';
+        const rows = g.source_traceability.map((src, i) => {
+            const simPct = Math.round((src.similarity || 0) * 100);
+            const qualPct = Math.round((src.chunk_quality || 0.5) * 100);
+            const simColor = simPct >= 75 ? '#16a34a' : simPct >= 60 ? '#d97706' : '#dc2626';
+            return `<div style="padding:8px;background:var(--bg-primary, #fff);border-radius:6px;border:1px solid var(--border-color, #e2e8f0);margin-bottom:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-weight:600;font-size:0.78rem;color:var(--text-primary);"><i class="fas fa-file-lines" style="margin-right:4px;color:#6366f1;"></i>${escapeHtml(src.file)}</span>
+                    <span style="font-size:0.7rem;color:${simColor};font-weight:600;">Match: ${simPct}%</span>
+                </div>
+                <div style="font-size:0.74rem;color:var(--text-secondary, #64748b);line-height:1.35;max-height:60px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(src.chunk_preview)}</div>
+                <div style="display:flex;gap:12px;margin-top:4px;font-size:0.68rem;color:var(--text-tertiary, #94a3b8);">
+                    <span>Chunk Quality: ${qualPct}%</span>
+                </div>
+            </div>`;
+        }).join('');
+        return `<details style="margin-top:8px;animation:insightsFadeIn 0.3s ease 0.5s both;">
+            <summary style="cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--text-primary, #1e293b);"><i class="fas fa-sitemap" style="margin-right:5px;color:#0ea5e9;"></i>Sources Used (${g.source_traceability.length})</summary>
+            <div style="margin-top:6px;">${rows}</div>
+        </details>`;
+    }
+
+    /* ── KB Gap Analysis panel ── */
+    function _renderGapAnalysis(ctx) {
+        const gap = ctx.gap_analysis;
+        if (!gap || gap.coverage_pct >= 80) return '';
+        if (!gap.upload_suggestions || !gap.upload_suggestions.length) return '';
+        const coverageColor = gap.coverage_pct >= 50 ? '#d97706' : '#dc2626';
+        const gapKeywords = (gap.gaps || []).slice(0, 5);
+        return `<details style="margin-top:8px;animation:insightsFadeIn 0.3s ease 0.6s both;">
+            <summary style="cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--text-primary, #1e293b);">
+                <i class="fas fa-chart-pie" style="margin-right:5px;color:${coverageColor};"></i>KB Coverage: ${gap.coverage_pct}% — Suggestions to Improve
+            </summary>
+            <div style="margin-top:6px;padding:10px 12px;background:var(--bg-secondary, #f8f9fa);border-radius:8px;">
+                <ul style="margin:0;padding:0 0 0 16px;font-size:0.78rem;color:var(--text-secondary, #475569);line-height:1.5;">
+                    ${gap.upload_suggestions.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}
+                </ul>
+                ${gapKeywords.length ? '<div style="margin-top:6px;font-size:0.72rem;color:var(--text-tertiary, #94a3b8);">Missing keywords: ' + gapKeywords.map(g => '<code style="padding:1px 5px;background:var(--bg-tertiary, #e2e8f0);border-radius:3px;font-size:0.7rem;">' + escapeHtml(g) + '</code>').join(' ') + '</div>' : ''}
+            </div>
+        </details>`;
     }
 
     function buildPrePublishValidation(content, hashtags) {
@@ -22474,7 +22900,7 @@
             <div class="cvv-metric-list">${metricRows}</div>
             <div class="cvv-publish-bar" style="animation:insightsFadeIn 0.4s ease 0.5s both;">
                 <div class="cvv-publish-row">
-                    <button class="cvv-pub-btn cvv-pub-btn--post" type="button" onclick="postNow()"><i class="fas fa-paper-plane"></i> Post Now</button>
+                    <button class="cvv-pub-btn cvv-pub-btn--post" type="button" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Post Now</button>
                     <button class="cvv-pub-btn cvv-pub-btn--regen" type="button" onclick="regeneratePost()"><i class="fas fa-arrows-rotate"></i> Regenerate</button>
                 </div>
                 <button class="cvv-pub-btn cvv-pub-btn--schedule" type="button" onclick="openScheduleModal()"><i class="fas fa-calendar"></i> Schedule Now</button>
@@ -22533,14 +22959,9 @@
             const configRes = await authFetch('/api/config', { headers: getAuthHeaders() });
             const configData = await parseJsonResponse(configRes);
             runtimeConfig = configData || {};
-
-            if (!isAiConnectedForUi(runtimeConfig)) {
-                showToast('warning', 'Please conntect Your API keys to start generating the posts', 'fas fa-key');
-                switchTab('settings');
-                return false;
-            }
+            updateOnboardingState({ apiConnected: true });
         } catch (error) {
-            showToast('error', 'Unable to validate API key settings', 'fas fa-exclamation-circle');
+            showToast('error', 'Unable to validate platform settings', 'fas fa-exclamation-circle');
             return false;
         }
 
@@ -22773,11 +23194,21 @@
         }
     }
 
+    function _syncStrictGroundingVisual() {
+        const cb = document.getElementById('strict-grounding-toggle');
+        const track = document.getElementById('strict-grounding-track');
+        const thumb = document.getElementById('strict-grounding-thumb');
+        if (!cb || !track || !thumb) return;
+        track.style.background = cb.checked ? '#dc2626' : '#cbd5e1';
+        thumb.style.transform = cb.checked ? 'translateX(16px)' : 'translateX(0)';
+    }
+
     function toggleKbSourceMode() {
         const mode = document.getElementById('kb-mode')?.value || 'use_kb';
         const wsGroup = document.getElementById('kb-workspace-group');
         const fileGroup = document.getElementById('kb-specific-files-group');
         const advancedDetails = document.getElementById('kb-advanced-details');
+        const strictRow = document.getElementById('strict-grounding-row');
         const showAdvanced = false;
 
         if (wsGroup) wsGroup.style.display = showAdvanced ? 'block' : 'none';
@@ -22790,6 +23221,11 @@
             } else {
                 advancedDetails.open = false;
             }
+        }
+
+        // Hide strict grounding toggle when KB is disabled — it only makes sense with KB
+        if (strictRow) {
+            strictRow.style.display = mode === 'no_kb' ? 'none' : 'flex';
         }
 
         updateKbModeGuidance();
@@ -23689,7 +24125,8 @@
             business_goal: (document.getElementById('post-goal')?.value || '').trim(),
             post_goal: (document.getElementById('post-goal')?.value || '').trim(),
             target_audience: (document.getElementById('target-audience')?.value || '').trim(),
-            tone: document.getElementById('post-tone')?.value || 'professional'
+            tone: document.getElementById('post-tone')?.value || 'professional',
+            style_clone_mode: document.getElementById('style-clone-mode')?.value || 'hybrid'
         };
     }
 
@@ -23701,6 +24138,7 @@
         setSelectValue('word-count-mode', settings.word_count_mode || 'custom_range');
         setSelectValue('kb-mode', settings.kb_mode || 'use_kb');
         setSelectValue('post-tone', settings.tone || settings.post_tone || 'professional');
+        setSelectValue('style-clone-mode', settings.style_clone_mode || settings.styleCloneMode || 'hybrid');
 
         const targetAudienceInput = document.getElementById('target-audience');
         if (targetAudienceInput) {
@@ -24027,7 +24465,7 @@
             });
         }
 
-        const configInputs = ['industry-select', 'role-select', 'post-tone', 'cv-length-select', 'audience-preset', 'goal-preset'];
+        const configInputs = ['industry-select', 'role-select', 'post-tone', 'style-clone-mode', 'cv-length-select', 'audience-preset', 'goal-preset'];
         configInputs.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -24079,7 +24517,7 @@
         initStickyTopicObserver();
         initCvRippleEffect();
         initCreatorKeyboardShortcuts();
-        toggleConfigAdvanced(true);
+        setConfigUxMode('quick');
         renderCreatorStyleSuggestion();
         updateQuickQualityMeter();
         // Populate mockup with user info if available
@@ -24287,13 +24725,112 @@
         saveCreatorDraftState();
     }
 
+    function applyPersonaPreset(preset, triggerBtn = null) {
+        const staticPersonaMap = {
+            'founder-web3': { 
+                industry: 'web3', role: 'ceo', tone: 'authoritative',
+                audiencePreset: 'c-suite', goalPreset: 'build-authority',
+                hashtags: '2', emoji: 'minimal', topics: ['trends', 'personal']
+            },
+            'marketer-genai': { 
+                industry: 'genai', role: 'marketing', tone: 'conversational',
+                audiencePreset: 'marketing', goalPreset: 'spark-comments',
+                hashtags: '4', emoji: 'moderate', topics: ['trends', 'tips']
+            },
+            'bde-virtual-assistant': { 
+                industry: 'virtual_assistant', role: 'bde', tone: 'professional',
+                audiencePreset: 'startup-founders', goalPreset: 'generate-leads',
+                hashtags: '3', emoji: 'minimal', topics: ['case_study', 'product']
+            },
+            'ops-supply-chain': { 
+                industry: 'supply_chain', role: 'ops', tone: 'professional',
+                audiencePreset: 'c-suite', goalPreset: 'educate',
+                hashtags: '3', emoji: 'minimal', topics: ['tips', 'case_study']
+            },
+            'sales-ecommerce': { 
+                industry: 'ecommerce', role: 'sales', tone: 'conversational',
+                audiencePreset: 'general', goalPreset: 'drive-visits',
+                hashtags: '3', emoji: 'moderate', topics: ['questions', 'product']
+            }
+        };
+        const serverPersona = (personaProfilesCache || []).find(item => String(item.id) === String(preset));
+        const serverSettings = serverPersona && serverPersona.settings ? {
+            industry: serverPersona.settings.industry,
+            role: serverPersona.settings.role,
+            tone: serverPersona.settings.tone,
+            audiencePreset: serverPersona.settings.audience_preset,
+            goalPreset: serverPersona.settings.goal_preset,
+            hashtags: String(serverPersona.settings.hashtags ?? '3'),
+            emoji: serverPersona.settings.emojis,
+            topics: Array.isArray(serverPersona.settings.topics) ? serverPersona.settings.topics : [],
+            styleCloneMode: serverPersona.settings.style_clone_mode || 'hybrid'
+        } : null;
+
+        const profile = serverSettings || staticPersonaMap[preset];
+        if (!profile) return;
+
+        setSelectValue('industry-select', profile.industry);
+        setSelectValue('role-select', profile.role);
+        setSelectValue('post-tone', profile.tone);
+        if (profile.styleCloneMode) setSelectValue('style-clone-mode', profile.styleCloneMode);
+        setSelectValue('audience-preset', profile.audiencePreset);
+        setSelectValue('goal-preset', profile.goalPreset);
+        setSelectValue('hashtag-count', profile.hashtags);
+        setSelectValue('emoji-level', profile.emoji);
+        setSelectedContentTopics(profile.topics || []);
+
+        onIndustryChange();
+        onRoleChange();
+        onAudiencePresetChange(profile.audiencePreset);
+        onGoalPresetChange(profile.goalPreset);
+        updateHashtagPreview();
+        updateContentHints();
+        updateCfgRowPills();
+        syncCreatorReplicaControls();
+
+        activePersonaId = serverPersona ? String(serverPersona.id) : '';
+        const personaSelect = document.getElementById('cv-persona-select');
+        if (personaSelect) personaSelect.value = activePersonaId || '';
+        updateActivePersonaBadge();
+        document.querySelectorAll('#cv-persona-presets .cv-preset-chip').forEach(btn => {
+            btn.classList.toggle('active', triggerBtn ? btn === triggerBtn : btn.dataset.persona === preset);
+        });
+
+        cvConfigInteracted = true;
+        cvControlsInteracted = true;
+        updateProgressBar('how');
+        saveCreatorDraftState();
+        showToast('success', 'Persona preset applied', 'fas fa-check');
+    }
+
+    function setConfigUxMode(mode, triggerBtn = null) {
+        const nextMode = mode === 'advanced' ? 'advanced' : 'quick';
+        toggleConfigAdvanced(nextMode === 'quick');
+        document.querySelectorAll('#cv-config-mode-switch .cv-preset-chip').forEach(btn => {
+            const isActive = triggerBtn ? btn === triggerBtn : btn.dataset.mode === nextMode;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', String(isActive));
+        });
+        // Update description text
+        const desc = document.getElementById('cv-config-mode-desc');
+        if (desc) {
+            desc.textContent = nextMode === 'quick'
+                ? 'Essentials only \u2014 Industry, Role, Tone, Length & Goal'
+                : 'All options \u2014 Style Clone, Content Focus, Hashtags & Emoji';
+        }
+    }
+
     function toggleConfigAdvanced(force = null) {
         const sec = document.getElementById('cv-sec-config');
-        const btn = document.getElementById('cv-advanced-toggle');
-        if (!sec || !btn) return;
+        if (!sec) return;
         const shouldCollapse = force === null ? !sec.classList.contains('cv-advanced-collapsed') : Boolean(force);
         sec.classList.toggle('cv-advanced-collapsed', shouldCollapse);
-        btn.textContent = shouldCollapse ? 'Show advanced' : 'Hide advanced';
+        const mode = shouldCollapse ? 'quick' : 'advanced';
+        document.querySelectorAll('#cv-config-mode-switch .cv-preset-chip').forEach(chip => {
+            const isActive = chip.dataset.mode === mode;
+            chip.classList.toggle('active', isActive);
+            chip.setAttribute('aria-selected', String(isActive));
+        });
     }
 
     function setQualityMetric(idBase, value) {
@@ -24564,22 +25101,31 @@
             return;
         }
 
-        const topic = document.getElementById('topic-input').value;
+        // Validate goal selection is mandatory
+        const goalPresetValue = document.getElementById('goal-preset')?.value;
+        if (!goalPresetValue) {
+            showToast('error', 'Please select a Post Goal before generating', 'fas fa-exclamation-circle');
+            document.getElementById('goal-preset')?.focus();
+            return;
+        }
+
+        const topic = document.getElementById('topic-input')?.value || '';
         const industry = getIndustryValue();
         const role = getRoleValue();
-        const audience_type = document.getElementById('audience-type').value;
+        const audience_type = document.getElementById('audience-type')?.value || 'individual';
         const target_audience = (document.getElementById('target-audience')?.value || '').trim();
         const post_goal = (document.getElementById('post-goal')?.value || '').trim();
         const tone = document.getElementById('post-tone')?.value || 'professional';
+        const style_clone_mode_ui = document.getElementById('style-clone-mode')?.value || 'hybrid';
         const business_goal = post_goal;
-        const hashtags = document.getElementById('hashtag-count').value;
-        const emojis = document.getElementById('emoji-level').value;
+        const hashtags = document.getElementById('hashtag-count')?.value || '3';
+        const emojis = document.getElementById('emoji-level')?.value || 'minimal';
         const topics = getSelectedContentTopics();
-        const word_count_mode = document.getElementById('word-count-mode').value;
-        const min_words = parseInt(document.getElementById('min-words').value || '120', 10);
-        const max_words = parseInt(document.getElementById('max-words').value || '220', 10);
-        const kb_mode = document.getElementById('kb-mode').value;
-        const workspaceValue = document.getElementById('kb-workspace-select-post').value;
+        const word_count_mode = document.getElementById('word-count-mode')?.value || 'custom_range';
+        const min_words = parseInt(document.getElementById('min-words')?.value || '120', 10);
+        const max_words = parseInt(document.getElementById('max-words')?.value || '220', 10);
+        const kb_mode = document.getElementById('kb-mode')?.value || 'use_kb';
+        const workspaceValue = document.getElementById('kb-workspace-select-post')?.value || '';
         const workspace_id = workspaceValue === KB_CREATE_TEMPLATE_VALUE ? '' : workspaceValue;
         const specific_file_ids = getSelectedSpecificFileIds();
         const postPreview = document.getElementById('post-preview');
@@ -24602,6 +25148,7 @@
             postPreview.style.display = 'block';
             postPreview.classList.remove('has-generated');
         }
+        renderAppliedSettingsSummary({});
         toggleCreatorQuickActions(false);
         hideVariantPanel();
         postText.textContent = '';
@@ -24628,6 +25175,8 @@
         
         const _scToggle = document.getElementById('sc-enabled-toggle');
         const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
+        const style_clone_mode = use_style_clone ? style_clone_mode_ui : 'off';
+        const strict_grounding = document.getElementById('strict-grounding-toggle')?.checked || false;
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -24637,7 +25186,8 @@
                 kb_mode, workspace_id, specific_file_ids,
                 audience_type, business_goal,
                 post_goal, target_audience, tone,
-                use_style_clone
+                use_style_clone, style_clone_mode,
+                strict_grounding
             })
         })
         .then(r => parseJsonResponse(r))
@@ -24670,11 +25220,16 @@
                     kb_mode: effectiveKbMode,
                     kb_used: effectiveKbUsed,
                     kb_no_match: kbNoMatch,
+                    kb_state: data.kb_state || '',
                     theme: data.theme || topic || '',
                     workspace_id: settingsApplied.workspace_id || workspace_id || '',
                     specific_file_ids: Array.isArray(specific_file_ids) ? specific_file_ids : [],
-                    knowledge_base_used: getKbUsageLabelFromMode(effectiveKbMode, effectiveKbUsed, kbNoMatch)
+                    knowledge_base_used: getKbUsageLabelFromMode(effectiveKbMode, effectiveKbUsed, kbNoMatch),
+                    grounding: data.grounding || null,
+                    gap_analysis: data.gap_analysis || null,
+                    strict_grounding: strict_grounding,
                 };
+                renderAppliedSettingsSummary(settingsApplied);
                 renderGenerationInsights(lastGeneratedContext);
                 renderPrePublishValidator(buildPrePublishValidation(content, lastGeneratedHashtags));
                 if (postPlaceholder) {
@@ -24717,6 +25272,7 @@
             if (postPreview) {
                 postPreview.classList.remove('has-generated');
             }
+            renderAppliedSettingsSummary({});
             toggleCreatorQuickActions(false);
             hideVariantPanel();
             showMockupEmpty();
@@ -24725,6 +25281,24 @@
             if (data.quota_exceeded) {
                 showToast('warning', data.message || 'Monthly post limit reached', 'fas fa-lock');
                 setTimeout(() => openUpgradeModal('quota_exceeded'), 400);
+            } else if (data.strict_grounding_blocked) {
+                // Show strict grounding blocked with gap analysis suggestions
+                showToast('warning', 'Strict Grounding blocked generation — no KB match for this topic.', 'fas fa-shield-halved');
+                const gapData = data.gap_analysis || {};
+                if (insightsPanel && gapData.upload_suggestions && gapData.upload_suggestions.length) {
+                    insightsPanel.innerHTML = `
+                        <div class="insight-kb-nomatch" style="border-color:#dc2626;">
+                            <i class="fas fa-shield-halved" style="color:#dc2626;"></i>
+                            <div>
+                                <strong>Strict Grounding Active</strong> — Your KB has no relevant content for this topic.<br>
+                                <ul style="margin:6px 0 0 16px;font-size:0.82rem;color:var(--text-secondary);">
+                                    ${gapData.upload_suggestions.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}
+                                </ul>
+                                ${gapData.gaps && gapData.gaps.length ? '<div style="margin-top:6px;font-size:0.78rem;opacity:0.8;">Missing keywords: ' + gapData.gaps.slice(0, 5).map(g => '<code>' + escapeHtml(g) + '</code>').join(', ') + '</div>' : ''}
+                            </div>
+                        </div>`;
+                    insightsPanel.style.display = 'block';
+                }
             } else {
                 showToast('error', data.message || 'Failed to generate post', 'fas fa-exclamation-circle');
             }
@@ -24750,6 +25324,7 @@
             if (postPreview) {
                 postPreview.classList.remove('has-generated');
             }
+            renderAppliedSettingsSummary({});
             toggleCreatorQuickActions(false);
             hideVariantPanel();
             showMockupEmpty();
@@ -25593,62 +26168,11 @@
     }
 
     function saveAISettings() {
-        const provider = document.getElementById('ai-provider').value;
-        const apiKey = document.getElementById('api-key').value.trim();
-        const providerField = provider === 'openai' ? 'OPENAI_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'GOOGLE_API_KEY';
-        const payload = { 'AI_PROVIDER': provider };
-        if (apiKey) {
-            payload[providerField] = apiKey;
-        }
-        
-        authFetch('/api/config', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(payload)
-        })
-        .then(r => parseJsonResponse(r))
-        .then(data => {
-            if (!data.success) {
-                showToast('error', data.message || 'Failed to save', 'fas fa-exclamation-circle');
-                return;
-            }
-            runtimeConfig.AI_PROVIDER = provider;
-            if (apiKey) {
-                runtimeConfig[providerField] = maskedSuffix(apiKey);
-                setConnectionOverride('ai', true);
-            }
-            updateAISettings();
-            updateOnboardingState({ apiConnected: isAiConnectedForUi(runtimeConfig) });
-            showToast('success', apiKey ? 'AI settings updated!' : 'AI provider updated. Existing key kept as-is.', 'fas fa-check');
-        })
-        .catch(() => showToast('error', 'Failed to save', 'fas fa-exclamation-circle'));
+        showToast('info', 'AI provider and keys are managed by the platform. BYOK is disabled.', 'fas fa-lock');
     }
 
     function clearAIProviderKey() {
-        const provider = document.getElementById('ai-provider').value;
-        const providerField = provider === 'openai' ? 'OPENAI_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'GOOGLE_API_KEY';
-        if (!confirm('Disconnect API key for the selected provider?')) {
-            return;
-        }
-
-        authFetch('/api/config', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ [providerField]: '' })
-        })
-        .then(r => parseJsonResponse(r))
-        .then(data => {
-            if (!data.success) {
-                showToast('error', data.message || 'Failed to disconnect key', 'fas fa-exclamation-circle');
-                return;
-            }
-            runtimeConfig[providerField] = '';
-            setConnectionOverride('ai', false);
-            updateAISettings();
-            updateOnboardingState({ apiConnected: isAiConnectedForUi(runtimeConfig) });
-            showToast('success', 'Provider key disconnected', 'fas fa-check');
-        })
-        .catch(() => showToast('error', 'Failed to disconnect key', 'fas fa-exclamation-circle'));
+        showToast('info', 'Platform-managed AI credentials cannot be disconnected from user settings.', 'fas fa-lock');
     }
 
     function saveLISettings() {
@@ -26088,15 +26612,16 @@
         saveCreatorDraftState();
     }
 
-    // Post Goal preset → show/hide custom input, sync hidden post-goal
+    // Post Goal preset → show/hide custom input, disable when not needed
     function onGoalPresetChange(value) {
         const wrap = document.getElementById('goal-custom-wrap');
         const input = document.getElementById('post-goal');
         if (value === 'custom') {
             if (wrap) wrap.style.display = 'block';
-            if (input) { input.value = ''; input.focus(); }
+            if (input) { input.disabled = false; input.value = ''; input.focus(); }
         } else {
             if (wrap) wrap.style.display = 'none';
+            if (input) { input.disabled = true; }
             const labels = {
                 'spark-comments': 'Spark Comments & Discussion',
                 'drive-visits': 'Drive Profile Visits',
@@ -26109,7 +26634,59 @@
             if (input) input.value = labels[value] || value;
         }
         updateCfgRowPills();
+        updateRoleGoalHint();
         saveCreatorDraftState();
+    }
+
+    function updateRoleGoalHint() {
+        const hint = document.getElementById('role-goal-hint');
+        if (!hint) return;
+        const role = String(document.getElementById('role-select')?.value || '').toLowerCase();
+        const goal = String(document.getElementById('goal-preset')?.value || '').toLowerCase();
+        let message = '';
+
+        if ((role === 'sales' || role === 'bde') && goal === 'educate') {
+            message = 'Tip: Sales/BDE + Educate performs best with a proof-led mini case study and soft CTA.';
+        } else if ((role === 'dev' || role === 'cto') && (goal === 'drive-visits' || goal === 'generate-leads')) {
+            message = 'Tip: Technical roles with lead-focused goals should include one concrete business outcome.';
+        } else if ((role === 'ceo' || role === 'ops') && goal === 'spark-comments') {
+            message = 'Tip: Strategic roles drive comments with a clear opinion and one sharp ending question.';
+        }
+
+        if (message) {
+            hint.textContent = message;
+            hint.style.display = 'block';
+        } else {
+            hint.textContent = '';
+            hint.style.display = 'none';
+        }
+    }
+
+    function renderAppliedSettingsSummary(settings = {}) {
+        const el = document.getElementById('cv-applied-summary');
+        if (!el) return;
+
+        const industry = String(settings.industry || getIndustryValue() || '').trim();
+        const role = String(settings.role || getRoleValue() || '').trim();
+        const tone = String(settings.tone || document.getElementById('post-tone')?.value || '').trim();
+        const goal = String(settings.goal || settings.goal_key || document.getElementById('goal-preset')?.value || '').trim();
+        const mode = String(settings.style_clone_mode || document.getElementById('style-clone-mode')?.value || 'off').trim();
+
+        const pieces = [];
+        if (industry) pieces.push(`Industry: ${industry}`);
+        if (role) pieces.push(`Role: ${role}`);
+        if (tone) pieces.push(`Tone: ${tone}`);
+        if (goal) pieces.push(`Goal: ${goal}`);
+        if (mode) pieces.push(`Clone: ${mode}`);
+
+        if (!pieces.length) {
+            el.style.display = 'none';
+            el.textContent = '';
+            return;
+        }
+
+        el.textContent = `Applied settings · ${pieces.join(' · ')}`;
+        el.style.display = 'block';
     }
 
     function creatorSelectKbMode(value) {
@@ -26230,17 +26807,31 @@
                 tonePill.textContent = toneSelect.options[toneSelect.selectedIndex]?.text || 'Professional';
             }
         }
-        // Options pill — audience & goal
+        // Goal pill (always-visible)
+        const goalPill = document.getElementById('cfg-goal-pill');
+        if (goalPill) {
+            const goalSelect = document.getElementById('goal-preset');
+            const goalInput = document.getElementById('post-goal');
+            if (goalSelect && goalSelect.value && goalSelect.value !== '') {
+                if (goalSelect.value === 'custom' && goalInput && goalInput.value.trim()) {
+                    goalPill.textContent = goalInput.value.trim().substring(0, 24) + (goalInput.value.trim().length > 24 ? '…' : '');
+                } else {
+                    const opt = goalSelect.options[goalSelect.selectedIndex];
+                    goalPill.textContent = opt ? opt.text.split(' &')[0] : '—';
+                }
+            } else {
+                goalPill.textContent = '—';
+            }
+        }
+        // Options pill — content focus topics
         const optsPill = document.getElementById('cfg-options-pill');
         if (optsPill) {
             let count = 0;
-            const goal = document.getElementById('post-goal');
-            if (goal && goal.value.trim()) count++;
-            const audience = document.getElementById('target-audience');
-            if (audience && audience.value.trim()) count++;
             const topics = document.querySelectorAll('#content-topics-group input:checked');
             count += topics.length;
-            optsPill.textContent = count > 0 ? count + ' active' : 'default';
+            optsPill.textContent = count > 0 ? count + ' topic' + (count > 1 ? 's' : '') : 'default';
+            const optCount = document.getElementById('cv-optCount');
+            if (optCount) optCount.textContent = count + ' on';
         }
         // Hashtag & Emoji pill
         const hePill = document.getElementById('cfg-he-pill');
@@ -26308,69 +26899,7 @@
     }
 
     function updateAISettings() {
-        const provider = (document.getElementById('ai-provider')?.value || 'google').toLowerCase();
-        const keyInput = document.getElementById('api-key');
-        const statusEl = document.getElementById('ai-key-status');
-        if (!keyInput || !statusEl) {
-            return;
-        }
-
-        const field = provider === 'openai'
-            ? 'OPENAI_API_KEY'
-            : provider === 'anthropic'
-                ? 'ANTHROPIC_API_KEY'
-                : 'GOOGLE_API_KEY';
-        const masked = String(runtimeConfig[field] || '').trim();
-        const providerLabel = provider === 'openai' ? 'OpenAI' : (provider === 'anthropic' ? 'Anthropic' : 'Google');
-
-        keyInput.value = '';
-        keyInput.placeholder = masked || '••••••••••••';
-        statusEl.textContent = masked
-            ? `${providerLabel} key connected (${masked})`
-            : `No key connected for ${providerLabel}.`;
-
-        const providerHint = document.getElementById('settings-provider-hint');
-        if (providerHint) {
-            providerHint.textContent = provider === 'google'
-                ? 'Recommended · Best quality-to-cost for content generation'
-                : provider === 'openai'
-                    ? 'Great quality · Slightly higher cost than Gemini'
-                    : 'Excellent writing quality · Higher cost than Gemini';
-        }
-
-        const connected = isAiConnectedForUi(runtimeConfig);
-        const strip = document.getElementById('settings-ai-connection-strip');
-        const titleEl = document.getElementById('settings-ai-connection-title');
-        const subEl = document.getElementById('settings-ai-connection-sub');
-        const stateEl = document.getElementById('settings-ai-connection-state');
-        const badgeEl = document.getElementById('settings-ai-connection-badge');
-        const navDot = document.getElementById('settings-dot-ai');
-
-        if (strip) {
-            strip.classList.toggle('settings-v2-strip-success', connected);
-            strip.classList.toggle('settings-v2-strip-warning', !connected);
-        }
-        if (titleEl) {
-            titleEl.textContent = connected ? `${providerLabel} connected` : `${providerLabel} not connected`;
-        }
-        if (subEl) {
-            subEl.textContent = connected
-                ? `Key connected (${masked})`
-                : 'Add your provider API key to enable post generation';
-        }
-        if (stateEl) {
-            stateEl.textContent = connected ? 'Active' : 'Not connected';
-            stateEl.classList.toggle('settings-v2-chip-success', connected);
-            stateEl.classList.toggle('settings-v2-chip-muted', !connected);
-        }
-        if (badgeEl) {
-            badgeEl.textContent = connected ? 'Connected' : 'Not Connected';
-            badgeEl.classList.toggle('settings-v2-chip-success', connected);
-            badgeEl.classList.toggle('settings-v2-chip-muted', !connected);
-        }
-        if (navDot) {
-            navDot.classList.toggle('settings-v2-dot-on', connected);
-        }
+        // AI provider is platform-managed; nothing to render
     }
 
     function updateLinkedInSettingsUI() {
@@ -26522,7 +27051,10 @@
                 <i class="fas fa-folder-open"></i>
                 <h4>No files uploaded yet</h4>
                 <p>Upload your first document to start building your knowledge base for AI-powered post generation.</p>
-                <button class="btn btn-primary btn-sm" onclick="document.getElementById('kb-file')?.click()"><i class="fas fa-upload"></i> Upload Your First File</button>
+                <button class="btn btn-primary kb-empty-upload-btn" onclick="document.getElementById('kb-file')?.click()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M20 16.5a3.5 3.5 0 0 1-3.5 3.5h-9A3.5 3.5 0 0 1 4 16.5"></path></svg>
+                    <span>Upload Your First File</span>
+                </button>
             </div>`;
             if (retrainBanner) retrainBanner.style.display = 'none';
             return;
@@ -27803,6 +28335,7 @@
         authFetch('/api/posts', { headers: getAuthHeaders() })
         .then(r => parseJsonResponse(r))
         .then(data => {
+            postHistoryLoaded = true;
             if (!data.success || !data.posts) {
                 postHistoryCache = [];
                 if (summaryEl) {
@@ -27810,6 +28343,7 @@
                 }
                 listEl.innerHTML = '<div class="history-empty">Unable to load posts</div>';
                 renderOnboardingChecklist();
+                maybeShowFirstRunOnboarding();
                 refreshUsageCard();
                 return;
             }
@@ -27819,15 +28353,18 @@
                 renderSchedulerFromCache();
             }
             renderOnboardingChecklist();
+            maybeShowFirstRunOnboarding();
             refreshUsageCard();
         })
         .catch(() => {
+            postHistoryLoaded = true;
             postHistoryCache = [];
             if (summaryEl) {
                 summaryEl.textContent = 'Unable to load post metrics.';
             }
             listEl.innerHTML = '<div class="history-empty">Unable to load posts</div>';
             renderOnboardingChecklist();
+            maybeShowFirstRunOnboarding();
             refreshUsageCard();
         });
     }
@@ -28746,7 +29283,7 @@
         showKbProgress(fileName);
         
         const uploadHeaders = {};
-        const token = localStorage.getItem('access_token');
+        const token = _tokenStore.getItem('access_token');
         if (token) {
             uploadHeaders['Authorization'] = `Bearer ${token}`;
         }
@@ -28862,8 +29399,8 @@
 
     function logout() {
         if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
+            _tokenStore.removeItem('access_token');
+            _tokenStore.removeItem('refresh_token');
             localStorage.removeItem('user_id');
             localStorage.removeItem('user_email');
             localStorage.removeItem('first_name');
@@ -28899,7 +29436,7 @@
     }
 
     async function loadCurrentUserProfile() {
-        const token = localStorage.getItem('access_token');
+        const token = _tokenStore.getItem('access_token');
         const savedFirst = localStorage.getItem('first_name') || '';
         const savedLast = localStorage.getItem('last_name') || '';
         const savedEmail = localStorage.getItem('user_email') || '';
@@ -28940,11 +29477,16 @@
             const first = data.user.first_name || '';
             const last = data.user.last_name || '';
             const fullName = `${first} ${last}`.trim();
+            const currentUserId = String(data.user.id || '').trim();
 
             localStorage.setItem('first_name', first);
             localStorage.setItem('last_name', last);
+            if (currentUserId) {
+                localStorage.setItem('user_id', currentUserId);
+            }
             if (data.user.email) {
                 localStorage.setItem('user_email', data.user.email);
+                reconcileFirstRunOnboardingIdentity(currentUserId, data.user.email);
             }
 
             nameEl.textContent = fullName || 'User';
@@ -28966,6 +29508,11 @@
             syncSettingsProfileSummary();
         } catch (error) {
             // ignore UI-only profile hydration errors
+        } finally {
+            // Signal that we've attempted to resolve user identity so maybeShowFirstRunOnboarding
+            // can make a reliable decision (not fire before user_email is in localStorage).
+            userProfileLoaded = true;
+            maybeShowFirstRunOnboarding();
         }
     }
 
@@ -29128,7 +29675,7 @@
     document.addEventListener('DOMContentLoaded', async function() {
         // ══ Auth pre-check: verify (or refresh) the token BEFORE firing any API calls.
         //    This prevents the "flash of dashboard → session expired" for stale/missing tokens.
-        const _preToken = localStorage.getItem('access_token');
+        const _preToken = _tokenStore.getItem('access_token');
         if (!_preToken) {
             window.location.replace('/login');
             return;
@@ -29142,7 +29689,7 @@
             const _vData = await _vRes.json().catch(function () { return {}; });
             if (!_vData.success) {
                 // Token invalid — attempt a silent refresh before giving up
-                const _rToken = localStorage.getItem('refresh_token');
+                const _rToken = _tokenStore.getItem('refresh_token');
                 let _refreshed = false;
                 if (_rToken) {
                     try {
@@ -29153,9 +29700,9 @@
                         });
                         const _rData = await _rRes.json().catch(function () { return {}; });
                         if (_rData.success && _rData.access_token) {
-                            localStorage.setItem('access_token', _rData.access_token);
+                            _tokenStore.setItem('access_token', _rData.access_token);
                             if (_rData.refresh_token) {
-                                localStorage.setItem('refresh_token', _rData.refresh_token);
+                                _tokenStore.setItem('refresh_token', _rData.refresh_token);
                             }
                             _refreshed = true;
                         }
@@ -29164,7 +29711,9 @@
                 if (!_refreshed) {
                     // Genuinely expired — clear and redirect silently (no toast)
                     authExpiryHandled = true;
-                    ['access_token', 'refresh_token', 'user_id', 'user_email',
+                    _tokenStore.removeItem('access_token');
+                    _tokenStore.removeItem('refresh_token');
+                    ['user_id', 'user_email',
                      'first_name', 'last_name', 'country', 'auth_just_signed_in_at'].forEach(function (k) {
                         localStorage.removeItem(k);
                     });
@@ -29350,6 +29899,7 @@
         refreshKbFileOptions();
         refreshKbWorkspaces();
         refreshGenerationPresets();
+        // refreshPersonaProfiles();  // Persona UI hidden — skip API call; re-enable with persona UI
         toggleGenerationMode();
         updateTopicCounter();
         syncCreatorReplicaControls();
@@ -29367,7 +29917,9 @@
             toggleCreatorQuickActions(Boolean(getEditablePostText()));
         }
 
-        loadCurrentUserProfile();
+        loadCurrentUserProfile().finally(() => {
+            maybeShowFirstRunOnboarding();
+        });
 
         // Only show welcome toast on first sign-in (auth_callback sets this key)
         const _justSignedIn = localStorage.getItem('auth_just_signed_in_at');
@@ -29378,6 +29930,16 @@
                 showToast('success', firstName ? `Welcome back, ${firstName}!` : 'Welcome to Velank AI!', 'fas fa-check');
             }
             localStorage.removeItem('auth_just_signed_in_at');
+        }
+
+        const ftuOverlay = document.getElementById('ftu-onboarding-overlay');
+        if (ftuOverlay && !ftuOverlay.dataset.boundClickClose) {
+            ftuOverlay.addEventListener('click', function(event) {
+                if (event.target === ftuOverlay) {
+                    closeFirstRunOnboarding(true);
+                }
+            });
+            ftuOverlay.dataset.boundClickClose = '1';
         }
     });
 
@@ -29422,6 +29984,7 @@
             'industry-select',
             'role-select',
             'post-tone',
+            'style-clone-mode',
             'emoji-level',
             'kb-mode',
             'word-count-mode',
@@ -29443,6 +30006,11 @@
 
     document.addEventListener('keydown', function(event) {
         if (event.key !== 'Escape') {
+            return;
+        }
+        const firstRunModal = document.getElementById('ftu-onboarding-overlay');
+        if (firstRunModal && firstRunModal.classList.contains('is-open')) {
+            closeFirstRunOnboarding(true);
             return;
         }
         // Close upgrade modal
@@ -29490,6 +30058,7 @@
     window.addEventListener('beforeunload', function() {
         saveCreatorDraftState();
     });
+
 </script>
 
 <!-- ═══════════════════ COMMAND PALETTE ═══════════════════ -->
@@ -30195,6 +30764,327 @@
         box-shadow: 0 5px 18px rgba(102,126,234,0.45);
         transform: translateY(-1px);
     }
+
+    /* First-time onboarding modal */
+    #ftu-onboarding-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 10, 40, 0.64);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 10001;
+        align-items: center;
+        justify-content: center;
+        padding: 1.1rem;
+    }
+    #ftu-onboarding-overlay.is-open {
+        display: flex;
+    }
+    .ftu-modal {
+        width: 100%;
+        max-width: 760px;
+        border-radius: 18px;
+        background: #fff;
+        border: 1px solid #e7eaf5;
+        box-shadow: 0 24px 70px rgba(14, 20, 50, 0.28);
+        overflow: hidden;
+        animation: upgSlideUp 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .ftu-head {
+        padding: 1rem 1.15rem 0.75rem;
+        border-bottom: 1px solid #edf1f8;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.8rem;
+        background: #fff;
+    }
+    .ftu-head-left {
+        min-width: 0;
+    }
+    .ftu-eyebrow {
+        font-size: 0.73rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #667eea;
+        margin-bottom: 0.35rem;
+    }
+    .ftu-head h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .ftu-head-sub {
+        margin-top: 0.35rem;
+        font-size: 0.86rem;
+        color: #64748b;
+    }
+    .ftu-close {
+        border: 1px solid #e5eaf6;
+        background: #fff;
+        color: #64748b;
+        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex: 0 0 auto;
+    }
+    .ftu-close:hover {
+        background: #f8faff;
+        color: #1f2937;
+    }
+    .ftu-body {
+        padding: 0.9rem 1.15rem 1rem;
+    }
+    .ftu-progress {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 0.85rem;
+    }
+    .ftu-progress-step {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        border: 1px solid #e7eaf5;
+        border-radius: 11px;
+        padding: 0.52rem 0.58rem;
+        background: #fbfcff;
+    }
+    .ftu-progress-step.is-active {
+        border-color: #b9c3f5;
+        background: #f3f6ff;
+    }
+    .ftu-progress-step.is-done {
+        border-color: #c8eed7;
+        background: #f1fcf5;
+    }
+    .ftu-progress-index {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: #e9edff;
+        color: #4756cb;
+        font-weight: 800;
+        font-size: 0.74rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+    .ftu-progress-step.is-done .ftu-progress-index {
+        background: #dcfce7;
+        color: #15803d;
+    }
+    .ftu-progress-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #334155;
+    }
+    .ftu-panel-wrap {
+        border: 1px solid #e7eaf5;
+        border-radius: 12px;
+        padding: 0.9rem;
+        background: #fbfcff;
+        min-height: 255px;
+    }
+    .ftu-feedback {
+        display: none;
+        margin-bottom: 0.65rem;
+        border-radius: 10px;
+        padding: 0.5rem 0.62rem;
+        font-size: 0.79rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+    .ftu-feedback.is-visible {
+        display: block;
+    }
+    .ftu-feedback.is-success {
+        background: #ecfdf5;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+    .ftu-feedback.is-info {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+    .ftu-panel {
+        display: none;
+    }
+    .ftu-panel.is-active {
+        display: block;
+    }
+    .ftu-panel h4 {
+        margin: 0 0 0.35rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .ftu-panel p {
+        margin: 0 0 0.65rem;
+        font-size: 0.84rem;
+        color: #64748b;
+        line-height: 1.45;
+    }
+    .ftu-guided-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.45rem;
+    }
+    .ftu-guided-list li {
+        font-size: 0.82rem;
+        color: #475569;
+        display: flex;
+        gap: 0.45rem;
+        align-items: flex-start;
+    }
+    .ftu-guided-list i {
+        color: #667eea;
+        margin-top: 0.12rem;
+        width: 14px;
+        text-align: center;
+    }
+    .ftu-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        margin-top: 0.75rem;
+    }
+    .ftu-footer-actions {
+        display: flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .ftu-skip {
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 0.79rem;
+        padding: 0.2rem 0;
+        text-align: center;
+        cursor: pointer;
+    }
+    .ftu-skip:hover {
+        color: #334155;
+        text-decoration: underline;
+    }
+    body.dark-mode .ftu-modal {
+        background: #141437;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+        border-color: #30306b;
+    }
+    body.dark-mode .ftu-head {
+        background: #141437;
+        border-bottom-color: #30306b;
+    }
+    body.dark-mode .ftu-eyebrow {
+        color: #b9c0ff;
+    }
+    body.dark-mode .ftu-head h3 {
+        color: #f8fafc;
+    }
+    body.dark-mode .ftu-head-sub {
+        color: #cbd5e1;
+    }
+    body.dark-mode .ftu-close {
+        background: #1d1d4f;
+        border-color: #30306b;
+        color: #cbd5e1;
+    }
+    body.dark-mode .ftu-close:hover {
+        background: #25255f;
+        color: #f8fafc;
+    }
+    body.dark-mode .ftu-step {
+        background: #1d1d4f;
+        border-color: #30306b;
+    }
+    body.dark-mode .ftu-progress-step {
+        background: #1d1d4f;
+        border-color: #30306b;
+    }
+    body.dark-mode .ftu-progress-step.is-active {
+        border-color: #4a4a8f;
+        background: #23235d;
+    }
+    body.dark-mode .ftu-progress-step.is-done {
+        border-color: #2b6a4d;
+        background: #183427;
+    }
+    body.dark-mode .ftu-progress-index {
+        background: #2a2a63;
+        color: #d9ddff;
+    }
+    body.dark-mode .ftu-progress-step.is-done .ftu-progress-index {
+        background: #14532d;
+        color: #bbf7d0;
+    }
+    body.dark-mode .ftu-progress-label,
+    body.dark-mode .ftu-panel h4 {
+        color: #f8fafc;
+    }
+    body.dark-mode .ftu-panel p,
+    body.dark-mode .ftu-guided-list li,
+    body.dark-mode .ftu-skip {
+        color: #cbd5e1;
+    }
+    body.dark-mode .ftu-panel-wrap {
+        background: #1d1d4f;
+        border-color: #30306b;
+    }
+    body.dark-mode .ftu-feedback.is-success {
+        background: #163028;
+        border-color: #2f6b4f;
+        color: #bbf7d0;
+    }
+    body.dark-mode .ftu-feedback.is-info {
+        background: #1b2d4d;
+        border-color: #33558a;
+        color: #bfdbfe;
+    }
+    body.dark-mode .ftu-skip:hover {
+        color: #f8fafc;
+    }
+    @media (max-width: 780px) {
+        .ftu-progress {
+            grid-template-columns: 1fr;
+        }
+        .ftu-panel-wrap {
+            min-height: 0;
+        }
+        .ftu-footer {
+            flex-direction: column-reverse;
+            align-items: stretch;
+        }
+        .ftu-footer-actions {
+            justify-content: stretch;
+        }
+        .ftu-footer-actions .btn {
+            width: 100%;
+        }
+    }
+    @media (max-width: 560px) {
+        #ftu-onboarding-overlay {
+            align-items: flex-end;
+            padding: 0.65rem;
+        }
+        .ftu-modal {
+            border-radius: 14px;
+        }
+    }
 </style>
 
 <div id="upgrade-modal-overlay" role="dialog" aria-modal="true" aria-label="Upgrade Plan">
@@ -30217,6 +31107,75 @@
                 <i class="fas fa-lock" style="font-size:0.7rem; margin-right:0.25rem;"></i>
                 Secure checkout powered by Razorpay &nbsp;·&nbsp; Cancel anytime &nbsp;·&nbsp; Instant activation
             </p>
+        </div>
+    </div>
+</div>
+
+<div id="ftu-onboarding-overlay" role="dialog" aria-modal="true" aria-label="First-time onboarding">
+    <div class="ftu-modal">
+        <div class="ftu-head">
+            <div class="ftu-head-left">
+                <div class="ftu-eyebrow">Quick Start · ~60 seconds</div>
+                <h3 id="ftu-title">Welcome — let's create your first post</h3>
+                <div class="ftu-head-sub">You can publish today or save a polished draft in one guided flow.</div>
+            </div>
+            <button class="ftu-close" type="button" aria-label="Close onboarding" onclick="closeFirstRunOnboarding(true)">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="ftu-body">
+            <div class="ftu-progress" aria-label="Onboarding progress">
+                <div class="ftu-progress-step" data-step="1">
+                    <span class="ftu-progress-index">1</span>
+                    <span class="ftu-progress-label">Setup</span>
+                </div>
+                <div class="ftu-progress-step" data-step="2">
+                    <span class="ftu-progress-index">2</span>
+                    <span class="ftu-progress-label">Create</span>
+                </div>
+                <div class="ftu-progress-step" data-step="3">
+                    <span class="ftu-progress-index">3</span>
+                    <span class="ftu-progress-label">Launch</span>
+                </div>
+            </div>
+            <div id="ftu-feedback" class="ftu-feedback" aria-live="polite"></div>
+            <div class="ftu-panel-wrap">
+                <section class="ftu-panel" data-step="1">
+                    <h4>Step 1: Your workspace is ready</h4>
+                    <p>We already prepared your first-run defaults so you can skip setup and move straight to creation.</p>
+                    <ul class="ftu-guided-list">
+                        <li><i class="fas fa-check-circle"></i><span>Goal preset selected for better engagement</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Topic area prefilled so the page is never blank</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Draft is fully editable before publishing</span></li>
+                    </ul>
+                </section>
+                <section class="ftu-panel" data-step="2">
+                    <h4>Step 2: Choose how you want to start</h4>
+                    <p>You can generate a first draft automatically or open the editor and tweak manually first.</p>
+                    <ul class="ftu-guided-list">
+                        <li><i class="fas fa-bolt"></i><span>Auto-generate gives you a draft instantly</span></li>
+                        <li><i class="fas fa-pen-fancy"></i><span>Editor-first gives you full manual control</span></li>
+                        <li><i class="fas fa-lightbulb"></i><span>Both paths keep your topic, goal, and settings</span></li>
+                    </ul>
+                </section>
+                <section class="ftu-panel" data-step="3">
+                    <h4>Step 3: Start your guided flow</h4>
+                    <p>Click Generate to complete onboarding and jump into your first post flow immediately.</p>
+                    <ul class="ftu-guided-list">
+                        <li><i class="fas fa-check-circle"></i><span>You’ll land in LinkedIn Post tab with defaults ready</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>One-click generation starts automatically</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>After review, post now or schedule from Scheduler</span></li>
+                    </ul>
+                </section>
+            </div>
+            <div class="ftu-footer">
+                <button class="ftu-skip" type="button" onclick="closeFirstRunOnboarding(true)">I’ll explore on my own</button>
+                <div class="ftu-footer-actions">
+                    <button id="ftu-back-btn" class="btn btn-secondary" type="button"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button id="ftu-editor-action" class="btn btn-secondary" type="button" onclick="startOnboardingPostFlow(false)"><i class="fas fa-pen-fancy"></i> Open Editor First</button>
+                    <button id="ftu-next-btn" class="btn btn-primary" type="button"><i class="fas fa-arrow-right"></i> Next</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -30317,7 +31276,7 @@ async function scSaveSamples() {
             showToast('success','Voice cloned \u2014 AI will now write like you','fas fa-check-circle');
             status.textContent = '';
         } else { showToast('error', data.message||'Save failed','fas fa-exclamation-circle'); status.textContent=''; }
-    } catch(e) { showToast('error','Network error — please check your API key is set in Settings','fas fa-exclamation-triangle'); status.textContent=''; }
+    } catch(e) { showToast('error','Network error — please try again in a few seconds','fas fa-exclamation-triangle'); status.textContent=''; }
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Analyse &amp; Clone My Voice';
 }

@@ -5,12 +5,12 @@ from typing import List, Dict
 # The web app (app.py / dashboard_enterprise) does NOT use PROFILES.
 # All generation uses per-user industry/role/tone settings.
 PROFILES = {
-    "valtrilabs": {
+    "velank": {
         "company_info": {
-            "name": "ValtriLabs",
-            "services": "Virtual assistant services: admin support, calendar management, lead qualification, research, and operations",
-            "audience": "Founders, solopreneurs, small business owners, and busy executives",
-            "value_prop": "Reliable, skilled virtual assistants that let leaders focus on growth while we handle the day-to-day",
+            "name": "Velank",
+            "services": "AI-powered LinkedIn automation: intelligent content generation, RAG-backed posts, scheduling, and analytics",
+            "audience": "Content creators, entrepreneurs, product teams, and growth professionals",
+            "value_prop": "Generate authentic, contextually-grounded LinkedIn posts powered by your own knowledge base and advanced AI",
         },
         "content_themes": [
             "VA benefits",
@@ -100,7 +100,7 @@ LINKEDIN_BEST_PRACTICES: Dict[str, int] = {
 DEFAULT_SCHEDULE = {"hour": 11, "minute": 0}
 
 # Default profile key to use. Can be overridden by env var CONTENT_PROFILE
-DEFAULT_PROFILE = "valtrilabs"
+DEFAULT_PROFILE = "velank"
 
 
 DEFAULT_SCHEDULE = {"hour": 11, "minute": 0}

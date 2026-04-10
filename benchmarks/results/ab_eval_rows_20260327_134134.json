@@ -1,0 +1,16 @@
+[
+  {
+    "prompt_id": "p_0717",
+    "provider": "google",
+    "ok": false,
+    "quality_score": 0,
+    "latency_ms": 0,
+    "cost_usd": 0.0,
+    "error": "GOOGLE_API_KEY not set",
+    "industry": "E-commerce",
+    "role": "CTO",
+    "tone": "educational",
+    "goal_key": "educate_audience",
+    "topic": "technical debt"
+  }
+]

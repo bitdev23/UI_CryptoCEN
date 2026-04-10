@@ -24,7 +24,16 @@ from cryptography.hazmat.primitives import hashes
 
 logger = logging.getLogger(__name__)
 
-_SALT = b"velank-api-key-encryption-salt-v1"
+# Read salt from env var; fall back to a legacy default but warn loudly
+_SALT_ENV = os.getenv("ENCRYPTION_SALT", "").strip()
+if _SALT_ENV:
+    _SALT = _SALT_ENV.encode("utf-8")
+else:
+    _SALT = b"velank-api-key-encryption-salt-v1"
+    logger.warning(
+        "ENCRYPTION_SALT env var is not set — using legacy hardcoded salt. "
+        "Set ENCRYPTION_SALT to a unique random string for production."
+    )
 
 _fernet_instance: Optional[Fernet] = None
 
@@ -58,7 +67,12 @@ def _get_fernet() -> Fernet:
         _fernet_instance = Fernet(_derive_key(explicit_key))
         return _fernet_instance
 
-    flask_secret = (os.getenv("FLASK_SECRET_KEY") or "dev-secret-change-in-production").strip()
+    flask_secret = os.getenv("FLASK_SECRET_KEY", "").strip()
+    if not flask_secret:
+        raise RuntimeError(
+            "Neither ENCRYPTION_KEY nor FLASK_SECRET_KEY is set. "
+            "Cannot initialise encryption. Set one of these env vars."
+        )
     _fernet_instance = Fernet(_derive_key(flask_secret))
     return _fernet_instance
 
@@ -86,7 +100,7 @@ def encrypt_value(plaintext: str) -> str:
         return _ENCRYPTED_PREFIX + token.decode("utf-8")
     except Exception as exc:
         logger.error("Encryption failed: %s", exc)
-        return plaintext  # fail open — don't break the app
+        raise RuntimeError(f"Failed to encrypt sensitive value: {exc}") from exc
 
 
 def decrypt_value(ciphertext: str) -> str:
