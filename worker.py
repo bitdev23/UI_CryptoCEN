@@ -84,11 +84,16 @@ if __name__ == "__main__":
 
     backoff_sec = 2
 
+    redis_password = os.getenv("REDIS_PASSWORD", None)
+    redis_ssl = os.getenv("REDIS_SSL", "").lower() in {"1", "true", "yes"}
+
     while True:
         connection: Redis = Redis(
             host=redis_host,
             port=redis_port,
             db=redis_db,
+            password=redis_password,
+            ssl=redis_ssl,
             decode_responses=False,
             socket_connect_timeout=socket_connect_timeout,
             socket_timeout=None,
