@@ -23016,7 +23016,24 @@
     function getSelectedSpecificFileIds() {
         const mode = document.getElementById('kb-mode')?.value || 'use_kb';
         if (mode === 'specific_files') {
-            return getSelectedWorkspaceFileIds();
+            // 1. Try DOM checkboxes first (KB tab template editor)
+            const fromDom = getSelectedWorkspaceFileIds();
+            if (fromDom.length > 0) return fromDom;
+
+            // 2. Fallback: resolve from the selected template's cached file_ids
+            //    (checkboxes may not be rendered if user never visited KB tab)
+            const wsSelect = document.getElementById('kb-workspace-select-post');
+            const wsId = wsSelect?.value || '';
+            if (wsId && typeof getWorkspaceById === 'function') {
+                const ws = getWorkspaceById(wsId);
+                if (ws) {
+                    const allFileIds = (kbFileOptionsCache || []).map(f => String(f.id));
+                    if (ws.use_all_files) return allFileIds;
+                    return (ws.file_ids || []).map(id => String(typeof normalizeFileId === 'function' ? normalizeFileId(id) : id))
+                        .filter(id => allFileIds.includes(id));
+                }
+            }
+            return [];
         }
         return Array.from(document.querySelectorAll('#kb-specific-files-list input[type="checkbox"]:checked'))
             .map(el => el.value)
