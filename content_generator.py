@@ -91,7 +91,7 @@ class ContentGenerator:
         docs = self.rag.similarity_search(query, k=4)
         prompt = self.build_prompt(theme, fmt, query, docs)
         logger.debug("Prompt length: %d", len(prompt))
-        resp = self.ai.generate(prompt, max_tokens=600, temperature=0.5)
+        resp = self.ai.generate(prompt, max_tokens=800, temperature=0.5)
         text = resp.get("text", "").strip()
         # Post-process to remove stray markdown/asterisks and clean formatting
         try:

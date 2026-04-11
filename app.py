@@ -4161,13 +4161,34 @@ def words_count(text: str) -> int:
 
 
 def enforce_word_ceiling(text: str, max_words: int) -> str:
-    words = WORD_RE.findall(text or '')
-    if len(words) <= max_words:
-        return (text or '').strip()
-    trimmed = ' '.join(words[:max_words]).strip()
-    if trimmed and trimmed[-1] not in '.!?':
-        trimmed += '.'
-    return trimmed
+    """Trim text to max_words, preserving paragraph structure and completing sentences."""
+    text = (text or '').strip()
+    if words_count(text) <= max_words:
+        return text
+    # Split into paragraphs, accumulate until budget is exceeded
+    paragraphs = text.split('\n\n')
+    kept = []
+    running = 0
+    for para in paragraphs:
+        para_wc = words_count(para)
+        if running + para_wc <= max_words:
+            kept.append(para)
+            running += para_wc
+        else:
+            # Trim this paragraph at a sentence boundary within budget
+            sentences = re.split(r'(?<=[.!?])\s+', para)
+            for sent in sentences:
+                sent_wc = words_count(sent)
+                if running + sent_wc <= max_words:
+                    kept.append(sent)
+                    running += sent_wc
+                else:
+                    break
+            break
+    result = '\n\n'.join(kept).strip() if len(kept) > 0 else text[:max_words * 6]
+    if result and result[-1] not in '.!?':
+        result += '.'
+    return result
 
 
 def normalize_hashtags(tags: list) -> list:
@@ -4188,15 +4209,43 @@ def normalize_hashtags(tags: list) -> list:
 
 
 def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list) -> list:
-    tokens = []
-    for raw in [theme, industry, role, *topics, 'LinkedIn', 'Professional', 'Business', 'Leadership']:
+    """Generate meaningful compound hashtags from theme/industry/role/topics."""
+    candidates = []
+
+    # Build compound hashtags from multi-word phrases (e.g. 'CEX vs DEX' → 'CEXvsDEX')
+    for raw in [theme, industry, role, *topics]:
         if not raw:
             continue
-        pieces = re.split(r'[^A-Za-z0-9_]+', str(raw))
-        for piece in pieces:
-            if len(piece) >= 3:
-                tokens.append(piece)
-    return normalize_hashtags(tokens)
+        raw_str = str(raw).strip()
+        # Split on comma/semicolon to get sub-phrases
+        sub_phrases = re.split(r'[,;—–]+', raw_str)
+        for phrase in sub_phrases:
+            phrase = phrase.strip()
+            if not phrase:
+                continue
+            # Remove noise words for hashtag construction
+            noise = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'what', 'how', 'why',
+                     'when', 'where', 'and', 'or', 'but', 'in', 'on', 'of', 'for', 'to',
+                     'with', 'from', 'by', 'at', 'its', 'it', 'this', 'that', 'vs', 'versus'}
+            words = re.findall(r'[A-Za-z0-9]+', phrase)
+            significant = [w for w in words if w.lower() not in noise and len(w) >= 2]
+            if len(significant) >= 2:
+                # CamelCase compound: 'custodial model' → 'CustodialModel'
+                compound = ''.join(w.capitalize() if w.islower() else w for w in significant[:4])
+                candidates.append(compound)
+            elif significant:
+                candidates.append(significant[0])
+
+    # Add industry/role as standalone hashtags if they are clean single concepts
+    for label in [industry, role]:
+        if label and len(label) < 30:
+            clean = re.sub(r'[^A-Za-z0-9]', '', label)
+            if len(clean) >= 3:
+                candidates.append(clean)
+
+    # Standard LinkedIn hashtags as low-priority fallback
+    candidates.extend(['LinkedIn', 'ProfessionalGrowth'])
+    return normalize_hashtags(candidates)
 
 
 def remove_hashtags_from_body(text: str) -> str:
@@ -4226,34 +4275,47 @@ def clean_linkedin_body(text: str) -> str:
     if not body:
         return ''
 
+    # Remove markdown formatting artefacts
     body = re.sub(r'\*{1,3}', '', body)
     body = re.sub(r'`+', '', body)
     body = re.sub(r'^\s*[-•]\s+', '', body, flags=re.MULTILINE)
     body = re.sub(r'\n{3,}', '\n\n', body)
 
-    lines = [ln.strip() for ln in body.split('\n') if ln.strip()]
-    flattened = ' '.join(lines)
-    flattened = re.sub(r'\s{2,}', ' ', flattened).strip()
-    if not flattened:
+    # Preserve paragraph structure from the AI output
+    raw_paragraphs = [p.strip() for p in body.split('\n\n') if p.strip()]
+    if not raw_paragraphs:
+        # Fallback: treat single lines as paragraphs
+        raw_paragraphs = [ln.strip() for ln in body.split('\n') if ln.strip()]
+    if not raw_paragraphs:
         return ''
 
-    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', flattened) if s.strip()]
-    if not sentences:
-        return flattened
+    cleaned_paragraphs = []
+    for para in raw_paragraphs:
+        # Collapse multi-line within a paragraph to single line
+        para = re.sub(r'\s*\n\s*', ' ', para)
+        para = re.sub(r'\s{2,}', ' ', para).strip()
+        if para:
+            cleaned_paragraphs.append(para)
 
-    paragraphs = []
-    current = []
-    for sentence in sentences:
-        candidate = (' '.join(current + [sentence])).strip()
-        if current and (len(candidate) > 260 or len(current) >= 2):
-            paragraphs.append(' '.join(current).strip())
-            current = [sentence]
-        else:
-            current.append(sentence)
-    if current:
-        paragraphs.append(' '.join(current).strip())
+    # If result is a single giant paragraph (>350 chars), break it on sentence boundaries
+    if len(cleaned_paragraphs) == 1 and len(cleaned_paragraphs[0]) > 350:
+        text_blob = cleaned_paragraphs[0]
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text_blob) if s.strip()]
+        if len(sentences) >= 3:
+            paragraphs_out = []
+            current = []
+            for sentence in sentences:
+                candidate = (' '.join(current + [sentence])).strip()
+                if current and (len(candidate) > 280 or len(current) >= 2):
+                    paragraphs_out.append(' '.join(current).strip())
+                    current = [sentence]
+                else:
+                    current.append(sentence)
+            if current:
+                paragraphs_out.append(' '.join(current).strip())
+            cleaned_paragraphs = paragraphs_out
 
-    return '\n\n'.join([p for p in paragraphs if p]).strip()
+    return '\n\n'.join(cleaned_paragraphs).strip()
 
 
 def ensure_engagement_hook(body: str, industry: str, role: str, topic: str) -> str:
@@ -4263,22 +4325,30 @@ def ensure_engagement_hook(body: str, industry: str, role: str, topic: str) -> s
 
 
 def ensure_engagement_cta(body: str, role: str) -> str:
+    """Only append a CTA if the post has no engagement element at all.
+    The AI prompt already instructs a CTA — this is a last-resort safety net."""
     text = (body or '').strip()
     if not text:
         return text
 
-    lower = text.lower()
+    # Check the LAST paragraph only (not the whole body) for CTA signals
+    paragraphs = text.split('\n\n')
+    last_para = (paragraphs[-1] if paragraphs else text).lower()
     cta_markers = [
         'what do you think', 'what has worked', 'share your', 'drop a comment', 'comment below',
         'dm me', 'let me know', 'how are you', 'your take', 'agree or disagree',
-        'curious', 'have you', 'thoughts?', 'thoughts on', 'would love to hear'
+        'curious', 'have you', 'thoughts?', 'thoughts on', 'would love to hear',
+        'how do you', 'what would you', 'what are your', 'interested in hearing',
     ]
-    has_cta = any(marker in lower for marker in cta_markers) or text.endswith('?')
+    has_cta = any(marker in last_para for marker in cta_markers) or last_para.rstrip().endswith('?')
     if has_cta:
         return text
 
-    # Use plain open-ended CTA
-    cta_line = "What's your take on this?"
+    # Only append if the post is long enough to warrant a separate CTA
+    if words_count(text) < 40:
+        return text
+
+    cta_line = "What's your experience with this?"
     return f"{text}\n\n{cta_line}".strip()
 
 
@@ -5650,7 +5720,7 @@ Output ONLY the post text. No labels, no "Here is your post:", no preamble."""
         def _generate_once(generation_prompt: str) -> str:
             start_time = time.time()
             try:
-                result = ai.generate(generation_prompt, max_tokens=500, task='generate')
+                result = ai.generate(generation_prompt, max_tokens=800, task='generate')
             except Exception as e:
                 logger.error(f"AI generation failed after {time.time() - start_time:.2f}s: {e}")
                 raise
@@ -5662,6 +5732,19 @@ Output ONLY the post text. No labels, no "Here is your post:", no preamble."""
             text = (result.get('text') or '').strip()
             if not text:
                 raise ValueError('Generated content is empty')
+
+            # Validate minimum output quality — reject truncated/stub outputs
+            wc = words_count(text)
+            if wc < 40:
+                logger.warning('AI output too short (%d words), retrying once with explicit length instruction', wc)
+                length_nudge = generation_prompt + '\n\nIMPORTANT: Your previous output was too short. Write a COMPLETE post of at least 120 words.'
+                try:
+                    retry_result = ai.generate(length_nudge, max_tokens=800, task='generate')
+                    retry_text = (retry_result.get('text') or '').strip()
+                    if retry_text and words_count(retry_text) > wc:
+                        return retry_text
+                except Exception:
+                    logger.debug('Length-nudge retry failed, using original short output')
             return text
 
         def _post_process_generated(raw_text: str):
@@ -5683,7 +5766,7 @@ Preserve meaning, tone, and practical value.
 Do not include hashtags in the body.
 \nPost:\n{body_local}\n"""
                     try:
-                        rewrite = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
+                        rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite')
                         rewritten_text = (rewrite.get('text') or '').strip()
                         if rewritten_text:
                             body_local = enforce_linkedin_quality(
@@ -5710,7 +5793,7 @@ Post:
 {body_local}
 """
                 try:
-                    rewrite = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
+                    rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite')
                     rewritten_text = (rewrite.get('text') or '').strip()
                     if rewritten_text:
                         body_local = enforce_linkedin_quality(
