@@ -12,7 +12,13 @@ import json
 class SupabaseDB:
     """Wrapper for Supabase client with convenience methods"""
     
-    def __init__(self):
+    def __init__(self, client: Client = None):
+        if client is not None:
+            self.client = client
+            self.url = ''
+            self.key = ''
+            return
+
         self.url = os.getenv('SUPABASE_URL')
         self.key = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
         
@@ -386,9 +392,9 @@ class SupabaseDB:
 # Singleton instance
 _db_instance = None
 
-def get_db() -> SupabaseDB:
-    """Get or create database instance"""
+def get_db(client: Client = None) -> SupabaseDB:
+    """Get or create database instance. Pass a client to share an existing connection."""
     global _db_instance
     if _db_instance is None:
-        _db_instance = SupabaseDB()
+        _db_instance = SupabaseDB(client=client)
     return _db_instance

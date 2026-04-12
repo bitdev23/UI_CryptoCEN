@@ -338,8 +338,13 @@ class RAGStore:
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
+    @staticmethod
     def _extract_keywords(text: str, max_keywords: int = 6) -> List[str]:
-        """Extract meaningful keywords from text, removing stop words."""
+        """Extract meaningful keywords from text, removing stop words.
+
+        Only [a-zA-Z0-9] tokens are kept, which implicitly sanitises against
+        PostgREST operator injection (%, _, ., (, ), etc.).
+        """
         tokens = re.findall(r'[a-zA-Z0-9]+', (text or '').lower())
         keywords = [t for t in tokens if t not in _KEYWORD_STOP_WORDS and len(t) >= 3]
         # Deduplicate while preserving order
@@ -350,6 +355,11 @@ class RAGStore:
                 seen.add(kw)
                 unique.append(kw)
         return unique[:max_keywords]
+
+    @staticmethod
+    def _sanitize_ilike_value(val: str) -> str:
+        """Escape characters that have special meaning in SQL LIKE / PostgREST ILIKE."""
+        return val.replace('%', '').replace('_', '').replace('\\', '')
 
     def keyword_search(self, query: str, k: int = 6,
                        file_ids: Optional[List[str]] = None) -> List[Dict]:
@@ -364,7 +374,9 @@ class RAGStore:
 
         try:
             # Build OR condition: chunk_text ILIKE %kw1% OR chunk_text ILIKE %kw2% ...
-            conditions = ','.join(f'chunk_text.ilike.%{kw}%' for kw in keywords)
+            conditions = ','.join(
+                f'chunk_text.ilike.%{self._sanitize_ilike_value(kw)}%' for kw in keywords
+            )
             q = (self.db.client.table('kb_embeddings')
                  .select('id, file_id, chunk_text, metadata')
                  .eq('user_id', self.user_id)
