@@ -20408,6 +20408,7 @@
                     </div>
                     <div class="ph2-hero-actions">
                         <button class="ph2-export-btn" onclick="exportPostHistoryCsv()"><i class="fas fa-download"></i> Export CSV</button>
+                        <button class="ph2-export-btn" onclick="exportPostHistoryPdf()" style="margin-left:8px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
                     </div>
                 </div>
 
@@ -24981,6 +24982,20 @@
             if (e.altKey && key === 'enter') {
                 e.preventDefault();
                 openScheduleModal();
+                return;
+            }
+            // ⌘/Ctrl + Shift + C → Copy post
+            if (cmd && e.shiftKey && key === 'c') {
+                e.preventDefault();
+                copyPost();
+                return;
+            }
+            // ⌘/Ctrl + S → Save draft (local)
+            if (cmd && key === 's') {
+                e.preventDefault();
+                saveCreatorDraftState();
+                showToast('success', 'Draft saved', 'fas fa-floppy-disk');
+                return;
             }
         });
     }
@@ -27733,16 +27748,29 @@
             showToast('info', 'No scheduled posts to export', 'fas fa-circle-info');
             return;
         }
-        const blob = new Blob([JSON.stringify(posts, null, 2)], { type: 'application/json' });
+        const rows = [['schedule_time', 'status', 'industry', 'role', 'content', 'hashtags']];
+        posts.forEach(p => {
+            const dt = p.schedule_time ? new Date(p.schedule_time).toISOString() : '';
+            rows.push([
+                dt,
+                p.status || '',
+                p.generation_context?.industry || p.audience_industry || '',
+                p.generation_context?.role || p.professional_role || '',
+                p.content || '',
+                (p.hashtags || []).join(' ')
+            ]);
+        });
+        const csv = rows.map(r => r.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scheduled-posts-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `scheduled-posts-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('success', 'Scheduled posts exported', 'fas fa-check');
+        showToast('success', 'Scheduled posts exported as CSV', 'fas fa-check');
     }
 
     function getSchedulerBadge(status, timeLabel) {
@@ -28245,6 +28273,19 @@
         }
     }
 
+    // ── Copy current generated post (content + hashtags) to clipboard ──────
+    function copyPost() {
+        const content = getEditablePostText();
+        if (!content) {
+            showToast('info', 'No post to copy — generate one first', 'fas fa-circle-info');
+            return;
+        }
+        const tags = (lastGeneratedHashtags || []).join(' ');
+        const full = tags ? `${content}\n\n${tags}` : content;
+        copyTextToClipboard(full);
+    }
+    window.copyPost = copyPost;
+
     function copyTextToClipboard(text) {
         if (!text) {
             showToast('error', 'Nothing to copy', 'fas fa-exclamation-circle');
@@ -28667,6 +28708,66 @@
         URL.revokeObjectURL(url);
         showToast('success', 'Post history exported', 'fas fa-check');
     }
+
+    function exportPostHistoryPdf() {
+        const items = getNormalizedPostHistoryItems();
+        if (!items.length) {
+            showToast('info', 'No posts to export', 'fas fa-circle-info');
+            return;
+        }
+
+        const rows = items.map(item => {
+            const dt = item.createdAt ? new Date(item.createdAt) : null;
+            const dateStr = dt && !Number.isNaN(dt.getTime())
+                ? dt.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
+                : '—';
+            const statusBadge = item.status === 'posted'
+                ? '<span style="color:#00c896;font-weight:600;">● Published</span>'
+                : item.status === 'draft'
+                    ? '<span style="color:#888;">● Draft</span>'
+                    : `<span style="color:#f59e0b;">● ${escapeHtml(item.status || '')}</span>`;
+            const content = escapeHtml(String(item.content || '').replace(/\n/g, '<br>'));
+            const hashtags = (item.hashtags || []).map(h => `<span style="color:#6c5ce7;">${escapeHtml(h)}</span>`).join(' ');
+            return `<tr>
+                <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;white-space:nowrap;">${statusBadge}</td>
+                <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;white-space:nowrap;font-size:12px;color:#555;">${dateStr}</td>
+                <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;font-size:12px;color:#333;max-width:500px;">${content}<br><small>${hashtags}</small></td>
+                <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;font-size:12px;color:#555;">${escapeHtml(item.meta.industry || '')} / ${escapeHtml(item.meta.role || '')}</td>
+            </tr>`;
+        }).join('');
+
+        const exportDate = new Date().toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Post History — Velank AI</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a2e; margin: 32px; }
+  h1 { font-size: 22px; color: #6c5ce7; margin-bottom: 4px; }
+  .meta { font-size: 13px; color: #888; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #f5f5ff; padding: 10px 8px; text-align: left; font-size: 12px; font-weight: 600; color: #444; border-bottom: 2px solid #ddd; }
+  @media print { body { margin: 16px; } button { display: none; } }
+</style>
+</head><body>
+<h1>Post History — Velank AI</h1>
+<div class="meta">Exported ${exportDate} &middot; ${items.length} posts</div>
+<table>
+  <thead><tr><th>Status</th><th>Date</th><th>Content</th><th>Industry / Role</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<br>
+<button onclick="window.print()" style="padding:10px 24px;background:#6c5ce7;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">Print / Save as PDF</button>
+</body></html>`;
+
+        const win = window.open('', '_blank');
+        if (!win) {
+            showToast('error', 'Pop-up blocked — please allow pop-ups for this site', 'fas fa-exclamation-circle');
+            return;
+        }
+        win.document.write(html);
+        win.document.close();
+        showToast('success', 'PDF preview opened — use Print to save', 'fas fa-check');
+    }
+    window.exportPostHistoryPdf = exportPostHistoryPdf;
 
     function renderPostHistoryPagination(totalFiltered) {
         const paginationEl = document.getElementById('post-history-pagination');
@@ -30314,8 +30415,13 @@
         { group: 'Navigate', icon: 'fas fa-history', label: 'History', sub: 'Past generated posts', shortcut: 'G H', action: () => switchTab('history') },
         { group: 'Navigate', icon: 'fas fa-cog', label: 'Settings', sub: 'AI, LinkedIn & billing', shortcut: 'G /', action: () => switchTab('settings') },
         // Actions
-        { group: 'Actions', icon: 'fas fa-pen-fancy', label: 'New Post', sub: 'Start generating a LinkedIn post', action: () => { switchTab('content-creator'); setTimeout(() => document.getElementById('topic-input')?.focus(), 200); } },
+        { group: 'Actions', icon: 'fas fa-pen-fancy', label: 'New Post', sub: 'Start generating a LinkedIn post', shortcut: '\u2318 Enter', action: () => { switchTab('content-creator'); setTimeout(() => document.getElementById('topic-input')?.focus(), 200); } },
+        { group: 'Actions', icon: 'fas fa-wand-magic-sparkles', label: 'Generate Post', sub: 'Run AI generation on current topic', shortcut: '\u2318 Enter', action: () => { switchTab('content-creator'); setTimeout(() => typeof generatePost === 'function' && generatePost(), 200); } },
+        { group: 'Actions', icon: 'fas fa-copy', label: 'Copy Post', sub: 'Copy generated content to clipboard', shortcut: '\u2318\u21e7C', action: () => typeof copyPost === 'function' && copyPost() },
         { group: 'Actions', icon: 'fas fa-upload', label: 'Upload to Knowledge Base', sub: 'Add a PDF or document', action: () => switchTab('knowledge-base') },
+        { group: 'Actions', icon: 'fas fa-file-csv', label: 'Export History CSV', sub: 'Download post history as spreadsheet', action: () => { switchTab('history'); setTimeout(() => typeof exportPostHistoryCsv === 'function' && exportPostHistoryCsv(), 300); } },
+        { group: 'Actions', icon: 'fas fa-file-pdf', label: 'Export History PDF', sub: 'Print post history as PDF', action: () => { switchTab('history'); setTimeout(() => typeof exportPostHistoryPdf === 'function' && exportPostHistoryPdf(), 300); } },
+        { group: 'Actions', icon: 'fas fa-keyboard', label: 'Keyboard Shortcuts', sub: 'View all keyboard shortcuts', shortcut: '?', action: () => openShortcutsHelp() },
         { group: 'Actions', icon: 'fas fa-bolt', label: 'Upgrade Plan', sub: 'Unlock 100 posts/month', action: () => openUpgradeModal() },
         { group: 'Actions', icon: 'fas fa-user', label: 'Profile & Account', sub: 'View your profile settings', action: () => { switchTab('settings'); setTimeout(() => showSettingsSection('profile', null), 120); } },
         { group: 'Actions', icon: 'fas fa-credit-card', label: 'Billing & Plans', sub: 'Manage your subscription', action: () => { switchTab('settings'); setTimeout(() => showSettingsSection('billing', null), 120); } },
@@ -30439,11 +30545,70 @@
             return;
         }
 
+        // ? → open keyboard shortcuts help
+        if (e.key === '?') {
+            e.preventDefault();
+            openShortcutsHelp();
+            return;
+        }
+
         // Close palette on Esc
         if (e.key === 'Escape') {
             closeCommandPalette();
+            closeShortcutsHelp();
         }
     });
+
+    // ─── Keyboard Shortcuts Help Overlay ────────────────────────────────────
+    function openShortcutsHelp() {
+        let overlay = document.getElementById('shortcuts-help-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'shortcuts-help-overlay';
+            overlay.style.cssText = [
+                'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999',
+                'display:flex;align-items:center;justify-content:center;'
+            ].join(';');
+            overlay.innerHTML = `
+<div style="background:var(--bg-card,#1e1e2e);border-radius:14px;padding:28px 32px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.4);border:1px solid var(--border,rgba(255,255,255,0.1));">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <span style="font-size:16px;font-weight:700;color:var(--text-primary,#e0e0ff);">Keyboard Shortcuts</span>
+    <button onclick="closeShortcutsHelp()" style="background:none;border:none;cursor:pointer;color:var(--text-muted,#999);font-size:18px;padding:4px;"><i class="fas fa-times"></i></button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;">
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text-muted,#999);text-transform:uppercase;margin-bottom:4px;">Content Creator</div>
+    ${shortcutRow('\u2318 / Ctrl + Enter', 'Generate post')}
+    ${shortcutRow('\u2318 / Ctrl + \u21e7 + Enter', 'Publish now')}
+    ${shortcutRow('Alt + Enter', 'Schedule post')}
+    ${shortcutRow('\u2318 / Ctrl + \u21e7 + C', 'Copy post')}
+    ${shortcutRow('\u2318 / Ctrl + S', 'Save draft')}
+    <div style="grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text-muted,#999);text-transform:uppercase;margin:12px 0 4px;">Navigation</div>
+    ${shortcutRow('\u2318 / Ctrl + K', 'Command palette')}
+    ${shortcutRow('G then D / P / S / K / H', 'Jump to tab')}
+    ${shortcutRow('?', 'This help screen')}
+    ${shortcutRow('Esc', 'Close overlay')}
+  </div>
+  <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border,rgba(255,255,255,0.1));font-size:12px;color:var(--text-muted,#999);">Tip: Press <kbd style="background:rgba(255,255,255,0.1);border-radius:4px;padding:1px 5px;font-size:11px;">\u2318K</kbd> to search all commands.</div>
+</div>`;
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeShortcutsHelp();
+            });
+            document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'flex';
+        }
+    }
+    window.openShortcutsHelp = openShortcutsHelp;
+
+    function closeShortcutsHelp() {
+        const overlay = document.getElementById('shortcuts-help-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+    window.closeShortcutsHelp = closeShortcutsHelp;
+
+    function shortcutRow(keys, desc) {
+        return `<div style="display:contents;"><span style="font-size:12px;color:var(--text-muted,#999);white-space:nowrap;"><kbd style="background:rgba(255,255,255,0.08);border-radius:4px;padding:2px 6px;font-size:11px;font-family:monospace;">${keys}</kbd></span><span style="font-size:13px;color:var(--text-primary,#e0e0ff);">${desc}</span></div>`;
+    }
 
     // ─── Animated KPI Counters ────────────────────────────────────────────
     function animateCounter(el, target, duration) {
