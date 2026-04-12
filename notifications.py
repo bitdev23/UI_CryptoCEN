@@ -1,17 +1,17 @@
 """Email notification system for Mantraj AI.
 
-Supports three transport backends (auto-selected based on env vars):
-  1. SendGrid (SENDGRID_API_KEY)
-  2. SMTP (SMTP_HOST + SMTP_PORT)
-  3. Noop / log-only (no creds – used in local dev)
+Transport priority (auto-selected based on env vars):
+  1. Resend  (RESEND_API_KEY)  — primary; same service used by Supabase auth emails
+  2. SMTP    (SMTP_HOST)       — fallback for custom SMTP providers
+  3. Noop / log-only          — local dev with no credentials configured
 
 Exposed helpers:
   - send_welcome_email(to_email, display_name)
-  - send_quota_warning(to_email, display_name, percent_used, plan)
+  - send_quota_warning(to_email, display_name, percent_used, plan, posts_remaining)
   - send_post_published(to_email, display_name, post_title, post_url)
 
 All send functions are non-blocking: they run in a daemon thread so the
-caller never waits for SMTP/API round-trips.
+caller never waits for API / SMTP round-trips.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ logger = logging.getLogger('velank.notifications')
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-_SENDGRID_API_KEY: str = os.getenv('SENDGRID_API_KEY', '').strip()
+_RESEND_API_KEY: str = os.getenv('RESEND_API_KEY', '').strip()
 _SMTP_HOST: str = os.getenv('SMTP_HOST', '').strip()
 _SMTP_PORT: int = int(os.getenv('SMTP_PORT', '587'))
 _SMTP_USER: str = os.getenv('SMTP_USER', '').strip()
@@ -38,34 +38,34 @@ _EMAIL_FROM: str = os.getenv('EMAIL_FROM', 'noreply@velank.io').strip()
 _EMAIL_FROM_NAME: str = os.getenv('EMAIL_FROM_NAME', 'Mantraj AI').strip()
 _APP_URL: str = os.getenv('APP_URL', 'https://app.velank.io').strip()
 
-# Feature flag — disable all email sending (useful in staging)
+# Set EMAIL_ENABLED=0 to suppress all email (useful in staging / CI)
 _EMAIL_ENABLED: bool = os.getenv('EMAIL_ENABLED', '1').strip().lower() in {'1', 'true', 'yes'}
 
 
 # ── Transport layer ───────────────────────────────────────────────────────────
 
-def _send_via_sendgrid(to_email: str, subject: str, html_body: str) -> bool:
-    """Send an email via SendGrid v3 API."""
+def _send_via_resend(to_email: str, subject: str, html_body: str) -> bool:
+    """Send via Resend API (https://resend.com)."""
     try:
-        from sendgrid import SendGridAPIClient
-        from sendgrid.helpers.mail import Mail, Email, To, Content
+        import resend
     except ImportError:
-        logger.warning('sendgrid package not installed — skipping email to %s', to_email)
+        logger.warning('resend package not installed — run: pip install "resend>=2.0.0"')
         return False
 
-    msg = Mail(
-        from_email=Email(_EMAIL_FROM, _EMAIL_FROM_NAME),
-        to_emails=To(to_email),
-        subject=subject,
-        html_content=Content('text/html', html_body),
-    )
+    resend.api_key = _RESEND_API_KEY
     try:
-        sg = SendGridAPIClient(_SENDGRID_API_KEY)
-        response = sg.send(msg)
-        logger.info('SendGrid email sent to %s — status %s', to_email, response.status_code)
-        return 200 <= response.status_code < 300
+        resp = resend.Emails.send({
+            'from': f'{_EMAIL_FROM_NAME} <{_EMAIL_FROM}>',
+            'to': [to_email],
+            'subject': subject,
+            'html': html_body,
+        })
+        # SDK v2 returns an object; v1 returns a dict — handle both
+        email_id = resp.get('id') if isinstance(resp, dict) else getattr(resp, 'id', None)
+        logger.info('Resend email sent to %s — id=%s', to_email, email_id)
+        return bool(email_id)
     except Exception as e:
-        logger.exception('SendGrid send failed for %s: %s', to_email, e)
+        logger.exception('Resend send failed for %s: %s', to_email, e)
         return False
 
 
@@ -95,13 +95,13 @@ def _send_via_smtp(to_email: str, subject: str, html_body: str) -> bool:
 def _send_email(to_email: str, subject: str, html_body: str) -> bool:
     """Route to the best available transport."""
     if not _EMAIL_ENABLED:
-        logger.debug('Email disabled by EMAIL_ENABLED flag — skipping %s', subject)
+        logger.debug('Email disabled by EMAIL_ENABLED flag — skipping "%s"', subject)
         return False
     if not to_email:
         return False
 
-    if _SENDGRID_API_KEY:
-        return _send_via_sendgrid(to_email, subject, html_body)
+    if _RESEND_API_KEY:
+        return _send_via_resend(to_email, subject, html_body)
     elif _SMTP_HOST:
         return _send_via_smtp(to_email, subject, html_body)
     else:

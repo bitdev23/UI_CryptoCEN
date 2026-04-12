@@ -47,7 +47,7 @@ gunicorn==21.2.0
 sentry-sdk[flask]==1.40.0
 
 # Email (for verification/notifications)
-sendgrid==6.11.0
+resend>=2.0.0
 
 # Payment processing
 razorpay==1.4.2
