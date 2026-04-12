@@ -67,6 +67,8 @@ from flask_cors import CORS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_APP_START_TIME = time.time()
+
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 
@@ -255,6 +257,11 @@ BACKGROUND_SERVICES_LOCK = threading.Lock()
 _BACKGROUND_SERVICES_STARTED = False
 _BACKGROUND_SERVICES_LOCK_FD = None
 
+# ── Admin lockout state (in-memory, per-process) ────────────────────────────
+_ADMIN_LOGIN_ATTEMPTS: dict = {}   # { ip: [timestamp, ...] }
+_ADMIN_LOCKOUT_WINDOW  = 300       # 5-minute sliding window
+_ADMIN_LOCKOUT_MAX     = 5         # lock out after 5 failures
+
 
 def get_user_pdf_dir(user_id: str) -> str:
     return os.path.join(PDF_DIR, user_id)
@@ -276,6 +283,21 @@ def resolve_local_kb_path(storage_path: str, filename: str, user_id: str) -> str
 
 
 def _read_feature_store() -> dict:
+    """Read user features from Supabase user_features table (falls back to JSON file)."""
+    try:
+        if auth_supabase:
+            result = auth_supabase.table('user_features').select('user_id, features').execute()
+            if result.data:
+                store = {}
+                for row in result.data:
+                    uid = str(row.get('user_id') or '').strip()
+                    blob = row.get('features')
+                    if uid and isinstance(blob, dict):
+                        store[uid] = blob
+                return store
+    except Exception as e:
+        logger.warning('user_features DB read failed, falling back to file: %s', e)
+    # Fallback to JSON file
     if not os.path.exists(FEATURE_STORE_PATH):
         return {}
     try:
@@ -287,6 +309,21 @@ def _read_feature_store() -> dict:
 
 
 def _write_feature_store(payload: dict) -> None:
+    """Write user features to Supabase (and keep JSON file as backup)."""
+    # Write each user blob as a row in user_features
+    try:
+        if auth_supabase and isinstance(payload, dict):
+            for uid, blob in payload.items():
+                if not is_valid_uuid(str(uid)):
+                    continue
+                auth_supabase.table('user_features').upsert({
+                    'user_id': uid,
+                    'features': blob if isinstance(blob, dict) else {},
+                    'updated_at': datetime.utcnow().isoformat() + 'Z',
+                }, on_conflict='user_id').execute()
+    except Exception as e:
+        logger.warning('user_features DB write failed, falling back to file: %s', e)
+    # Always keep JSON file as backup
     os.makedirs(DATA_DIR, exist_ok=True)
     tmp_path = FEATURE_STORE_PATH + '.tmp'
     with open(tmp_path, 'w') as fh:
@@ -294,6 +331,195 @@ def _write_feature_store(payload: dict) -> None:
         fh.flush()
         os.fsync(fh.fileno())
     os.replace(tmp_path, FEATURE_STORE_PATH)
+
+
+def _read_feature_blob_for_user(user_id: str) -> dict:
+    """Read a single user's feature blob directly from DB (faster than full store read)."""
+    try:
+        if auth_supabase:
+            result = auth_supabase.table('user_features').select('features').eq('user_id', user_id).execute()
+            if result.data and isinstance(result.data[0].get('features'), dict):
+                return result.data[0]['features']
+    except Exception as e:
+        logger.debug('Single-user feature read failed, falling back: %s', e)
+    # Fallback: read from full store
+    store = _read_feature_store()
+    return store.get(user_id) if isinstance(store.get(user_id), dict) else {}
+
+
+def _write_feature_blob_for_user(user_id: str, blob: dict) -> None:
+    """Write a single user's feature blob directly to DB."""
+    try:
+        if auth_supabase and is_valid_uuid(str(user_id)):
+            auth_supabase.table('user_features').upsert({
+                'user_id': user_id,
+                'features': blob if isinstance(blob, dict) else {},
+                'updated_at': datetime.utcnow().isoformat() + 'Z',
+            }, on_conflict='user_id').execute()
+    except Exception as e:
+        logger.warning('Single-user feature write failed: %s', e)
+    # Also update JSON file backup
+    try:
+        with FEATURE_STORE_LOCK:
+            store = {}
+            if os.path.exists(FEATURE_STORE_PATH):
+                try:
+                    with open(FEATURE_STORE_PATH, 'r') as fh:
+                        store = json.load(fh)
+                except Exception:
+                    store = {}
+            store[user_id] = blob
+            tmp_path = FEATURE_STORE_PATH + '.tmp'
+            os.makedirs(DATA_DIR, exist_ok=True)
+            with open(tmp_path, 'w') as fh:
+                json.dump(store, fh, indent=2)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp_path, FEATURE_STORE_PATH)
+    except Exception:
+        pass
+
+
+# ── Posts/Scheduled storage: Supabase-backed ──────────────────────────────
+
+def _db_save_post(user_id: str, post_data: dict) -> None:
+    """Persist a post row to Supabase posts table."""
+    try:
+        if not auth_supabase:
+            return
+        row = {
+            'user_id': user_id,
+            'content': post_data.get('content', ''),
+            'hashtags': post_data.get('hashtags', []),
+            'topic': post_data.get('theme', ''),
+            'industry': post_data.get('audience_industry', ''),
+            'role': post_data.get('professional_role', ''),
+            'ai_provider': post_data.get('provider', ''),
+            'status': 'posted' if post_data.get('posted') else 'draft',
+            'posted': bool(post_data.get('posted')),
+            'test_mode': bool(post_data.get('test_mode')),
+            'linkedin_urn': post_data.get('linkedin_urn') or None,
+            'kb_mode': post_data.get('kb_mode', ''),
+            'workspace_id': post_data.get('workspace_id', ''),
+            'analytics': post_data.get('analytics') or {},
+            'metadata': {
+                k: v for k, v in post_data.items()
+                if k not in ('content', 'hashtags', 'theme', 'audience_industry',
+                             'professional_role', 'provider', 'posted', 'test_mode',
+                             'linkedin_urn', 'kb_mode', 'workspace_id', 'analytics',
+                             'user_id', 'created_at')
+            },
+        }
+        if post_data.get('created_at'):
+            row['created_at'] = post_data['created_at']
+        auth_supabase.table('posts').insert(row).execute()
+    except Exception as e:
+        logger.warning('DB post save failed (non-fatal): %s', e)
+
+
+def _db_list_posts(user_id: str, limit: int = 50) -> list:
+    """Retrieve user's posts from Supabase."""
+    try:
+        if not auth_supabase:
+            return []
+        result = auth_supabase.table('posts').select('*').eq(
+            'user_id', user_id
+        ).order('created_at', desc=True).limit(limit).execute()
+        return result.data or []
+    except Exception as e:
+        logger.warning('DB posts list failed: %s', e)
+        return []
+
+
+def _db_update_post(post_id: str, updates: dict) -> None:
+    """Update a post row in Supabase."""
+    try:
+        if auth_supabase and post_id:
+            auth_supabase.table('posts').update(updates).eq('id', post_id).execute()
+    except Exception as e:
+        logger.debug('DB post update failed: %s', e)
+
+
+def _db_delete_user_posts(user_id: str) -> int:
+    """Delete all posts for a user from Supabase. Returns count deleted."""
+    try:
+        if not auth_supabase:
+            return 0
+        result = auth_supabase.table('posts').delete().eq('user_id', user_id).execute()
+        return len(result.data) if result.data else 0
+    except Exception as e:
+        logger.warning('DB posts delete failed: %s', e)
+        return 0
+
+
+def _db_save_scheduled_post(user_id: str, sp: dict) -> None:
+    """Save a scheduled post to Supabase scheduled_posts (flat, no FK to posts)."""
+    try:
+        if not auth_supabase:
+            return
+        row = {
+            'user_id': user_id,
+            'content': sp.get('content', ''),
+            'hashtags': sp.get('hashtags', []),
+            'schedule_time': sp.get('schedule_time', ''),
+            'status': 'pending',
+            'metadata': {k: v for k, v in sp.items() if k not in ('content', 'hashtags', 'schedule_time', 'user_id', 'id', 'created_at')},
+        }
+        if sp.get('id'):
+            row['id'] = sp['id']
+        auth_supabase.table('scheduled_posts_v2').upsert(row, on_conflict='id').execute()
+    except Exception as e:
+        logger.warning('DB scheduled post save failed: %s', e)
+
+
+def _db_list_scheduled_posts(user_id: str) -> list:
+    """List pending scheduled posts for user from Supabase."""
+    try:
+        if not auth_supabase:
+            return []
+        result = auth_supabase.table('scheduled_posts_v2').select('*').eq(
+            'user_id', user_id
+        ).eq('status', 'pending').order('schedule_time').execute()
+        return result.data or []
+    except Exception as e:
+        logger.debug('DB scheduled posts list failed: %s', e)
+        return []
+
+
+def _db_delete_scheduled_post(post_id: str) -> None:
+    """Delete a scheduled post from Supabase."""
+    try:
+        if auth_supabase and post_id:
+            auth_supabase.table('scheduled_posts_v2').delete().eq('id', post_id).execute()
+    except Exception as e:
+        logger.debug('DB scheduled post delete failed: %s', e)
+
+
+def _db_get_due_scheduled_posts() -> list:
+    """Get all pending scheduled posts that are due now."""
+    try:
+        if not auth_supabase:
+            return []
+        now = datetime.utcnow().isoformat() + 'Z'
+        result = auth_supabase.table('scheduled_posts_v2').select('*').eq(
+            'status', 'pending'
+        ).lte('schedule_time', now).execute()
+        return result.data or []
+    except Exception as e:
+        logger.debug('DB due scheduled posts failed: %s', e)
+        return []
+
+
+def _db_mark_scheduled_post_done(post_id: str, status: str = 'published', error: str = '') -> None:
+    """Mark a scheduled post as published or failed."""
+    try:
+        if auth_supabase and post_id:
+            update = {'status': status}
+            if error:
+                update['error_message'] = error[:500]
+            auth_supabase.table('scheduled_posts_v2').update(update).eq('id', post_id).execute()
+    except Exception as e:
+        logger.debug('DB scheduled post status update failed: %s', e)
 
 
 def _read_json_list(file_path: str) -> list:
@@ -655,7 +881,10 @@ def _sync_linkedin_analytics(max_posts: int = 25, user_id: str = '') -> dict:
             'errors': []
         }
 
-    posts = _read_json_list(POSTS_PATH)
+    # Try DB first, fall back to JSON
+    db_posts = _db_list_posts(user_id, limit=200) if user_id else []
+    posts = db_posts if db_posts else _read_json_list(POSTS_PATH)
+    use_db = bool(db_posts)
     if not posts:
         return {
             'success': True,
@@ -737,6 +966,15 @@ def _sync_linkedin_analytics(max_posts: int = 25, user_id: str = '') -> dict:
             errors.append({'urn': urn, 'error': metrics.get('error') or 'Unknown sync error'})
 
     if synced > 0:
+        if use_db:
+            # Update analytics in DB for each synced post
+            for idx, urn in eligible_indices:
+                post = posts[idx]
+                if post.get('analytics') and post.get('id'):
+                    _db_update_post(post['id'], {
+                        'analytics': post['analytics'],
+                        'linkedin_urn': urn,
+                    })
         _write_json_list(POSTS_PATH, posts)
 
     message_parts = [f'Synced {synced} of {len(eligible_indices)} eligible posts.']
@@ -903,8 +1141,7 @@ def _normalize_workspace_payload(payload: dict, existing_id: str = None) -> dict
 
 def _ensure_user_feature_blob(user_id: str) -> dict:
     with FEATURE_STORE_LOCK:
-        store = _read_feature_store()
-        blob = store.get(user_id) if isinstance(store.get(user_id), dict) else {}
+        blob = _read_feature_blob_for_user(user_id)
 
         if not blob.get('kb_workspaces'):
             blob['kb_workspaces'] = [
@@ -921,17 +1158,14 @@ def _ensure_user_feature_blob(user_id: str) -> dict:
             blob['generation_presets'] = _default_presets()
 
         blob['updated_at'] = int(time.time())
-        store[user_id] = blob
-        _write_feature_store(store)
+        _write_feature_blob_for_user(user_id, blob)
         return blob
 
 
 def _save_user_feature_blob(user_id: str, blob: dict) -> dict:
     with FEATURE_STORE_LOCK:
-        store = _read_feature_store()
         blob['updated_at'] = int(time.time())
-        store[user_id] = blob
-        _write_feature_store(store)
+        _write_feature_blob_for_user(user_id, blob)
         return blob
 
 
@@ -1432,7 +1666,8 @@ Rules:\n- 120-180 words\n- Short punchy paragraphs (1-2 sentences each)\n- Natur
         
         posts.append(post_data)
         
-        # Save back
+        # Save to DB (primary) + JSON (backup)
+        _db_save_post('', post_data)
         _write_json_list(POSTS_PATH, posts)
         
         logger.info("Scheduled post completed: %s", "Posted" if post_result.get('status') == 'posted' else "Test mode")
@@ -1532,12 +1767,16 @@ def start_scheduler():
 
                     posts = _read_json_list(POSTS_PATH)
                     posts.append(post_data)
+                    _db_save_post(scheduled_user_id, post_data)
                     _write_json_list(POSTS_PATH, posts)
+                    # Mark scheduled post done in DB
+                    _db_mark_scheduled_post_done(post.get('id'), status='published')
                     posted_count += 1
                 except Exception as post_error:
                     post['last_error'] = str(post_error)
                     post['last_attempt_at'] = datetime.utcnow().isoformat() + 'Z'
                     pending_posts.append(post)
+                    _db_mark_scheduled_post_done(post.get('id'), status='failed', error=str(post_error))
                     logger.exception("Scheduled post failed id=%s: %s", post.get('id'), post_error)
 
             _write_json_list(SCHEDULED_POSTS_PATH, pending_posts)
@@ -1712,10 +1951,26 @@ def is_valid_uuid(value: str) -> bool:
         return False
 
 
+_ADMIN_SESSION_MAX_AGE = 3600  # 1 hour session timeout
+
+
+def _admin_session_valid() -> bool:
+    """Check admin session is active and not expired."""
+    if not session.get('is_admin'):
+        return False
+    login_at = session.get('admin_login_at', 0)
+    if login_at and (time.time() - login_at) > _ADMIN_SESSION_MAX_AGE:
+        session.pop('is_admin', None)
+        session.pop('admin_email', None)
+        session.pop('admin_login_at', None)
+        return False
+    return True
+
+
 def require_admin_session(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not session.get('is_admin'):
+        if not _admin_session_valid():
             return redirect(url_for('admin_login_page'))
         return f(*args, **kwargs)
     return wrapper
@@ -1724,7 +1979,7 @@ def require_admin_session(f):
 def require_admin_api(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not session.get('is_admin'):
+        if not _admin_session_valid():
             return jsonify({'success': False, 'message': 'Admin authentication required'}), 401
         return f(*args, **kwargs)
     return wrapper
@@ -2405,6 +2660,9 @@ def _increment_monthly_usage(user_id: str, **increments) -> None:
 
 
 def _get_user_scheduled_count(user_id: str) -> int:
+    db_posts = _db_list_scheduled_posts(user_id)
+    if db_posts:
+        return len(db_posts)
     scheduled_posts = _read_json_list(SCHEDULED_POSTS_PATH)
     return sum(1 for row in scheduled_posts if str(row.get('user_id') or '').strip() == str(user_id))
 
@@ -2950,13 +3208,30 @@ def logout_page():
 @app.route('/admin/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", methods=["POST"])
 def admin_login_page():
-    """Admin login page."""
+    """Admin login page with brute-force lockout."""
     if request.method == 'GET':
         return render_template('admin_login.html')
 
     data = request.get_json(silent=True) or request.form or {}
     email = (data.get('email') or '').strip().lower()
     password = (data.get('password') or '').strip()
+
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '0.0.0.0').split(',')[0].strip()
+
+    # ── Lockout check ─────────────────────────────────────────────────────
+    now_ts = time.time()
+    attempts = _ADMIN_LOGIN_ATTEMPTS.get(client_ip, [])
+    # Keep only attempts within the window
+    attempts = [t for t in attempts if now_ts - t < _ADMIN_LOCKOUT_WINDOW]
+    _ADMIN_LOGIN_ATTEMPTS[client_ip] = attempts
+
+    if len(attempts) >= _ADMIN_LOCKOUT_MAX:
+        remaining = int(_ADMIN_LOCKOUT_WINDOW - (now_ts - attempts[0]))
+        logger.warning('Admin login locked out for IP %s (%d attempts)', client_ip, len(attempts))
+        return jsonify({
+            'success': False,
+            'message': f'Too many failed attempts. Try again in {remaining} seconds.'
+        }), 429
 
     creds = get_admin_credentials()
     if not creds['email'] or not creds['password']:
@@ -2965,7 +3240,17 @@ def admin_login_page():
     if hmac.compare_digest(email, creds['email']) and hmac.compare_digest(password, creds['password']):
         session['is_admin'] = True
         session['admin_email'] = email
+        session['admin_login_at'] = time.time()
+        # Clear failed attempts on success
+        _ADMIN_LOGIN_ATTEMPTS.pop(client_ip, None)
+        # Log successful login
+        _admin_log_action('admin_login', '', {'ip': client_ip, 'email': email, 'success': True})
         return jsonify({'success': True, 'redirect': '/admin/dashboard'})
+
+    # Record failed attempt
+    attempts.append(now_ts)
+    _ADMIN_LOGIN_ATTEMPTS[client_ip] = attempts
+    _admin_log_action('admin_login_failed', '', {'ip': client_ip, 'email': email, 'attempts': len(attempts)})
 
     return jsonify({'success': False, 'message': 'Invalid admin credentials'}), 401
 
@@ -3946,7 +4231,33 @@ def billing_webhook():
         order_id = str(payment_entity.get('order_id') or order_entity.get('id') or '').strip()
 
         if event in {'payment.captured', 'order.paid'} and is_valid_uuid(user_id):
+            # ── Idempotency check: skip if this (payment_id, event) was already processed
+            if payment_id and auth_supabase:
+                try:
+                    existing = auth_supabase.table('billing_events').select('id').eq(
+                        'payment_id', payment_id
+                    ).eq('event_type', event).limit(1).execute()
+                    if existing.data:
+                        logger.info('Billing webhook duplicate skipped: payment_id=%s event=%s', payment_id, event)
+                        return jsonify({'success': True, 'duplicate': True})
+                except Exception as dup_err:
+                    logger.debug('Billing idempotency check failed (proceeding): %s', dup_err)
+
             _activate_subscription_from_payment(user_id, plan, payment_id=payment_id, order_id=order_id)
+
+            # ── Record billing event for idempotency
+            if payment_id and auth_supabase:
+                try:
+                    auth_supabase.table('billing_events').insert({
+                        'payment_id': payment_id,
+                        'event_type': event,
+                        'user_id': user_id,
+                        'plan': plan,
+                        'order_id': order_id,
+                        'raw_payload': payload,
+                    }).execute()
+                except Exception as rec_err:
+                    logger.debug('Billing event record failed (non-fatal): %s', rec_err)
 
         return jsonify({'success': True})
     except Exception as e:
@@ -4040,6 +4351,48 @@ def admin_audit_logs():
         return _safe_api_error('Failed to fetch audit logs', e)
 
 # ============= ROUTES =============
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Liveness / readiness probe for load-balancers & monitoring."""
+    checks = {}
+    overall = True
+
+    # 1. Supabase DB
+    try:
+        if auth_supabase:
+            auth_supabase.table('posts').select('id').limit(1).execute()
+            checks['database'] = 'ok'
+        else:
+            checks['database'] = 'not_configured'
+            overall = False
+    except Exception as e:
+        checks['database'] = f'error: {str(e)[:120]}'
+        overall = False
+
+    # 2. Redis (optional — used for rate-limiting)
+    try:
+        redis_url = os.getenv('REDIS_URL', '').strip()
+        if redis_url:
+            import redis as _redis_mod
+            r = _redis_mod.from_url(redis_url, socket_connect_timeout=3, socket_timeout=3)
+            r.ping()
+            checks['redis'] = 'ok'
+        else:
+            checks['redis'] = 'not_configured'
+    except Exception as e:
+        checks['redis'] = f'error: {str(e)[:120]}'
+        # Redis failure is non-fatal for overall health
+        logger.debug('Health check: Redis ping failed: %s', e)
+
+    status_code = 200 if overall else 503
+    return jsonify({
+        'status': 'healthy' if overall else 'degraded',
+        'checks': checks,
+        'version': os.getenv('APP_VERSION', 'unknown'),
+        'uptime_seconds': int(time.time() - _APP_START_TIME),
+    }), status_code
+
 
 @app.route('/')
 def dashboard():
@@ -6029,6 +6382,11 @@ def get_posts():
     """Get recently generated posts"""
     try:
         user_id = get_current_user_id()
+        # Primary: read from Supabase
+        db_posts = _db_list_posts(user_id, limit=10)
+        if db_posts:
+            return jsonify({'success': True, 'posts': db_posts})
+        # Fallback: read from JSON file (legacy data)
         posts = [
             row for row in _read_json_list(POSTS_PATH)
             if str(row.get('user_id') or '').strip() == str(user_id)
@@ -6042,8 +6400,10 @@ def clear_post_history():
     """Clear post history for current user (or all legacy entries without user_id)."""
     try:
         user_id = get_current_user_id()
+        # Primary: delete from DB
+        db_cleared = _db_delete_user_posts(user_id)
+        # Also clean JSON backup
         posts = _read_json_list(POSTS_PATH)
-
         has_user_scoped_rows = any(str(row.get('user_id') or '').strip() for row in posts)
         if has_user_scoped_rows:
             remaining = [
@@ -6052,9 +6412,9 @@ def clear_post_history():
             ]
         else:
             remaining = []
-
-        cleared_count = len(posts) - len(remaining)
+        json_cleared = len(posts) - len(remaining)
         _write_json_list(POSTS_PATH, remaining)
+        cleared_count = max(db_cleared, json_cleared)
 
         return jsonify({
             'success': True,
@@ -6072,14 +6432,19 @@ def get_analytics():
     """Return real analytics calculated from persisted post data (no simulated metrics)."""
     try:
         user_id = get_current_user_id()
-        posts = [
-            row for row in _read_json_list(POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-        ]
-        scheduled_posts = [
-            row for row in _read_json_list(SCHEDULED_POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-        ]
+        # Primary: DB
+        posts = _db_list_posts(user_id, limit=200)
+        if not posts:
+            posts = [
+                row for row in _read_json_list(POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+            ]
+        scheduled_posts = _db_list_scheduled_posts(user_id)
+        if not scheduled_posts:
+            scheduled_posts = [
+                row for row in _read_json_list(SCHEDULED_POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+            ]
         analytics = _calculate_real_analytics(posts, scheduled_posts)
         return jsonify({'success': True, 'analytics': analytics})
     except Exception as e:
@@ -6133,9 +6498,6 @@ def schedule_post():
         if scheduled_dt < min_dt:
             return jsonify({'success': False, 'message': 'Schedule time must be at least 2 minutes from now'}), 400
         
-        # Load existing scheduled posts
-        scheduled_posts = _read_json_list(SCHEDULED_POSTS_PATH)
-
         effective_plan = _get_effective_plan(user_id)
         plan_limits = _get_plan_limits(effective_plan)
         scheduled_limit = _plan_limit_int(plan_limits, 'scheduled_posts', 10)
@@ -6147,7 +6509,7 @@ def schedule_post():
             }), 403
 
         # Server-side protection: cap scheduled posts based on plan limits.
-        user_scheduled_count = sum(1 for row in scheduled_posts if str(row.get('user_id') or '') == str(user_id))
+        user_scheduled_count = _get_user_scheduled_count(user_id)
         if user_scheduled_count >= scheduled_limit:
             return jsonify({
                 'success': False,
@@ -6165,9 +6527,10 @@ def schedule_post():
             **_extract_post_metadata(data)
         }
         
+        # Save to DB (primary) + JSON (backup)
+        _db_save_scheduled_post(user_id, scheduled_post)
+        scheduled_posts = _read_json_list(SCHEDULED_POSTS_PATH)
         scheduled_posts.append(scheduled_post)
-        
-        # Save back
         _write_json_list(SCHEDULED_POSTS_PATH, scheduled_posts)
         
         return jsonify({'success': True, 'message': f'Post scheduled for {schedule_time}'})
@@ -6180,10 +6543,13 @@ def get_scheduled_posts():
     """Return scheduled posts ordered by schedule time"""
     try:
         user_id = get_current_user_id()
-        scheduled_posts = [
-            row for row in _read_json_list(SCHEDULED_POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-        ]
+        # Primary: DB
+        scheduled_posts = _db_list_scheduled_posts(user_id)
+        if not scheduled_posts:
+            scheduled_posts = [
+                row for row in _read_json_list(SCHEDULED_POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+            ]
 
         def parse_dt(value):
             try:
@@ -6240,6 +6606,14 @@ def reschedule_post():
             return jsonify({'success': False, 'message': 'Scheduled post not found'}), 404
 
         _write_json_list(SCHEDULED_POSTS_PATH, scheduled_posts)
+        # Update DB
+        try:
+            if auth_supabase:
+                auth_supabase.table('scheduled_posts_v2').update(
+                    {'schedule_time': schedule_time}
+                ).eq('id', post_id).execute()
+        except Exception:
+            pass
 
         return jsonify({'success': True, 'message': 'Post rescheduled successfully'})
     except Exception as e:
@@ -6273,6 +6647,8 @@ def cancel_scheduled_post():
             return jsonify({'success': False, 'message': 'Scheduled post not found'}), 404
 
         _write_json_list(SCHEDULED_POSTS_PATH, new_posts)
+        # Also remove from DB
+        _db_delete_scheduled_post(post_id)
 
         return jsonify({'success': True, 'message': 'Scheduled post canceled'})
     except Exception as e:
@@ -6372,7 +6748,8 @@ Write ONLY the post content, nothing else."""
         
         posts.append(post_data)
         
-        # Save back
+        # Save to DB (primary) + JSON (backup)
+        _db_save_post(user_id, post_data)
         _write_json_list(POSTS_PATH, posts)
         
         if post_result.get('status') == 'posted':
@@ -7195,15 +7572,19 @@ def get_enterprise_stats():
     """Get enhanced analytics for premium users"""
     try:
         user_id = get_current_user_id()
-        posts = [
-            row for row in _read_json_list(POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-        ]
+        posts = _db_list_posts(user_id, limit=200)
+        if not posts:
+            posts = [
+                row for row in _read_json_list(POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+            ]
 
-        scheduled_posts = [
-            row for row in _read_json_list(SCHEDULED_POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-        ]
+        scheduled_posts = _db_list_scheduled_posts(user_id)
+        if not scheduled_posts:
+            scheduled_posts = [
+                row for row in _read_json_list(SCHEDULED_POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+            ]
         analytics = _calculate_real_analytics(posts, scheduled_posts)
         total_posts = analytics['total_posts']
         posted = analytics['posted_count']
@@ -7447,11 +7828,13 @@ def get_best_time():
     """Analyse published post history + global LinkedIn benchmarks to surface optimal slots."""
     try:
         user_id = get_current_user_id()
-        posts = [
-            row for row in _read_json_list(POSTS_PATH)
-            if str(row.get('user_id') or '').strip() == str(user_id)
-            and row.get('posted')
-        ]
+        posts = _db_list_posts(user_id, limit=200)
+        if not posts:
+            posts = [
+                row for row in _read_json_list(POSTS_PATH)
+                if str(row.get('user_id') or '').strip() == str(user_id)
+                and row.get('posted')
+            ]
 
         # LinkedIn global engagement benchmarks (0–100 score per day/hour)
         GLOBAL_DAY = [72, 88, 92, 90, 80, 35, 28]  # Mon-Sun
