@@ -1102,4 +1102,136 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             logger.error("Admin audit logs fetch failed: %s", e)
             return _safe_api_error('Failed to fetch audit logs', e)
 
+    # ── Dead-Letter Queue (DLQ) visibility & retry ────────────────────────
+
+    def _get_redis():
+        """Lazy Redis connection for DLQ read/retry (reuses worker env vars)."""
+        from redis import Redis
+        return Redis(
+            host=os.getenv('REDIS_HOST', '127.0.0.1'),
+            port=int(os.getenv('REDIS_PORT', '6379')),
+            db=int(os.getenv('REDIS_DB', '0')),
+            password=os.getenv('REDIS_PASSWORD', None) or None,
+            ssl=os.getenv('REDIS_SSL', '').lower() in {'1', 'true', 'yes'},
+            decode_responses=True,
+            socket_connect_timeout=5,
+        )
+
+    _DLQ_REDIS_KEY = f"rq:dlq:{os.getenv('DEAD_LETTER_QUEUE', 'dead_letter')}"
+
+    @admin_bp.route('/api/admin/dlq', methods=['GET'])
+    @require_admin_api
+    def admin_dlq_list():
+        """List dead-letter queue entries (newest first)."""
+        try:
+            r = _get_redis()
+            raw_limit = request.args.get('limit', '50')
+            try:
+                limit = max(1, min(200, int(raw_limit)))
+            except Exception:
+                limit = 50
+            # ZREVRANGEBYSCORE returns newest first (highest score = most recent)
+            entries_raw = r.zrevrangebyscore(_DLQ_REDIS_KEY, '+inf', '-inf', start=0, num=limit, withscores=True)
+            entries = []
+            for payload_str, score in entries_raw:
+                try:
+                    entry = json.loads(payload_str)
+                    entry['_score'] = score
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    entries.append({'raw': payload_str, '_score': score})
+            total = r.zcard(_DLQ_REDIS_KEY)
+            return jsonify({'success': True, 'entries': entries, 'total': total})
+        except Exception as e:
+            return _safe_api_error('Failed to read DLQ', e)
+
+    @admin_bp.route('/api/admin/dlq/<job_id>/retry', methods=['POST'])
+    @require_admin_api
+    def admin_dlq_retry(job_id):
+        """Re-enqueue a DLQ job by job_id. Removes it from the DLQ."""
+        try:
+            import importlib
+            from rq import Queue
+            r_raw = _get_redis()
+            # Search for the entry to get func_name and args
+            all_entries = r_raw.zrangebyscore(_DLQ_REDIS_KEY, '-inf', '+inf')
+            target = None
+            target_raw = None
+            for raw in all_entries:
+                try:
+                    entry = json.loads(raw)
+                    if entry.get('job_id') == job_id:
+                        target = entry
+                        target_raw = raw
+                        break
+                except json.JSONDecodeError:
+                    continue
+            if not target:
+                return jsonify({'success': False, 'message': f'Job {job_id} not found in DLQ'}), 404
+            # Re-enqueue via RQ
+            from redis import Redis as RawRedis
+            conn = RawRedis(
+                host=os.getenv('REDIS_HOST', '127.0.0.1'),
+                port=int(os.getenv('REDIS_PORT', '6379')),
+                db=int(os.getenv('REDIS_DB', '0')),
+                password=os.getenv('REDIS_PASSWORD', None) or None,
+                ssl=os.getenv('REDIS_SSL', '').lower() in {'1', 'true', 'yes'},
+                decode_responses=False,
+            )
+            queue_name = os.getenv('KB_QUEUE_NAME', 'mantraj_kb_jobs')
+            q = Queue(queue_name, connection=conn)
+            func_name = target.get('func_name', '')
+            # Resolve function reference
+            if '.' in func_name:
+                mod_path, fn_name = func_name.rsplit('.', 1)
+                mod = importlib.import_module(mod_path)
+                func = getattr(mod, fn_name)
+            else:
+                func = None
+            if func:
+                q.enqueue(func, *[str(a) for a in target.get('args', [])])
+            # Remove from DLQ
+            r_raw.zrem(_DLQ_REDIS_KEY, target_raw)
+            _log_action(f'DLQ retry: {job_id} ({func_name})')
+            return jsonify({'success': True, 'message': f'Job {job_id} re-enqueued'})
+        except Exception as e:
+            return _safe_api_error(f'Failed to retry DLQ job {job_id}', e)
+
+    @admin_bp.route('/api/admin/dlq/<job_id>', methods=['DELETE'])
+    @require_admin_api
+    def admin_dlq_delete(job_id):
+        """Remove a single entry from the DLQ by job_id."""
+        try:
+            r = _get_redis()
+            all_entries = r.zrangebyscore(_DLQ_REDIS_KEY, '-inf', '+inf')
+            removed = False
+            for raw in all_entries:
+                try:
+                    entry = json.loads(raw)
+                    if entry.get('job_id') == job_id:
+                        r.zrem(_DLQ_REDIS_KEY, raw)
+                        removed = True
+                        break
+                except json.JSONDecodeError:
+                    continue
+            if not removed:
+                return jsonify({'success': False, 'message': f'Job {job_id} not found in DLQ'}), 404
+            _log_action(f'DLQ delete: {job_id}')
+            return jsonify({'success': True, 'message': f'Job {job_id} removed from DLQ'})
+        except Exception as e:
+            return _safe_api_error(f'Failed to delete DLQ job {job_id}', e)
+
+    @admin_bp.route('/api/admin/dlq/purge', methods=['POST'])
+    @require_admin_api
+    def admin_dlq_purge():
+        """Purge all entries from the DLQ."""
+        try:
+            r = _get_redis()
+            count = r.zcard(_DLQ_REDIS_KEY)
+            r.delete(_DLQ_REDIS_KEY)
+            _log_action(f'DLQ purge: {count} entries removed')
+            return jsonify({'success': True, 'message': f'Purged {count} DLQ entries'})
+        except Exception as e:
+            return _safe_api_error('Failed to purge DLQ', e)
+
     return admin_bp

@@ -3,11 +3,14 @@ Database helper for Supabase integration
 Provides high-level methods for interacting with Supabase
 """
 
+import logging
 import os
 from typing import List, Dict, Optional, Tuple
 from supabase import create_client, Client
 from datetime import datetime, date
 import json
+
+logger = logging.getLogger('velank.db_helper')
 
 class SupabaseDB:
     """Wrapper for Supabase client with convenience methods"""
@@ -146,7 +149,7 @@ class SupabaseDB:
             result = self.client.table('kb_embeddings').insert(embeddings).execute()
             return len(result.data) > 0
         except Exception as e:
-            print(f"Error inserting embeddings: {e}")
+            logger.exception('Error inserting embeddings: %s', e)
             return False
     
     def search_embeddings(self, user_id: str, query_embedding: List[float], 
@@ -311,17 +314,29 @@ class SupabaseDB:
     # STORAGE METHODS (for KB files)
     # =========================================================================
     
+    # MIME type map for KB uploads
+    _MIME_MAP = {
+        '.pdf':  'application/pdf',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc':  'application/msword',
+        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        '.txt':  'text/plain',
+        '.md':   'text/markdown',
+        '.csv':  'text/csv',
+    }
+
     def upload_to_storage(self, user_id: str, file_path: str, file_data: bytes) -> str:
-        """Upload file to Supabase Storage"""
-        # Path format: user_id/filename
+        """Upload file to Supabase Storage with correct content-type."""
         storage_path = f"{user_id}/{file_path}"
-        
+        ext = os.path.splitext(file_path)[1].lower()
+        content_type = self._MIME_MAP.get(ext, 'application/octet-stream')
+
         result = self.client.storage.from_('kb-files').upload(
             storage_path,
             file_data,
-            file_options={'content-type': 'application/pdf'}  # Adjust based on file type
+            file_options={'content-type': content_type}
         )
-        
+
         return storage_path
     
     def download_from_storage(self, storage_path: str) -> bytes:
@@ -335,7 +350,7 @@ class SupabaseDB:
             self.client.storage.from_('kb-files').remove([storage_path])
             return True
         except Exception as e:
-            print(f"Error deleting from storage: {e}")
+            logger.exception('Error deleting from storage: %s', e)
             return False
     
     def get_storage_url(self, storage_path: str) -> str:
@@ -386,7 +401,7 @@ class SupabaseDB:
                 'metadata': json.dumps(metadata) if metadata else None
             }).execute()
         except Exception as e:
-            print(f"Error logging to database: {e}")
+            logger.exception('Error logging to database: %s', e)
 
 
 # Singleton instance

@@ -55,6 +55,8 @@ _load_project_env()
 
 from ai_provider import AIProvider
 from config import DEFAULT_PROFILE, POST_FORMATS
+from prompt_builder import PromptBuilder as _PromptBuilder
+from notifications import send_welcome_email as _send_welcome_email, send_quota_warning as _send_quota_warning, send_post_published as _send_post_published
 from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from database.db_helper import get_db as _get_db_helper
@@ -64,6 +66,10 @@ from crypto_utils import encrypt_value, decrypt_value, is_encrypted
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
+try:
+    from flask_compress import Compress as _FlaskCompress
+except ImportError:  # pragma: no cover — optional dependency
+    _FlaskCompress = None
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -92,6 +98,13 @@ app.secret_key = _flask_secret
 
 # ── CORS ──────────────────────────────────────────────────────────────────
 CORS(app, resources={r"/api/*": {"origins": os.getenv('ALLOWED_ORIGINS', 'https://app.velank.io').split(',')}})
+
+# ── Response compression (gzip/brotli) ────────────────────────────────────
+if _FlaskCompress is not None:
+    app.config['COMPRESS_MIN_SIZE'] = 512          # compress responses > 512 bytes
+    app.config['COMPRESS_ALGORITHM'] = ['br', 'gzip', 'deflate']
+    _FlaskCompress(app)
+    logger.info('Flask-Compress enabled (br/gzip/deflate)')
 
 # ── Rate Limiting ─────────────────────────────────────────────────────────
 _redis_url = os.getenv('REDIS_URL', '').strip()
@@ -358,8 +371,7 @@ def _read_feature_store() -> dict:
 
 
 def _write_feature_store(payload: dict) -> None:
-    """Write user features to Supabase (and keep JSON file as backup)."""
-    # Write each user blob as a row in user_features
+    """Write user features to Supabase (DB-only, no shared JSON file)."""
     try:
         if auth_supabase and isinstance(payload, dict):
             for uid, blob in payload.items():
@@ -371,33 +383,23 @@ def _write_feature_store(payload: dict) -> None:
                     'updated_at': datetime.utcnow().isoformat() + 'Z',
                 }, on_conflict='user_id').execute()
     except Exception as e:
-        logger.warning('user_features DB write failed, falling back to file: %s', e)
-    # Always keep JSON file as backup
-    os.makedirs(DATA_DIR, exist_ok=True)
-    tmp_path = FEATURE_STORE_PATH + '.tmp'
-    with open(tmp_path, 'w') as fh:
-        json.dump(payload, fh, indent=2)
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(tmp_path, FEATURE_STORE_PATH)
+        logger.warning('user_features DB write failed: %s', e)
 
 
 def _read_feature_blob_for_user(user_id: str) -> dict:
-    """Read a single user's feature blob directly from DB (faster than full store read)."""
+    """Read a single user's feature blob directly from DB (per-tenant, no cross-user leak)."""
     try:
         if auth_supabase:
             result = auth_supabase.table('user_features').select('features').eq('user_id', user_id).execute()
             if result.data and isinstance(result.data[0].get('features'), dict):
                 return result.data[0]['features']
     except Exception as e:
-        logger.debug('Single-user feature read failed, falling back: %s', e)
-    # Fallback: read from full store
-    store = _read_feature_store()
-    return store.get(user_id) if isinstance(store.get(user_id), dict) else {}
+        logger.debug('Single-user feature read failed: %s', e)
+    return {}
 
 
 def _write_feature_blob_for_user(user_id: str, blob: dict) -> None:
-    """Write a single user's feature blob directly to DB."""
+    """Write a single user's feature blob directly to DB (per-tenant, no shared JSON)."""
     try:
         if auth_supabase and is_valid_uuid(str(user_id)):
             auth_supabase.table('user_features').upsert({
@@ -407,26 +409,6 @@ def _write_feature_blob_for_user(user_id: str, blob: dict) -> None:
             }, on_conflict='user_id').execute()
     except Exception as e:
         logger.warning('Single-user feature write failed: %s', e)
-    # Also update JSON file backup
-    try:
-        with FEATURE_STORE_LOCK:
-            store = {}
-            if os.path.exists(FEATURE_STORE_PATH):
-                try:
-                    with open(FEATURE_STORE_PATH, 'r') as fh:
-                        store = json.load(fh)
-                except Exception:
-                    store = {}
-            store[user_id] = blob
-            tmp_path = FEATURE_STORE_PATH + '.tmp'
-            os.makedirs(DATA_DIR, exist_ok=True)
-            with open(tmp_path, 'w') as fh:
-                json.dump(store, fh, indent=2)
-                fh.flush()
-                os.fsync(fh.fileno())
-            os.replace(tmp_path, FEATURE_STORE_PATH)
-    except Exception:
-        pass
 
 
 # ── Posts/Scheduled storage: Supabase-backed ──────────────────────────────
@@ -625,19 +607,23 @@ def _parse_schedule_datetime(value) -> datetime:
 
 
 def _find_fallback_user_with_linkedin_config() -> str:
-    """Return a user_id from feature store that has LinkedIn credentials configured."""
+    """Return a user_id that has LinkedIn credentials configured (DB-only, no full store scan)."""
     try:
-        store = _read_feature_store()
-        if not isinstance(store, dict):
-            return ''
-        for candidate_user_id, blob in store.items():
-            if not is_valid_uuid(str(candidate_user_id or '')):
-                continue
-            cfg = blob.get('user_config') if isinstance(blob.get('user_config'), dict) else {}
-            access_token = str(cfg.get('LINKEDIN_ACCESS_TOKEN') or '').strip()
-            person_id = str(cfg.get('LINKEDIN_PERSON_ID') or '').strip()
-            if access_token and person_id:
-                return str(candidate_user_id)
+        if auth_supabase:
+            # Query only users whose features JSONB contains LinkedIn creds
+            result = auth_supabase.table('user_features').select('user_id, features').execute()
+            for row in (result.data or []):
+                uid = str(row.get('user_id') or '').strip()
+                if not uid or not is_valid_uuid(uid):
+                    continue
+                blob = row.get('features')
+                if not isinstance(blob, dict):
+                    continue
+                cfg = blob.get('user_config') if isinstance(blob.get('user_config'), dict) else {}
+                access_token = str(cfg.get('LINKEDIN_ACCESS_TOKEN') or '').strip()
+                person_id = str(cfg.get('LINKEDIN_PERSON_ID') or '').strip()
+                if access_token and person_id:
+                    return uid
     except Exception:
         pass
     return ''
@@ -1838,6 +1824,18 @@ def start_scheduler():
                     # Mark scheduled post done in DB
                     _db_mark_scheduled_post_done(post.get('id'), status='published')
                     posted_count += 1
+                    # ── Notify user about published post ──────────────────────
+                    try:
+                        _s_user_blob = _read_feature_blob_for_user(scheduled_user_id)
+                        _s_email = str((_s_user_blob.get('user_config') or {}).get('email') or '').strip()
+                        if _s_email:
+                            _send_post_published(
+                                _s_email,
+                                post_title=str(post.get('content') or '')[:80],
+                                post_url=str(result.get('linkedin_urn') or ''),
+                            )
+                    except Exception:
+                        pass  # notification is best-effort
                 except Exception as post_error:
                     post['last_error'] = str(post_error)
                     post['last_attempt_at'] = datetime.utcnow().isoformat() + 'Z'
@@ -2555,6 +2553,23 @@ def _increment_monthly_usage(user_id: str, **increments) -> None:
                 'month': month_start.isoformat(),
                 **update_payload
             }).execute()
+        # ── Quota-warning email (80 % and 90 %) ──────────────────────────────
+        if 'posts_generated' in update_payload:
+            try:
+                plan = _get_effective_plan(user_id)
+                limits = _get_plan_limits(plan)
+                limit = _plan_limit_int(limits, 'posts_generated', 0)
+                if limit > 0:
+                    new_used = update_payload['posts_generated']
+                    pct = int(new_used * 100 / limit)
+                    remaining = max(0, limit - new_used)
+                    if pct >= 90 or pct >= 80:
+                        blob = _read_feature_blob_for_user(user_id)
+                        user_email = str((blob.get('user_config') or {}).get('email') or '').strip()
+                        if user_email:
+                            _send_quota_warning(user_email, plan=plan, percent_used=pct, posts_remaining=remaining)
+            except Exception:
+                pass  # quota warning is best-effort
     except Exception as e:
         logger.warning("Usage increment failed for user %s: %s", user_id, e)
 
@@ -2737,6 +2752,8 @@ def auth_signup():
         }
 
         success, message, user_data = signup_user(email, password, metadata)
+        if success and email:
+            _send_welcome_email(email, display_name=first_name)
         status_code = 200 if success else 400
         lowered = (message or '').lower()
         if not success and ('temporarily unavailable' in lowered or 'timeout' in lowered):
@@ -3775,15 +3792,7 @@ def _evaluate_post_quality(ai, body: str, theme: str, goal_key: str) -> dict:
     if not short_body:
         return heuristic
 
-    eval_prompt = f"""Score this LinkedIn post quickly.
-Return ONLY strict JSON with integer fields 0-100:
-{{"clarity":0,"novelty":0,"specificity":0,"hook":0,"cta":0,"overall":0,"issues":["..."]}}
-
-Topic: {theme}
-Goal key: {goal_key}
-Post:
-{short_body}
-"""
+    eval_prompt = _PromptBuilder.build_evaluation_prompt(body, theme, goal_key)
 
     try:
         eval_result = ai.generate(eval_prompt, max_tokens=140, temperature=0.0, task='evaluate')
@@ -4029,21 +4038,7 @@ def _verify_claims_against_kb(ai, post_text: str, kb_context: str, user_industry
     if not kb_context or not post_text:
         return {'has_issues': False, 'ungrounded_claims': [], 'rewrite_instructions': ''}
 
-    verify_prompt = f"""You are a fact-checking assistant. Compare the LinkedIn post below against the knowledge base excerpts.
-
-TASK: Identify any sentence in the post that makes a SPECIFIC factual claim (statistic, percentage, company name, product name, research study, named person, specific date) that is NOT supported by the excerpts below.
-
-KNOWLEDGE BASE EXCERPTS:
-{kb_context[:3000]}
-
-POST TO VERIFY:
-{post_text}
-
-Return ONLY strict JSON (no markdown fences):
-{{"has_issues": true/false, "ungrounded_claims": ["sentence 1", "sentence 2"], "rewrite_instructions": "brief guidance on how to fix"}}
-
-If all claims are grounded or the post only contains opinions/observations, return:
-{{"has_issues": false, "ungrounded_claims": [], "rewrite_instructions": ""}}"""
+    verify_prompt = _PromptBuilder.build_verification_prompt(post_text, kb_context)
 
     try:
         result = ai.generate(verify_prompt, max_tokens=300, temperature=0.0, task='evaluate')
@@ -4073,30 +4068,14 @@ def _rewrite_ungrounded_claims(ai, post_text: str, verification: dict,
     if not verification.get('has_issues') or not verification.get('ungrounded_claims'):
         return post_text
 
-    claims_list = '\n'.join(f'- {c}' for c in verification['ungrounded_claims'][:5])
-    guidance = verification.get('rewrite_instructions', '')
-
-    rewrite_prompt = f"""Rewrite the LinkedIn post below to fix grounding issues.
-
-PROBLEM: The following sentences make specific factual claims that are NOT supported by the knowledge base:
-{claims_list}
-
-{f'GUIDANCE: {guidance}' if guidance else ''}
-
-RULES FOR REWRITE:
-1. Keep the overall post structure, tone, and length the same.
-2. For each problematic sentence, convert it from a hard factual claim to an insight/opinion:
-   - Replace invented statistics with qualitative observations ("many teams find…", "a growing number of…")
-   - Replace invented company/product names with general references ("leading platforms", "several tools in the space")
-   - Replace invented research citations with experiential framing ("in my experience", "what I've seen work")
-3. Keep all sentences that ARE grounded — do not change what works.
-4. Stay in {user_industry} domain, {user_role} perspective.
-5. Do NOT add hashtags or preamble. Output ONLY the rewritten post body.
-
-ORIGINAL POST:
-{post_text}
-
-{f'AVAILABLE KB CONTEXT (for reference):{chr(10)}{kb_context[:1500]}' if kb_context else ''}"""
+    rewrite_prompt = _PromptBuilder.build_rewrite_prompt(
+        post_text=post_text,
+        ungrounded_claims=verification['ungrounded_claims'],
+        rewrite_instructions=verification.get('rewrite_instructions', ''),
+        user_industry=user_industry,
+        user_role=user_role,
+        kb_context=kb_context,
+    )
 
     try:
         result = ai.generate(rewrite_prompt, max_tokens=500, task='rewrite')
@@ -4839,55 +4818,9 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
         if kb_used and kb_hits:
             dynamic_kb_supplement = _extract_dynamic_kb_context(kb_hits, user_industry, user_role)
 
-        # ── Tone-to-voice map ─────────────────────────────────────────────────────
-        _tone_voices = {
-            'professional':   "Clear, confident, direct. Short declarative sentences. No filler words. Sound like a knowledgeable peer, not a press release.",
-            'conversational': "Casual first-person. Like messaging a smart colleague. Use 'I', 'we', contractions. Short sentences. Real talk, not corporate jargon.",
-            'authoritative':  "Opinion-forward, backed by logic. Make bold, decisive statements. Confident — not arrogant, but certain.",
-            'contrarian':     "Challenge conventional wisdom with evidence-backed arguments. Lead with what most people get wrong. Make the reader rethink their assumptions.",
-            'storytelling':   "Open with a vivid personal scene or moment. Let the story carry the lesson naturally. Don't moralize — let the reader draw their own conclusion.",
-            'educational':    "Deliver focused, specific insights. Each point standalone and immediately usable. Teach, don't preach.",
-        }
-        _tone_templates = {
-            'professional': (
-                "- Hook pattern: sharp professional insight in one line.\n"
-                "- Body movement: problem -> practical implication -> concrete action.\n"
-                "- Sentence rhythm: mostly short declarative lines.\n"
-                "- Lexicon: precise business language, zero hype."
-            ),
-            'conversational': (
-                "- Hook pattern: candid first-person observation.\n"
-                "- Body movement: what I noticed -> why it matters -> what I changed.\n"
-                "- Sentence rhythm: short, natural, chat-like cadence.\n"
-                "- Lexicon: simple language, contractions allowed."
-            ),
-            'authoritative': (
-                "- Hook pattern: decisive claim with strong angle.\n"
-                "- Body movement: clear position -> evidence -> implication.\n"
-                "- Sentence rhythm: compact, assertive statements.\n"
-                "- Lexicon: expert terminology only where useful."
-            ),
-            'contrarian': (
-                "- Hook pattern: what most people get wrong about the topic.\n"
-                "- Body movement: challenge assumption -> explain why -> offer better frame.\n"
-                "- Sentence rhythm: sharp, provocative, but reasoned.\n"
-                "- Lexicon: direct language; avoid outrage framing."
-            ),
-            'storytelling': (
-                "- Hook pattern: specific scene or moment in first line.\n"
-                "- Body movement: scene -> tension -> lesson -> takeaway.\n"
-                "- Sentence rhythm: mixed sentence lengths with narrative flow.\n"
-                "- Lexicon: concrete sensory details over abstractions."
-            ),
-            'educational': (
-                "- Hook pattern: clear promise of practical learning.\n"
-                "- Body movement: 2-3 teachable points with real examples.\n"
-                "- Sentence rhythm: concise, scannable, high-signal lines.\n"
-                "- Lexicon: instructional verbs and actionable phrasing."
-            ),
-        }
-        tone_voice = _tone_voices.get((post_tone or '').lower(), "Natural, human voice. Short sentences. No corporate fluff.")
-        tone_template = _tone_templates.get((post_tone or '').lower(), _tone_templates['professional'])
+        # ── Tone / Goal / Style rules (via PromptBuilder) ────────────────────
+        tone_voice, tone_template = _PromptBuilder.resolve_tone(post_tone)
+        goal_structure = _PromptBuilder.resolve_goal_structure(goal_key)
 
         # ── Instruction Pack (auto-loaded for industry × role × goal) ─────────────
         instruction_pack_text = _build_instruction_pack_text(user_industry, user_role, goal_key, config_obj=config_obj)
@@ -4915,108 +4848,41 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                 else:
                     tone_voice = f"{tone_voice} Blend in this personal writing cadence: {clone_tone}."
 
-        # ── Goal-to-structure map ─────────────────────────────────────────────────
-        _goal_structures = {
-            'spark_comments':   "End the post with a genuinely open question that invites the reader to share their unique view.",
-            'drive_visibility': "Open with a bold, unexpected hook in the first 5-7 words that stops the scroll.",
-            'build_authority':  "Lead with a plain-spoken insight others haven't stated clearly. Follow with tight supporting logic or evidence.",
-            'generate_leads':   "Name a specific pain point the target audience faces. Close with a clear, low-pressure next step.",
-            'educate_audience': "Deliver 2-3 focused insights. Keep each one standalone and immediately usable.",
-            'brand_awareness':  "Communicate one clear value or belief. Make it memorable in a single sentence.",
-            'grow_network':     "Write from personal experience. Include a moment of genuine reflection or honest admission.",
-        }
-        goal_structure = _goal_structures.get(goal_key, "Deliver one clear, valuable idea. Make it skimmable and worth the reader's time.")
-
-        if style_clone_strict:
-            voice_rule_text = 'Follow the STYLE CLONE fingerprint exactly — it overrides tone guidance.'
-            structure_rule_text = 'Follow the structural pattern in the STYLE CLONE block above.'
-            format_rule_text = 'STYLE CLONE format rules take priority. Lists/single-line breaks are allowed when present in style clone references.'
-            style_clone_compliance_rule = '14. STYLE CLONE COMPLIANCE: The output MUST be stylistically indistinguishable from the reference posts provided above. If in doubt, re-read the references.'
-        elif style_clone_active:
-            voice_rule_text = 'Blend the STYLE CLONE fingerprint with role and post-goal constraints. Keep role perspective primary.'
-            structure_rule_text = 'Use STYLE CLONE cadence, but keep the goal-driven structure above.'
-            format_rule_text = 'Prefer prose readability; style-clone line-break rhythm is allowed when it improves authenticity.'
-            style_clone_compliance_rule = '14. STYLE CLONE COMPLIANCE: Mirror the personal cadence and phrasing patterns while preserving role, domain, and goal clarity.'
-        else:
-            voice_rule_text = 'Follow the TONE instruction above exactly.'
-            structure_rule_text = 'Follow the POST STRUCTURE above.'
-            format_rule_text = 'No **, no ***, no bullet-point dashes, no numbered lists — write in flowing prose only.'
-            style_clone_compliance_rule = ''
-
-        _BANNED_PHRASES = (
-            "In today's fast-paced world, In today's world, It's no secret, game changer, game-changer, "
-            "paradigm shift, leverage, synergy, cutting-edge, best practices, at the end of the day, "
-            "think outside the box, move the needle, exciting, thrilled, delighted to share, I am proud to share, "
-            "Dive into, Unlock, Revolutionize, seamlessly, robust, scalable solution, stakeholders, "
-            "actionable insights, transformative, empower, journey, innovative solution, disruptive, "
-            "holistic approach, ecosystem, value-add, going forward, circle back, take this to the next level"
-        )
+        # ── Style clone rules (via PromptBuilder) ─────────────────────────────
+        _sc_rules = _PromptBuilder.resolve_style_clone_rules(style_clone_active, style_clone_strict)
+        voice_rule_text = _sc_rules['voice']
+        structure_rule_text = _sc_rules['structure']
+        format_rule_text = _sc_rules['format']
+        style_clone_compliance_rule = _sc_rules['compliance']
 
         # ── Build KB section (grounding-level-aware) ─────────────────────────────
         kb_section = _build_grounding_prompt_rules(grounding_level, user_industry, kb_context)
 
-        prompt = f"""[DOMAIN LOCK — READ THIS FIRST]
-You are writing EXCLUSIVELY for the {user_industry} industry, from the perspective of a {user_role}.
-Every fact, insight, reference, statistic, and example MUST be grounded in the {user_industry} domain.
-Do NOT mention, reference, or borrow from any other industry or professional domain.
-
-{f'''━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ROLE × INDUSTRY × GOAL PLAYBOOK (follow these closely — they define HOW you write):
-
-{instruction_pack_text}
-''' if instruction_pack_text else ''}
-{style_instruction}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VOICE / TONE: {tone_voice}
-
-TONE EXECUTION TEMPLATE (follow exactly):
-{tone_template}
-
-POST STRUCTURE (goal: "{business_goal or 'general engagement'}"):
-{goal_structure}
-
-TOPIC — the post is about this specific subject (do not drift from it):
-{theme}
-
-BACKGROUND CONTEXT (use only as supporting colour; the post stays on the TOPIC above):
-{services}
-
-WHO WILL READ THIS (do NOT copy this into the post — it is context only):
-{target_audience_hint}
-
-OPTIONAL SUBTOPICS TO WEAVE IN:
-{topic_hint}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{kb_section}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STRICT RULES — every rule applies without exception:
-
-1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
-2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, research studies, product names, or quotes.
-3. VOICE: {voice_rule_text}
-4. STRUCTURE: {structure_rule_text}
-5. LENGTH: {word_rule}
-6. EMOJI: {emoji_rule}
-7. FORMAT: {format_rule_text}
-8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body.
-9. BANNED PHRASES — never write any of these: {_BANNED_PHRASES}
-10. HUMAN VOICE: Write like a real person would talk or write — not like an AI assistant, not like a press release, not like a corporate newsletter.
-11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
-12. TOPIC ANCHOR + HOOK: The very first sentence MUST be directly about "{theme}" AND must be under 120 characters. Short, punchy, curiosity-driven. Do not open with a generic industry question or a hook about your role/team. The post is about the topic, not about you.
-13. NO PROMPT ECHO: Never copy or paraphrase any instruction label from this prompt into the post. Do not use the reader description (WHO WILL READ THIS) as post copy.
-14. OUTPUT CONTRACT: Structure must be: (a) Hook line, (b) 2-3 short body paragraphs, (c) final CTA/question line aligned to goal. Keep each paragraph 1-2 sentences.
-15. QUALITY CONTRACT: Include at least one concrete detail (specific scenario, metric range, or named mechanism). Avoid vague generic claims.
-16. GROUNDING MODE: {
-    'GROUNDED — all factual claims must trace to KB excerpts above. If a point is not in the excerpts, phrase it as opinion.' if grounding_level == _GROUNDING_FULL else
-    'PARTIAL — some KB excerpts available. Supported points can be specific; unsupported points must use insight-only framing (no invented facts).' if grounding_level == _GROUNDING_PARTIAL else
-    'INSIGHT-ONLY — no KB evidence available. Every statement must be defensible as opinion, observation, or widely-accepted wisdom. Zero invented facts.'
-}
-{style_clone_compliance_rule}
-
-FORMAT STYLE: {fmt}
-
-Output ONLY the post text. No labels, no "Here is your post:", no preamble."""
+        prompt = _PromptBuilder.build_generation_prompt(
+            user_industry=user_industry,
+            user_role=user_role,
+            theme=theme,
+            services=services,
+            target_audience_hint=target_audience_hint,
+            topic_hint=topic_hint,
+            business_goal=business_goal,
+            tone_voice=tone_voice,
+            tone_template=tone_template,
+            goal_structure=goal_structure,
+            instruction_pack_text=instruction_pack_text,
+            style_instruction=style_instruction,
+            kb_section=kb_section,
+            domain_guardrail=domain_guardrail,
+            word_rule=word_rule,
+            emoji_rule=emoji_rule,
+            hashtag_count=hashtag_count,
+            fmt=fmt,
+            grounding_level=grounding_level,
+            voice_rule_text=voice_rule_text,
+            structure_rule_text=structure_rule_text,
+            format_rule_text=format_rule_text,
+            style_clone_compliance_rule=style_clone_compliance_rule,
+        )
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
         
@@ -5187,17 +5053,9 @@ Post:
                 'Increase clarity and concrete detail',
                 'Strengthen CTA quality'
             ]
-            retry_prompt = f"""{prompt}
-
-REVISION PASS (DRAFT 2) — IMPROVE QUALITY:
-- Previous draft score: {evaluation.get('score', 0)}/100
-- Fix these issues first: {'; '.join(feedback_issues[:4])}
-- Keep domain lock, same topic, same goal, same tone template.
-- Hook must be sharper and clearly topic-anchored.
-- CTA must be specific and naturally invite response.
-- Keep concrete and practical; avoid generic statements.
-
-Output ONLY the revised post text."""
+            retry_prompt = _PromptBuilder.build_retry_prompt(
+                prompt, evaluation.get('score', 0), feedback_issues
+            )
             try:
                 second_draft_raw = _generate_once(retry_prompt)
                 second_body, second_generated_tags = _post_process_generated(second_draft_raw)

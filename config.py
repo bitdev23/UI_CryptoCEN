@@ -1,82 +1,8 @@
 """Configuration for Mantraj AI LinkedIn automation."""
 from typing import List, Dict
 
-# Legacy profiles — kept for backward compatibility with main.py CLI only.
-# The web app (app.py / dashboard_enterprise) does NOT use PROFILES.
-# All generation uses per-user industry/role/tone settings.
-PROFILES = {
-    "velank": {
-        "company_info": {
-            "name": "Velank",
-            "services": "AI-powered LinkedIn automation: intelligent content generation, RAG-backed posts, scheduling, and analytics",
-            "audience": "Content creators, entrepreneurs, product teams, and growth professionals",
-            "value_prop": "Generate authentic, contextually-grounded LinkedIn posts powered by your own knowledge base and advanced AI",
-        },
-        "content_themes": [
-            "VA benefits",
-            "productivity tips",
-            "case studies",
-            "client wins",
-            "tooling & automation",
-            "pricing transparency",
-        ],
-        "hashtags": [
-            "#VirtualAssistant",
-            "#Productivity",
-            "#SmallBusiness",
-            "#Founders",
-            "#RemoteWork",
-        ],
-    },
-    "arab_global_crypto": {
-        "company_info": {
-            "name": "Arab Global Crypto Exchange",
-            "services": "Centralized exchange: Crypto trading, custody, KYC, liquidity, and institutional-grade security (Fireblocks)",
-            "audience": "Crypto traders, developers, institutional clients, product teams in fintech and blockchain",
-            "value_prop": "Educational content on crypto trading, blockchain technology, and infrastructure for traders and builders",
-        },
-        "content_themes": [
-            # Blockchain (35%)
-            "EVM opcodes and gas optimization for smart contracts",
-            "Cross-chain message passing and security considerations",
-            "Merkle trees and proof structures in blockchain",
-            "Consensus mechanisms: PoW, PoS, PoA trade-offs",
-            "Account abstraction and wallet infrastructure evolution",
-            "Sharding and data availability solutions",
-            "Cryptographic primitives: signatures and zero-knowledge proofs",
-            "Rollups vs sidechains: scaling architecture comparison",
-            # Crypto Economics (35%)
-            "MEV-resistant consensus and sequencer economics",
-            "Advanced DeFi mechanics: flash loans and composability risks",
-            "Tokenomics design: emission schedules and incentive alignment",
-            "Institutional custody solutions and cold storage infrastructure",
-            "Cryptographic key management across different hardware",
-            "Compliance frameworks: FATF and AML/KYC implementation",
-            "DAO governance models and voting mechanisms",
-            "Yield farming strategies and protocol governance mechanisms",
-            # Product-Market Fit & Strategy (10%)
-            "Product strategy: distribution mechanisms for token launches",
-            "User acquisition in DeFi: incentive design and retention",
-            "PMF signals in blockchain protocols: metrics that matter",
-            # Centralized Exchange Operations (10%)
-            "Exchange infrastructure: orderbook vs AMM architectures",
-            "Liquidity management and market maker economics",
-            "Trading engine architecture and match algorithms",
-            # Trading (10%)
-            "Market microstructure and order flow dynamics",
-            "Arbitrage opportunities across DEX/CEX fragmentation",
-            "Options pricing models and volatility surfaces in crypto",
-        ],
-        "hashtags": [
-            "#Crypto",
-            "#Blockchain",
-            "#NFT",
-            "#DeFi",
-            "#CeFi",
-            "#Fireblocks",
-        ],
-    },
-}
+# PROFILES dict removed — was dead code only used by archived content_generator.py.
+# The web app uses per-user industry/role/tone settings from the dashboard.
 
 POST_FORMATS: List[str] = [
     "educational",

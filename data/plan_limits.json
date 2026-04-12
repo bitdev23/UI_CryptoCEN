@@ -6,21 +6,21 @@
     "kb_storage_mb": 5
   },
   "1_month": {
-    "posts_generated": 100,
-    "scheduled_posts": 30,
-    "kb_documents": 100,
-    "kb_storage_mb": 500
+    "posts_generated": 50,
+    "scheduled_posts": 15,
+    "kb_documents": 25,
+    "kb_storage_mb": 100
   },
   "3_month": {
-    "posts_generated": 100,
-    "scheduled_posts": 30,
+    "posts_generated": 150,
+    "scheduled_posts": 50,
     "kb_documents": 100,
     "kb_storage_mb": 500
   },
   "12_month": {
-    "posts_generated": 100,
-    "scheduled_posts": 30,
-    "kb_documents": 100,
-    "kb_storage_mb": 500
+    "posts_generated": 500,
+    "scheduled_posts": 200,
+    "kb_documents": 500,
+    "kb_storage_mb": 2000
   }
 }
