@@ -44,7 +44,7 @@ pytz==2024.2
 gunicorn==21.2.0
 
 # Monitoring (optional, for production)
-sentry-sdk[flask]==1.40.0
+sentry-sdk[flask]>=2.0.0
 
 # Email (for verification/notifications)
 resend>=2.0.0

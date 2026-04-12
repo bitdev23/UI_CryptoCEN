@@ -70,12 +70,42 @@ try:
     from flask_compress import Compress as _FlaskCompress
 except ImportError:  # pragma: no cover — optional dependency
     _FlaskCompress = None
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    _sentry_available = True
+except ImportError:  # pragma: no cover
+    _sentry_available = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 _APP_START_TIME = time.time()
+
+# ── Sentry error tracking ─────────────────────────────────────────────────
+_sentry_dsn = os.getenv('SENTRY_DSN', '').strip()
+if _sentry_available and _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[
+            FlaskIntegration(transaction_style='endpoint'),
+            LoggingIntegration(
+                level=logging.WARNING,       # breadcrumbs from WARNING+
+                event_level=logging.ERROR,   # send Sentry event on ERROR+
+            ),
+        ],
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.05')),
+        profiles_sample_rate=0.0,
+        environment=os.getenv('FLASK_ENV', 'development'),
+        release=os.getenv('GIT_SHA', 'unknown'),
+        send_default_pii=False,  # GDPR: no IPs or cookies in events
+    )
+    logger.info('Sentry error tracking enabled (env=%s)', os.getenv('FLASK_ENV', 'development'))
+else:
+    if not _sentry_dsn:
+        logger.info('Sentry disabled — set SENTRY_DSN to enable')
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
@@ -108,12 +138,46 @@ if _FlaskCompress is not None:
 
 # ── Rate Limiting ─────────────────────────────────────────────────────────
 _redis_url = os.getenv('REDIS_URL', '').strip()
+
+
+def _rate_limit_key() -> str:
+    """Per-user rate limiting key.
+
+    Extracts the Supabase user ID from the JWT in the Authorization header
+    so each *user* has their own bucket regardless of IP address.
+    Falls back to remote IP for unauthenticated routes.
+    """
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        try:
+            # Decode the JWT payload (no signature verification needed —
+            # just extracting the sub claim for bucketing).
+            import base64
+            payload_b64 = token.split('.')[1]
+            # Re-pad to a multiple of 4
+            payload_b64 += '=' * (4 - len(payload_b64) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+            uid = payload.get('sub', '').strip()
+            if uid:
+                return f'user:{uid}'
+        except Exception:
+            pass  # malformed token — fall through to IP
+    return f'ip:{get_remote_address()}'
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=_rate_limit_key,
     app=app,
-    default_limits=["200 per minute", "2000 per hour"],
+    default_limits=["300 per minute", "3000 per hour"],
     storage_uri=_redis_url if _redis_url else "memory://",
     strategy="fixed-window",
+    on_breach=lambda limit: logger.warning(
+        'Rate limit breached: %s key=%s path=%s',
+        limit.limit,
+        limit.key,
+        request.path,
+    ),
 )
 
 # Register freemium blueprint
@@ -4407,7 +4471,8 @@ def _log_grounding_telemetry(user_id: str, generation_data: dict) -> None:
 
 
 @app.route('/api/generate-preview', methods=['POST'])
-@limiter.limit("10 per minute")
+@limiter.limit("8 per minute")        # per user (not per IP)
+@limiter.limit("30 per hour")          # hourly guard against bots
 @require_auth
 def generate_preview():
     """Generate a preview post"""
