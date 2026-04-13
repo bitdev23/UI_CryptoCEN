@@ -380,9 +380,53 @@ app.register_blueprint(_admin_bp)
 _SCHEDULER_HEARTBEAT: float = 0.0     # last time scheduler loop ran
 _SCHEDULER_THREAD: Optional[threading.Thread] = None
 
-# ── Password-reset OTP store: {email: {'code': str, 'expiry': datetime}} ───────
-_otp_store: dict = {}
+# ── Password-reset OTP — backed by Supabase (survives restarts/deploys) ────────
 _OTP_TTL_MINUTES: int = 10
+
+
+def _otp_upsert(email: str, code: str, expiry: datetime) -> None:
+    """Write or overwrite an OTP record in Supabase."""
+    if not auth_supabase:
+        raise RuntimeError('Supabase not configured')
+    auth_supabase.table('password_reset_otps').upsert(
+        {'email': email, 'code': code, 'expires_at': expiry.isoformat() + '+00:00'},
+        on_conflict='email',
+    ).execute()
+
+
+def _otp_get(email: str) -> Optional[dict]:
+    """Return {'code': str, 'expires_at': str} or None."""
+    if not auth_supabase:
+        return None
+    try:
+        res = auth_supabase.table('password_reset_otps') \
+            .select('code,expires_at') \
+            .eq('email', email) \
+            .limit(1) \
+            .execute()
+        return res.data[0] if res.data else None
+    except Exception as exc:
+        logger.warning('OTP lookup failed for %s: %s', email, exc)
+        return None
+
+
+def _otp_delete(email: str) -> None:
+    """Remove OTP record after use."""
+    if not auth_supabase:
+        return
+    try:
+        auth_supabase.table('password_reset_otps').delete().eq('email', email).execute()
+    except Exception as exc:
+        logger.warning('OTP delete failed for %s: %s', email, exc)
+
+
+def _otp_expired(expires_at_str: str) -> bool:
+    """True if the stored expiry (UTC ISO string) is in the past."""
+    try:
+        # Supabase returns e.g. "2026-04-13T12:00:00+00:00" — strip tz for comparison
+        return datetime.utcnow() > datetime.fromisoformat(expires_at_str[:19])
+    except Exception:
+        return True  # treat unparseable as expired
 _SCHEDULER_STALE_SEC = 120            # consider dead if no heartbeat for 2 min
 
 # ── Initialise shared db_helper with auth_supabase client ────────────────────
@@ -3213,13 +3257,18 @@ def _get_uid_by_email(email: str) -> Optional[str]:
 @app.route('/api/auth/forgot', methods=['POST'])
 @limiter.limit("5 per hour")
 def auth_forgot():
-    """Step 1: generate a 6-digit OTP and email it to the user."""
+    """Step 1: generate a 6-digit OTP, store in Supabase, and email it."""
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     if not email or '@' not in email:
         return jsonify({'success': False, 'message': 'A valid email address is required.'}), 400
     otp = str(secrets.randbelow(10 ** 6)).zfill(6)
-    _otp_store[email] = {'code': otp, 'expiry': datetime.utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)}
+    expiry = datetime.utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)
+    try:
+        _otp_upsert(email, otp, expiry)
+    except Exception as exc:
+        logger.exception('OTP upsert failed for %s: %s', email, exc)
+        return jsonify({'success': False, 'message': 'Could not generate reset code. Please try again.'}), 500
     _send_otp_email(email, otp)
     logger.info('Password reset OTP sent to %s', email)
     return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.'})
@@ -3228,15 +3277,15 @@ def auth_forgot():
 @app.route('/api/auth/verify-otp', methods=['POST'])
 @limiter.limit("10 per hour")
 def auth_verify_otp():
-    """Step 2: validate the 6-digit OTP."""
+    """Step 2: validate the 6-digit OTP against Supabase record."""
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
     otp_in = (data.get('otp') or '').strip()
-    entry = _otp_store.get(email)
+    entry = _otp_get(email)
     if not entry:
         return jsonify({'success': False, 'message': 'Code not found – please request a new one.'}), 400
-    if datetime.utcnow() > entry['expiry']:
-        _otp_store.pop(email, None)
+    if _otp_expired(entry['expires_at']):
+        _otp_delete(email)
         return jsonify({'success': False, 'message': 'Code expired – please request a new one.'}), 400
     if otp_in != entry['code']:
         return jsonify({'success': False, 'message': 'Incorrect code – please try again.'}), 400
@@ -3253,8 +3302,8 @@ def auth_reset_password():
     new_password = (data.get('newPassword') or '').strip()
     if not new_password or len(new_password) < 8:
         return jsonify({'success': False, 'message': 'Password must be at least 8 characters.'}), 400
-    entry = _otp_store.get(email)
-    if not entry or datetime.utcnow() > entry['expiry'] or otp_in != entry['code']:
+    entry = _otp_get(email)
+    if not entry or _otp_expired(entry['expires_at']) or otp_in != entry['code']:
         return jsonify({'success': False, 'message': 'Code invalid or expired – please restart the reset flow.'}), 400
     if not auth_supabase:
         return jsonify({'success': False, 'message': 'Auth service not configured.'}), 500
@@ -3263,7 +3312,7 @@ def auth_reset_password():
         return jsonify({'success': False, 'message': 'No account found for that email address.'}), 404
     try:
         auth_supabase.auth.admin.update_user_by_id(user_id, {'password': new_password})
-        _otp_store.pop(email, None)
+        _otp_delete(email)
         logger.info('Password reset complete for %s', email)
         return jsonify({'success': True, 'message': 'Password updated successfully.'})
     except Exception as e:
