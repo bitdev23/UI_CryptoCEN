@@ -1,26 +1,38 @@
 {
   "free": {
-    "posts_generated": 3,
+    "posts_generated": 5,
     "scheduled_posts": 0,
-    "kb_documents": 1,
-    "kb_storage_mb": 5
+    "kb_documents": 9999,
+    "kb_storage_mb": 5,
+    "style_clone": false,
+    "repurpose": false,
+    "best_time": false
   },
-  "1_month": {
-    "posts_generated": 50,
-    "scheduled_posts": 15,
-    "kb_documents": 25,
-    "kb_storage_mb": 100
+  "starter": {
+    "posts_generated": 30,
+    "scheduled_posts": 10,
+    "kb_documents": 9999,
+    "kb_storage_mb": 15,
+    "style_clone": true,
+    "repurpose": true,
+    "best_time": false
   },
-  "3_month": {
-    "posts_generated": 150,
-    "scheduled_posts": 50,
-    "kb_documents": 100,
-    "kb_storage_mb": 500
+  "creator": {
+    "posts_generated": 120,
+    "scheduled_posts": 999,
+    "kb_documents": 9999,
+    "kb_storage_mb": 50,
+    "style_clone": true,
+    "repurpose": true,
+    "best_time": true
   },
-  "12_month": {
+  "pro": {
     "posts_generated": 500,
-    "scheduled_posts": 200,
-    "kb_documents": 500,
-    "kb_storage_mb": 2000
+    "scheduled_posts": 999,
+    "kb_documents": 9999,
+    "kb_storage_mb": 150,
+    "style_clone": true,
+    "repurpose": true,
+    "best_time": true
   }
 }

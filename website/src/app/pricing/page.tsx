@@ -63,16 +63,16 @@ const PRICING_DATA: Record<Region, {
         priceYearly: "0",
         interval: "/ month",
         features: [
-          "3 AI-generated posts / month",
+          "5 AI-generated posts / month",
           "Basic post generation",
-          "Limited repurpose support",
+          "Knowledge base: 5MB",
           "Preview & manual copy",
           "Velank branding on posts"
         ],
         notIncluded: [
           "Scheduling",
-          "Knowledge base",
           "Style clone",
+          "Repurpose content",
           "Analytics"
         ],
         cta: "👉 Get Started Free",
@@ -93,10 +93,9 @@ const PRICING_DATA: Record<Region, {
           "Basic style cloning (1 writing style)",
           "Basic post variations"
         ],
-        limits: ["Knowledge base: up to 5MB"],
+        limits: ["Knowledge base: up to 15MB"],
         notIncluded: [
           "Advanced analytics",
-          "Story series",
           "Best time to post"
         ],
         cta: "👉 Start Posting Consistently",
@@ -135,7 +134,7 @@ const PRICING_DATA: Record<Region, {
           "500 AI-generated posts / month",
           "Priority generation (faster queue)",
           "Multiple knowledge bases",
-          "Knowledge base limit up to 200MB",
+          "Knowledge base up to 150MB",
           "Advanced analytics dashboard",
           "Priority email support",
           "Early access to new features"
@@ -164,16 +163,16 @@ const PRICING_DATA: Record<Region, {
         priceYearly: "0",
         interval: "/ month",
         features: [
-          "3 AI-generated posts / month",
+          "5 AI-generated posts / month",
           "Basic post generation",
-          "Limited repurpose support",
+          "Knowledge base: 5MB",
           "Preview & manual copy",
           "Velank branding on posts"
         ],
         notIncluded: [
           "Scheduling",
-          "Knowledge base",
           "Style clone",
+          "Repurpose content",
           "Analytics"
         ],
         cta: "👉 Get Started Free",
@@ -194,10 +193,9 @@ const PRICING_DATA: Record<Region, {
           "Basic style cloning (1 writing style)",
           "Basic post variations"
         ],
-        limits: ["Knowledge base: up to 5MB"],
+        limits: ["Knowledge base: up to 15MB"],
         notIncluded: [
           "Advanced analytics",
-          "Story series",
           "Best time to post"
         ],
         cta: "👉 Start Posting Consistently",
@@ -236,7 +234,7 @@ const PRICING_DATA: Record<Region, {
           "500 AI-generated posts / month",
           "Priority generation (faster queue)",
           "Multiple knowledge bases",
-          "Knowledge base limit up to 200MB",
+          "Knowledge base up to 150MB",
           "Advanced analytics dashboard",
           "Priority email support",
           "Early access to new features"

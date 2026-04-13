@@ -2120,18 +2120,22 @@ def _normalize_subscription_plan(plan_raw: str):
     value = str(plan_raw or '').strip().lower()
     plan_map = {
         'free': ('free', 0),
-        '1m': ('1_month', 1),
-        '1_month': ('1_month', 1),
-        'monthly': ('1_month', 1),
-        'pro': ('1_month', 1),
-        '3m': ('3_month', 3),
-        '3_month': ('3_month', 3),
-        'quarterly': ('3_month', 3),
-        '12m': ('12_month', 12),
-        '12_month': ('12_month', 12),
-        'yearly': ('12_month', 12),
-        'annual': ('12_month', 12),
-        'agency': ('12_month', 12)
+        # Canonical plan names
+        'starter': ('starter', 1),
+        'creator': ('creator', 2),
+        'pro': ('pro', 3),
+        # Legacy / billing-period aliases
+        '1m': ('starter', 1),
+        '1_month': ('starter', 1),
+        'monthly': ('starter', 1),
+        '3m': ('creator', 2),
+        '3_month': ('creator', 2),
+        'quarterly': ('creator', 2),
+        '12m': ('pro', 3),
+        '12_month': ('pro', 3),
+        'yearly': ('pro', 3),
+        'annual': ('pro', 3),
+        'agency': ('pro', 3),
     }
     return plan_map.get(value)
 
@@ -2141,16 +2145,18 @@ PLAN_LIMITS = load_freemium_plan_limits()
 
 def _plan_price_inr(plan: str) -> int:
     normalized = _normalize_subscription_plan(plan)
-    key = normalized[0] if normalized else '1_month'
+    key = normalized[0] if normalized else 'starter'
+    # Map canonical plan names to env vars (reuse existing env var names)
     env_map = {
-        '1_month': 'PLAN_PRICE_1_MONTH_INR',
-        '3_month': 'PLAN_PRICE_3_MONTH_INR',
-        '12_month': 'PLAN_PRICE_12_MONTH_INR'
+        'starter': 'PLAN_PRICE_STARTER_INR',
+        'creator': 'PLAN_PRICE_CREATOR_INR',
+        'pro': 'PLAN_PRICE_PRO_INR',
     }
+    # Defaults match existing .env values (PLAN_PRICE_1/3/12_MONTH_INR)
     default_map = {
-        '1_month': 999,
-        '3_month': 2499,
-        '12_month': 8999
+        'starter': int(os.getenv('PLAN_PRICE_1_MONTH_INR', 998)),
+        'creator': int(os.getenv('PLAN_PRICE_3_MONTH_INR', 2498)),
+        'pro': int(os.getenv('PLAN_PRICE_12_MONTH_INR', 4999)),
     }
     env_key = env_map.get(key)
     if not env_key:
@@ -7016,6 +7022,13 @@ def repurpose_content():
     """Extract key insights from a URL or pasted text and produce 3 distinct LinkedIn post variants."""
     try:
         user_id = get_current_user_id()
+        _rp_plan = _get_effective_plan(user_id)
+        if not _get_plan_limits(_rp_plan).get('repurpose', False):
+            return jsonify({
+                'success': False,
+                'upgrade_required': True,
+                'message': 'Content repurposing is available on the Starter plan and above. Upgrade to unlock this feature.'
+            }), 403
         data = request.get_json() or {}
         source_type = data.get('source_type', 'text')
         source = (data.get('source') or '').strip()
@@ -7129,6 +7142,13 @@ def get_best_time():
     """Analyse published post history + global LinkedIn benchmarks to surface optimal slots."""
     try:
         user_id = get_current_user_id()
+        _bt_plan = _get_effective_plan(user_id)
+        if not _get_plan_limits(_bt_plan).get('best_time', False):
+            return jsonify({
+                'success': False,
+                'upgrade_required': True,
+                'message': 'Best time to post is available on the Creator plan and above. Upgrade to unlock this feature.'
+            }), 403
         posts = _db_list_posts(user_id, limit=200)
         if not posts:
             posts = [
