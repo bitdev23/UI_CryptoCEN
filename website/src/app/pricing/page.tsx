@@ -119,7 +119,6 @@ const PRICING_DATA: Record<Region, {
           "Best time to post (AI insights)",
           "Analytics & performance tracking"
         ],
-        premiumFeature: "Story Series Engine (create 10–15 post campaigns)",
         cta: "👉 Grow My LinkedIn",
         badge: "Best Value",
         recommended: true
@@ -128,26 +127,21 @@ const PRICING_DATA: Record<Region, {
         id: "pro",
         name: "Pro",
         tagline: "Turn LinkedIn into a growth engine",
-        description: "For founders, agencies, and power users scaling content and leads.",
+        description: "For founders, agencies, and power users who produce content at scale.",
         priceMonthly: "4,999",
         priceYearly: "47,990",
         interval: "/ month",
         features: [
           "500 AI-generated posts / month",
-          "Priority generation (faster + better output)",
-          "Advanced story campaigns",
+          "Priority generation (faster queue)",
           "Multiple knowledge bases",
           "Knowledge base limit up to 200MB",
-          "Team access (up to 5 users)",
           "Advanced analytics dashboard",
-          "Priority support"
-        ],
-        bonus: [
-          "Early access to new features",
-          "API access (coming soon)"
+          "Priority email support",
+          "Early access to new features"
         ],
         cta: "👉 Scale My Content",
-        badge: "Recommended for Teams"
+        badge: "For Power Users"
       }
     ]
   },
@@ -226,7 +220,6 @@ const PRICING_DATA: Record<Region, {
           "Best time to post (AI insights)",
           "Analytics & performance tracking"
         ],
-        premiumFeature: "Story Series Engine (create 10–15 post campaigns)",
         cta: "👉 Grow My LinkedIn",
         badge: "Best Value",
         recommended: true
@@ -235,26 +228,21 @@ const PRICING_DATA: Record<Region, {
         id: "pro",
         name: "Pro",
         tagline: "Turn LinkedIn into a growth engine",
-        description: "For founders, agencies, and power users scaling content and leads.",
+        description: "For founders, agencies, and power users who produce content at scale.",
         priceMonthly: "55",
         priceYearly: "528",
         interval: "/ month",
         features: [
           "500 AI-generated posts / month",
-          "Priority generation (faster + better output)",
-          "Advanced story campaigns",
+          "Priority generation (faster queue)",
           "Multiple knowledge bases",
           "Knowledge base limit up to 200MB",
-          "Team access (up to 5 users)",
           "Advanced analytics dashboard",
-          "Priority support"
-        ],
-        bonus: [
-          "Early access to new features",
-          "API access (coming soon)"
+          "Priority email support",
+          "Early access to new features"
         ],
         cta: "👉 Scale My Content",
-        badge: "Recommended for Teams"
+        badge: "For Power Users"
       }
     ]
   }
