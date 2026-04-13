@@ -376,9 +376,9 @@
             .step-connector.done-c { background: var(--purple); }
 
             /* OTP inputs */
-            .otp-row { display: flex; gap: 10px; margin-bottom: 6px; }
+            .otp-row { display: flex; gap: 10px; margin-bottom: 6px; justify-content: center; }
             .otp-inp {
-                flex: 1; height: 52px; text-align: center;
+                flex: 1 1 0; min-width: 0; max-width: 52px; width: 44px; height: 52px; text-align: center;
                 font-size: 22px; font-weight: 700; color: var(--ink);
                 border: 1.5px solid var(--border); border-radius: 12px;
                 background: var(--surface); outline: none;
@@ -952,13 +952,13 @@
                             <div class="f-sub" style="margin-bottom:20px">
                                 We sent a 6-digit code to <b id="sent-to" style="color:#374151"></b>.
                             </div>
-                            <div class="otp-row">
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,0)" onkeydown="otpBack(event,this,0)"/>
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,1)" onkeydown="otpBack(event,this,1)"/>
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,2)" onkeydown="otpBack(event,this,2)"/>
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,3)" onkeydown="otpBack(event,this,3)"/>
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,4)" onkeydown="otpBack(event,this,4)"/>
-                                <input class="otp-inp" maxlength="1" type="text" oninput="otpNav(this,5)" onkeydown="otpBack(event,this,5)"/>
+                            <div class="otp-row" id="otp-row">
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" oninput="otpNav(this,0)" onkeydown="otpBack(event,this,0)" onpaste="otpPaste(event,0)"/>
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,1)" onkeydown="otpBack(event,this,1)"/>
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,2)" onkeydown="otpBack(event,this,2)"/>
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,3)" onkeydown="otpBack(event,this,3)"/>
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,4)" onkeydown="otpBack(event,this,4)"/>
+                                <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,5)" onkeydown="otpBack(event,this,5)"/>
                             </div>
                             <div class="resend-row" style="margin-top:8px">
                                 Didn't get it? <a onclick="startOtpTimer()">Resend code</a> ·
@@ -1662,13 +1662,29 @@
             }
 
             function otpNav(inp, idx) {
-                const inputs = document.querySelectorAll('.otp-inp');
+                // Strip non-digits from tel inputs
+                inp.value = inp.value.replace(/\D/g, '').slice(0, 1);
+                const inputs = document.querySelectorAll('#otp-row .otp-inp');
                 if (inp.value && idx < inputs.length - 1) inputs[idx + 1].focus();
             }
 
             function otpBack(e, inp, idx) {
                 if (e.key === 'Backspace' && !inp.value && idx > 0)
-                    document.querySelectorAll('.otp-inp')[idx - 1].focus();
+                    document.querySelectorAll('#otp-row .otp-inp')[idx - 1].focus();
+            }
+
+            function otpPaste(e, startIdx) {
+                e.preventDefault();
+                const digits = (e.clipboardData || window.clipboardData)
+                    .getData('text').replace(/\D/g, '').slice(0, 6);
+                if (!digits) return;
+                const inputs = document.querySelectorAll('#otp-row .otp-inp');
+                digits.split('').forEach((d, i) => {
+                    if (inputs[startIdx + i]) inputs[startIdx + i].value = d;
+                });
+                const nextEmpty = startIdx + digits.length;
+                if (inputs[nextEmpty]) inputs[nextEmpty].focus();
+                else inputs[inputs.length - 1].focus();
             }
 
             function startLoginAnim() {
