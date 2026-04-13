@@ -428,6 +428,54 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
         except Exception as e:
             logger.error("Admin overview post stats failed: %s", e)
 
+        # ── Plan distribution + revenue estimate ──────────────────────────
+        plan_distribution = {'free': 0, '1_month': 0, '3_month': 0, '12_month': 0}
+        revenue_estimate_inr = 0
+        avg_posts_per_user = 0.0
+        top_referrers = []
+        try:
+            if auth_supabase:
+                subs_res = auth_supabase.table('subscriptions').select('plan,status').execute()
+                for row in (subs_res.data or []):
+                    plan_key = str(row.get('plan') or 'free').lower()
+                    # Normalise legacy names
+                    if plan_key in ('pro', '1m', 'monthly'):
+                        plan_key = '1_month'
+                    elif plan_key in ('3m', 'quarterly'):
+                        plan_key = '3_month'
+                    elif plan_key in ('12m', 'yearly', 'annual', 'agency'):
+                        plan_key = '12_month'
+                    if plan_key not in plan_distribution:
+                        plan_key = 'free'
+                    if str(row.get('status') or '').lower() == 'active':
+                        plan_distribution[plan_key] += 1
+                price_map = {'1_month': 999, '3_month': 2499, '12_month': 8999}
+                for plan_key, count in plan_distribution.items():
+                    revenue_estimate_inr += price_map.get(plan_key, 0) * count
+        except Exception as e:
+            logger.error("Admin overview plan distribution failed: %s", e)
+
+        try:
+            if auth_supabase and total_users > 0:
+                usage_res = auth_supabase.table('usage_monthly').select('posts_generated').execute()
+                usage_rows = usage_res.data or []
+                total_generated = sum(int(r.get('posts_generated') or 0) for r in usage_rows)
+                avg_posts_per_user = round(total_generated / total_users, 1)
+        except Exception as e:
+            logger.error("Admin overview avg posts failed: %s", e)
+
+        try:
+            if auth_supabase:
+                ref_res = auth_supabase.table('user_profiles').select(
+                    'user_id,referral_count'
+                ).gt('referral_count', 0).order('referral_count', desc=True).limit(5).execute()
+                top_referrers = [
+                    {'user_id': r.get('user_id'), 'referral_count': r.get('referral_count')}
+                    for r in (ref_res.data or [])
+                ]
+        except Exception as e:
+            logger.error("Admin overview referral stats failed: %s", e)
+
         return jsonify({
             'success': True,
             'warning': cache_meta.get('warning', ''),
@@ -441,6 +489,12 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
                 'weekly_labels': chart_labels, 'weekly_posts': chart_values,
                 'user_breakdown': [total_users, verified_users, active_users],
                 'selected_range': range_raw,
+            },
+            'analytics': {
+                'plan_distribution': plan_distribution,
+                'revenue_estimate_inr': revenue_estimate_inr,
+                'avg_posts_per_user': avg_posts_per_user,
+                'top_referrers': top_referrers,
             },
         })
 
@@ -1233,5 +1287,110 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             return jsonify({'success': True, 'message': f'Purged {count} DLQ entries'})
         except Exception as e:
             return _safe_api_error('Failed to purge DLQ', e)
+
+    # ── Discount / Coupon Code CRUD ────────────────────────────────────────
+
+    @admin_bp.route('/api/admin/coupons', methods=['GET'])
+    @require_admin_api
+    def admin_coupons_list():
+        """List all discount codes."""
+        try:
+            if not auth_supabase:
+                return jsonify({'success': False, 'message': 'Database not configured'}), 503
+            res = auth_supabase.table('discount_codes').select('*').order('created_at', desc=True).execute()
+            return jsonify({'success': True, 'coupons': res.data or []})
+        except Exception as e:
+            return _safe_api_error('Failed to list coupons', e)
+
+    @admin_bp.route('/api/admin/coupons', methods=['POST'])
+    @require_admin_api
+    def admin_coupons_create():
+        """Create a new discount code."""
+        try:
+            if not auth_supabase:
+                return jsonify({'success': False, 'message': 'Database not configured'}), 503
+            data = request.get_json(silent=True) or {}
+            code = str(data.get('code') or '').strip().upper()
+            discount_pct = int(data.get('discount_pct') or 0)
+            max_uses = int(data.get('max_uses') or 100)
+            valid_until = data.get('valid_until') or None  # ISO string or null
+
+            if not code:
+                return jsonify({'success': False, 'message': 'code is required'}), 400
+            if not (1 <= discount_pct <= 100):
+                return jsonify({'success': False, 'message': 'discount_pct must be 1-100'}), 400
+
+            row = {
+                'code': code,
+                'discount_pct': discount_pct,
+                'max_uses': max_uses,
+                'is_active': True,
+            }
+            if valid_until:
+                row['valid_until'] = valid_until
+
+            res = auth_supabase.table('discount_codes').insert(row).execute()
+            _log_action(f'Coupon created: {code} ({discount_pct}%)')
+            return jsonify({'success': True, 'coupon': (res.data or [{}])[0]})
+        except Exception as e:
+            return _safe_api_error('Failed to create coupon', e)
+
+    @admin_bp.route('/api/admin/coupons/<code>', methods=['PATCH'])
+    @require_admin_api
+    def admin_coupons_update(code):
+        """Toggle is_active or update a coupon code."""
+        try:
+            if not auth_supabase:
+                return jsonify({'success': False, 'message': 'Database not configured'}), 503
+            data = request.get_json(silent=True) or {}
+            updates = {}
+            if 'is_active' in data:
+                updates['is_active'] = bool(data['is_active'])
+            if 'max_uses' in data:
+                updates['max_uses'] = int(data['max_uses'])
+            if 'valid_until' in data:
+                updates['valid_until'] = data['valid_until']
+            if not updates:
+                return jsonify({'success': False, 'message': 'No fields to update'}), 400
+            auth_supabase.table('discount_codes').update(updates).eq('code', code.upper()).execute()
+            _log_action(f'Coupon updated: {code}')
+            return jsonify({'success': True, 'message': f'Coupon {code} updated'})
+        except Exception as e:
+            return _safe_api_error(f'Failed to update coupon {code}', e)
+
+    @admin_bp.route('/api/admin/coupons/<code>', methods=['DELETE'])
+    @require_admin_api
+    def admin_coupons_delete(code):
+        """Delete a discount code."""
+        try:
+            if not auth_supabase:
+                return jsonify({'success': False, 'message': 'Database not configured'}), 503
+            auth_supabase.table('discount_codes').delete().eq('code', code.upper()).execute()
+            _log_action(f'Coupon deleted: {code}')
+            return jsonify({'success': True, 'message': f'Coupon {code} deleted'})
+        except Exception as e:
+            return _safe_api_error(f'Failed to delete coupon {code}', e)
+
+    # ── Referral Analytics ─────────────────────────────────────────────────
+
+    @admin_bp.route('/api/admin/referrals', methods=['GET'])
+    @require_admin_api
+    def admin_referrals():
+        """Top referrers and referral count totals."""
+        try:
+            if not auth_supabase:
+                return jsonify({'success': False, 'message': 'Database not configured'}), 503
+            res = auth_supabase.table('user_profiles').select(
+                'user_id,referral_code,referral_count,referred_by'
+            ).gt('referral_count', 0).order('referral_count', desc=True).limit(50).execute()
+            rows = res.data or []
+            total_referrals = sum(int(r.get('referral_count') or 0) for r in rows)
+            return jsonify({
+                'success': True,
+                'total_referrals': total_referrals,
+                'top_referrers': rows,
+            })
+        except Exception as e:
+            return _safe_api_error('Failed to fetch referral stats', e)
 
     return admin_bp

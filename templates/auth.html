@@ -1269,6 +1269,9 @@
             // Get plan from URL if coming from pricing page
             window.SELECTED_PLAN = new URLSearchParams(window.location.search).get('plan') || 'free';
 
+            // Capture referral code from ?ref= query param (e.g. shared referral link)
+            window.REFERRAL_BY = new URLSearchParams(window.location.search).get('ref') || '';
+
             function showScreen(i) {
                 document.querySelectorAll('.screen').forEach((s, idx) => {
                     s.classList.toggle('active', idx === i);
@@ -1459,20 +1462,23 @@
 
                 try {
                     // Make actual API call to backend
+                    const signupBody = {
+                        first_name: firstName,
+                        last_name: lastName,
+                        country,
+                        email,
+                        password,
+                        role,
+                        industry
+                    };
+                    if (window.REFERRAL_BY) signupBody.referred_by = window.REFERRAL_BY;
+
                     const response = await fetch('/api/auth/signup', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            first_name: firstName,
-                            last_name: lastName,
-                            country,
-                            email,
-                            password,
-                            role,
-                            industry
-                        })
+                        body: JSON.stringify(signupBody)
                     });
 
                     const data = await response.json();

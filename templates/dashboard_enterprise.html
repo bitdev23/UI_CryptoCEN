@@ -2003,6 +2003,28 @@
             font-weight: 700;
             border: 1px solid rgba(99,102,241,0.2);
         }
+        .ph-analytics-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.36rem 1rem 0.52rem;
+            flex-wrap: wrap;
+        }
+        .ph-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.32rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        .ph-stat i { font-size: 0.7rem; opacity: 0.85; }
+        .ph-stat-label {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-left: auto;
+        }
         .history-item-meta {
             display: flex;
             flex-wrap: wrap;
@@ -16002,6 +16024,9 @@
         body.dark-mode .ph-hashtag:hover {
             background: rgba(139,92,246,0.2) !important;
         }
+        body.dark-mode .ph-analytics-row { border-top: none !important; }
+        body.dark-mode .ph-stat { color: #60a5fa !important; }
+        body.dark-mode .ph-stat-label { color: #5a5880 !important; }
 
         /* Meta bar */
         body.dark-mode .history-item-meta {
@@ -20209,6 +20234,26 @@
                                         <button class="btn btn-primary" onclick="updatePasswordFromSettings()"><i class="fas fa-key"></i> Update Password</button>
                                         <button class="btn btn-secondary" onclick="requestPasswordResetEmail()"><i class="fas fa-envelope"></i> Send Reset Email</button>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="card settings-v2-card">
+                                <div class="settings-v2-card-head">
+                                    <div class="settings-v2-card-head-left">
+                                        <span class="settings-v2-card-icon"><i class="fas fa-share-nodes"></i></span>
+                                        <div>
+                                            <div class="settings-v2-card-title">Referral Link</div>
+                                            <div class="settings-v2-card-sub">Share your unique link — earn rewards for every sign-up</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-v2-card-body">
+                                    <p style="font-size:0.84rem; color:#64748b; margin-bottom:0.8rem;">Invite friends to Velank AI. Each person who signs up via your link is tracked as your referral.</p>
+                                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                                        <input id="settings-referral-link" type="text" readonly style="flex:1; font-size:0.82rem; padding:0.5rem 0.7rem; border-radius:8px; border:1.5px solid #d1d5db; background:#f8fafc; color:#334155; cursor:pointer;" onclick="this.select()" placeholder="Loading…">
+                                        <button class="btn btn-secondary" onclick="copyReferralLink()"><i class="fas fa-copy"></i> Copy</button>
+                                    </div>
+                                    <div id="settings-referral-count" style="font-size:0.77rem; color:#64748b; margin-top:0.55rem;"></div>
                                 </div>
                             </div>
                         </section>
@@ -25606,6 +25651,11 @@
         if (triggerEl) {
             triggerEl.classList.add('active');
         }
+
+        // Initialise referral link when profile section opens
+        if (sectionKey === 'profile') {
+            initReferralLink();
+        }
     }
 
     function toggleInputVisibility(inputId, buttonEl) {
@@ -25802,7 +25852,7 @@
         }
     }
 
-    async function startPlanCheckout(planCode) {
+    async function startPlanCheckout(planCode, couponCode) {
         const selectedPlan = String(planCode || '').trim();
         if (!selectedPlan || selectedPlan === 'free') {
             showToast('error', 'Please select a paid plan', 'fas fa-exclamation-circle');
@@ -25815,10 +25865,13 @@
         }
 
         try {
+            const orderPayload = { plan: selectedPlan };
+            if (couponCode) orderPayload.coupon_code = couponCode;
+
             const orderRes = await authFetch('/api/billing/create-order', {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ plan: selectedPlan })
+                body: JSON.stringify(orderPayload)
             });
             const orderData = await parseJsonResponse(orderRes);
             if (!orderData.success || !orderData.order?.id) {
@@ -25835,15 +25888,17 @@
                 order_id: order.id,
                 handler: async function (response) {
                     try {
+                        const verifyPayload = {
+                            plan: selectedPlan,
+                            order_id: response.razorpay_order_id,
+                            payment_id: response.razorpay_payment_id,
+                            signature: response.razorpay_signature
+                        };
+                        if (couponCode) verifyPayload.coupon_code = couponCode;
                         const verifyRes = await authFetch('/api/billing/verify-payment', {
                             method: 'POST',
                             headers: getAuthHeaders(),
-                            body: JSON.stringify({
-                                plan: selectedPlan,
-                                order_id: response.razorpay_order_id,
-                                payment_id: response.razorpay_payment_id,
-                                signature: response.razorpay_signature
-                            })
+                            body: JSON.stringify(verifyPayload)
                         });
                         const verifyData = await parseJsonResponse(verifyRes);
                         if (!verifyData.success) {
@@ -25882,6 +25937,18 @@
     function openUpgradeModal(triggerContext) {
         const overlay = document.getElementById('upgrade-modal-overlay');
         if (!overlay) return;
+
+        // Reset coupon state
+        _upgSelectedPlan = null;
+        _upgAppliedCoupon = null;
+        const couponSec = document.getElementById('upg-coupon-section');
+        const couponInput = document.getElementById('upg-coupon-input');
+        const couponMsg = document.getElementById('upg-coupon-msg');
+        const checkoutBtn = document.getElementById('upg-checkout-btn');
+        if (couponSec) couponSec.style.display = 'none';
+        if (couponInput) couponInput.value = '';
+        if (couponMsg) couponMsg.textContent = '';
+        if (checkoutBtn) checkoutBtn.style.display = 'none';
 
         // Show current usage if we have billing data
         const usagePill = document.getElementById('upg-usage-pill');
@@ -25958,17 +26025,74 @@
         document.body.style.overflow = 'hidden';
     }
 
+    let _upgSelectedPlan = null;
+    let _upgAppliedCoupon = null;   // { code, discount_pct }
+    let _upgOriginalAmount = null;  // base amount for the selected plan
+
     function selectUpgradePlan(planCode) {
-        // Highlight selected
+        // Highlight selected card
         document.querySelectorAll('.upg-plan-card').forEach(c => c.classList.remove('is-selected'));
         const card = document.getElementById(`upg-card-${planCode}`);
         if (card) card.classList.add('is-selected');
 
-        // Proceed to checkout
-        setTimeout(() => {
-            closeUpgradeModal();
-            startPlanCheckout(planCode);
-        }, 180);
+        _upgSelectedPlan = planCode;
+        _upgAppliedCoupon = null;
+
+        // Show coupon section + checkout button
+        const couponSec = document.getElementById('upg-coupon-section');
+        const checkoutBtn = document.getElementById('upg-checkout-btn');
+        const couponMsg = document.getElementById('upg-coupon-msg');
+        const couponInput = document.getElementById('upg-coupon-input');
+        if (couponSec) couponSec.style.display = 'block';
+        if (checkoutBtn) { checkoutBtn.style.display = 'block'; checkoutBtn.textContent = ''; checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Checkout'; }
+        if (couponMsg) couponMsg.textContent = '';
+        if (couponInput) couponInput.value = '';
+    }
+
+    async function applyUpgradeCoupon() {
+        const couponInput = document.getElementById('upg-coupon-input');
+        const couponMsg = document.getElementById('upg-coupon-msg');
+        const applyBtn = document.getElementById('upg-coupon-apply-btn');
+        const checkoutBtn = document.getElementById('upg-checkout-btn');
+        const code = (couponInput?.value || '').trim().toUpperCase();
+        if (!code) { if (couponMsg) { couponMsg.style.color = '#ef4444'; couponMsg.textContent = 'Please enter a code'; } return; }
+
+        if (applyBtn) { applyBtn.disabled = true; applyBtn.textContent = '...'; }
+        try {
+            const res = await authFetch('/api/billing/validate-coupon', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            if (data.success && data.discount_pct) {
+                _upgAppliedCoupon = { code: data.code, discount_pct: data.discount_pct };
+                if (couponMsg) { couponMsg.style.color = '#10b981'; couponMsg.innerHTML = `<i class="fas fa-check-circle"></i> <strong>${data.discount_pct}% off</strong> applied!`; }
+                if (checkoutBtn) checkoutBtn.innerHTML = `<i class="fas fa-lock"></i> Proceed to Checkout · ${data.discount_pct}% off`;
+            } else {
+                _upgAppliedCoupon = null;
+                if (couponMsg) { couponMsg.style.color = '#ef4444'; couponMsg.textContent = data.message || 'Invalid or expired coupon'; }
+            }
+        } catch (e) {
+            if (couponMsg) { couponMsg.style.color = '#ef4444'; couponMsg.textContent = 'Could not validate code — try again'; }
+        }
+        if (applyBtn) { applyBtn.disabled = false; applyBtn.textContent = 'Apply'; }
+    }
+
+    function clearUpgradeCoupon() {
+        _upgAppliedCoupon = null;
+        const couponInput = document.getElementById('upg-coupon-input');
+        const couponMsg = document.getElementById('upg-coupon-msg');
+        const checkoutBtn = document.getElementById('upg-checkout-btn');
+        if (couponInput) couponInput.value = '';
+        if (couponMsg) couponMsg.textContent = '';
+        if (checkoutBtn) checkoutBtn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Checkout';
+    }
+
+    function proceedUpgradeCheckout() {
+        if (!_upgSelectedPlan) { showToast('error', 'Please select a plan first', 'fas fa-exclamation-circle'); return; }
+        closeUpgradeModal();
+        startPlanCheckout(_upgSelectedPlan, _upgAppliedCoupon?.code || null);
     }
 
     function closeUpgradeModal() {
@@ -26370,6 +26494,39 @@
             showToast('success', 'Password updated successfully', 'fas fa-check');
         })
         .catch(e => showToast('error', e.message || 'Failed to update password', 'fas fa-exclamation-circle'));
+    }
+
+    function initReferralLink() {
+        const userId = localStorage.getItem('user_id') || '';
+        if (!userId) return;
+        const base = window.location.origin;
+        const link = `${base}/?ref=${encodeURIComponent(userId)}`;
+        const linkEl = document.getElementById('settings-referral-link');
+        if (linkEl) linkEl.value = link;
+
+        // Load referral count from user profile if available
+        authFetch('/api/user/profile', { headers: getAuthHeaders() })
+            .then(r => r.ok ? r.json() : {})
+            .then(data => {
+                if (!data.success) return;
+                const profile = data.profile || {};
+                const count = parseInt(profile.referral_count || 0, 10);
+                const countEl = document.getElementById('settings-referral-count');
+                if (countEl) {
+                    countEl.textContent = count > 0
+                        ? `${count} person${count !== 1 ? 's' : ''} signed up via your link`
+                        : 'No sign-ups yet — share your link to get started!';
+                }
+            })
+            .catch(() => {});
+    }
+
+    function copyReferralLink() {
+        const linkEl = document.getElementById('settings-referral-link');
+        if (!linkEl || !linkEl.value) return;
+        navigator.clipboard.writeText(linkEl.value)
+            .then(() => showToast('success', 'Referral link copied!', 'fas fa-check'))
+            .catch(() => { linkEl.select(); document.execCommand('copy'); showToast('success', 'Referral link copied!', 'fas fa-check'); });
     }
 
     function updateHashtagPreview() {
@@ -28944,6 +29101,8 @@
             }
 
             const dateLabel = formatHistoryDateLabel(item.createdAt);
+            const itemAnalytics = (item.analytics && typeof item.analytics === 'object') ? item.analytics : null;
+            const hasLinkedInStats = item.status === 'posted' && itemAnalytics != null;
 
             return `
                 <div id="history-card-${item.id}" class="history-item status-${item.status}">
@@ -28968,6 +29127,14 @@
                         ${hashtags.map(tag => `<span class="ph-hashtag">${escapeHtml(tag)}</span>`).join('')}
                     </div>
                     ` : ''}
+
+                    ${hasLinkedInStats ? `
+                    <div class="ph-analytics-row">
+                        <span class="ph-stat"><i class="fas fa-thumbs-up"></i> ${(itemAnalytics.likes || 0).toLocaleString()}</span>
+                        <span class="ph-stat"><i class="fas fa-comment"></i> ${(itemAnalytics.comments || 0).toLocaleString()}</span>
+                        <span class="ph-stat"><i class="fas fa-retweet"></i> ${(itemAnalytics.shares || 0).toLocaleString()}</span>
+                        <span class="ph-stat-label">LinkedIn stats</span>
+                    </div>` : ''}
 
                     <div class="history-item-meta">
                         <span class="history-meta-chip"><i class="fas fa-industry"></i> Industry: <strong>${industryLabel}</strong></span>
@@ -31284,6 +31451,19 @@
         <div class="upg-body">
             <div class="upg-plans-grid" id="upg-plans-grid">
                 <!-- Plans injected by JS -->
+            </div>
+            <!-- Coupon code section (shown after a plan is chosen) -->
+            <div id="upg-coupon-section" style="display:none; margin: 0 0 0.8rem; padding: 0.9rem 1.1rem; background: rgba(99,102,241,0.06); border-radius: 10px; border: 1px solid rgba(99,102,241,0.18);">
+                <div style="font-size:0.82rem; font-weight:700; color:#4338ca; margin-bottom:0.55rem;"><i class="fas fa-tag"></i> Have a discount code?</div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <input id="upg-coupon-input" type="text" placeholder="e.g. LAUNCH20" maxlength="30" style="flex:1; padding:0.45rem 0.7rem; border-radius:7px; border:1.5px solid rgba(99,102,241,0.3); font-size:0.82rem; background:rgba(255,255,255,0.85); outline:none;">
+                    <button id="upg-coupon-apply-btn" onclick="applyUpgradeCoupon()" style="padding:0.43rem 0.95rem; border-radius:7px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; font-size:0.8rem; font-weight:700; cursor:pointer; white-space:nowrap;">Apply</button>
+                    <button onclick="clearUpgradeCoupon()" title="Clear coupon" style="padding:0.43rem 0.55rem; border-radius:7px; background:rgba(100,116,139,0.12); color:#64748b; border:none; font-size:0.75rem; cursor:pointer;"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div id="upg-coupon-msg" style="font-size:0.77rem; margin-top:0.4rem; min-height:1.1em;"></div>
+                <button id="upg-checkout-btn" onclick="proceedUpgradeCheckout()" style="display:none; width:100%; margin-top:0.75rem; padding:0.62rem; border-radius:9px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; font-weight:700; font-size:0.9rem; border:none; cursor:pointer;">
+                    <i class="fas fa-lock"></i> Proceed to Checkout
+                </button>
             </div>
             <p class="upg-footer-note">
                 <i class="fas fa-lock" style="font-size:0.7rem; margin-right:0.25rem;"></i>

@@ -2805,6 +2805,7 @@ def auth_signup():
 
         role = (data.get('role') or '').strip()
         industry = (data.get('industry') or '').strip()
+        referred_by = (data.get('referred_by') or '').strip() or None  # referrer's user_id
 
         metadata = {
             'email': email,
@@ -2818,6 +2819,23 @@ def auth_signup():
         success, message, user_data = signup_user(email, password, metadata)
         if success and email:
             _send_welcome_email(email, display_name=first_name)
+
+        # Write referred_by to user_profiles and increment referrer's count
+        if success and referred_by and user_data and auth_supabase:
+            try:
+                new_user_id = user_data.get('id')
+                if new_user_id and is_valid_uuid(str(new_user_id)) and is_valid_uuid(str(referred_by)):
+                    auth_supabase.table('user_profiles').upsert({
+                        'user_id': str(new_user_id),
+                        'referred_by': str(referred_by),
+                    }, on_conflict='user_id').execute()
+                    # Increment referrer's referral_count
+                    ref_profile = auth_supabase.table('user_profiles').select('id,referral_count').eq('user_id', str(referred_by)).execute()
+                    if ref_profile.data:
+                        current_count = int((ref_profile.data[0] or {}).get('referral_count') or 0)
+                        auth_supabase.table('user_profiles').update({'referral_count': current_count + 1}).eq('user_id', str(referred_by)).execute()
+            except Exception as _ref_err:
+                logger.warning("Could not write referral info: %s", _ref_err)
         status_code = 200 if success else 400
         lowered = (message or '').lower()
         if not success and ('temporarily unavailable' in lowered or 'timeout' in lowered):
@@ -3041,6 +3059,23 @@ def auth_health():
     }), status
 
 
+@app.route('/api/user/profile', methods=['GET'])
+@require_auth
+def get_user_profile():
+    """Return user_profiles row for the current user (includes referral_count, referral_code)."""
+    try:
+        user_id = get_current_user_id()
+        if not auth_supabase or not is_valid_uuid(str(user_id)):
+            return jsonify({'success': False, 'message': 'Not available'}), 503
+        res = auth_supabase.table('user_profiles').select(
+            'referral_code,referral_count,referred_by,industry,role,timezone'
+        ).eq('user_id', str(user_id)).execute()
+        profile = (res.data or [{}])[0] if res.data else {}
+        return jsonify({'success': True, 'profile': profile})
+    except Exception as e:
+        return _safe_api_error('Failed to get profile', e)
+
+
 @app.route('/api/auth/account/update', methods=['POST'])
 @require_auth
 def auth_account_update():
@@ -3257,6 +3292,69 @@ def billing_status():
     })
 
 
+def _validate_coupon_code(code: str) -> dict:
+    """Validate a discount code against the DB. Returns {'valid': bool, 'discount_pct': int, 'message': str}"""
+    if not auth_supabase or not code:
+        return {'valid': False, 'discount_pct': 0, 'message': 'Invalid code'}
+    try:
+        res = auth_supabase.table('discount_codes').select(
+            'id,code,discount_pct,max_uses,uses,valid_from,valid_until,is_active'
+        ).eq('code', code.upper().strip()).execute()
+        rows = res.data or []
+        if not rows:
+            return {'valid': False, 'discount_pct': 0, 'message': 'Code not found'}
+        row = rows[0]
+        if not row.get('is_active'):
+            return {'valid': False, 'discount_pct': 0, 'message': 'Code is no longer active'}
+        if row.get('uses', 0) >= row.get('max_uses', 0):
+            return {'valid': False, 'discount_pct': 0, 'message': 'Code has reached its usage limit'}
+        now_utc = datetime.utcnow().isoformat()
+        valid_from = row.get('valid_from')
+        valid_until = row.get('valid_until')
+        if valid_from and now_utc < valid_from:
+            return {'valid': False, 'discount_pct': 0, 'message': 'Code is not yet active'}
+        if valid_until and now_utc > valid_until:
+            return {'valid': False, 'discount_pct': 0, 'message': 'Code has expired'}
+        return {'valid': True, 'discount_pct': int(row['discount_pct']), 'code_id': row['id'], 'message': 'Code applied'}
+    except Exception as e:
+        logger.error("Coupon validation error: %s", e)
+        return {'valid': False, 'discount_pct': 0, 'message': 'Code validation failed'}
+
+
+def _redeem_coupon_code(code: str) -> bool:
+    """Atomically increment uses count for a coupon code. Returns True on success."""
+    if not auth_supabase or not code:
+        return False
+    try:
+        res = auth_supabase.table('discount_codes').select('id,uses,max_uses').eq('code', code.upper().strip()).execute()
+        rows = res.data or []
+        if not rows:
+            return False
+        row = rows[0]
+        new_uses = int(row.get('uses', 0)) + 1
+        auth_supabase.table('discount_codes').update({'uses': new_uses}).eq('id', row['id']).execute()
+        return True
+    except Exception as e:
+        logger.error("Coupon redeem error: %s", e)
+        return False
+
+
+@app.route('/api/billing/validate-coupon', methods=['POST'])
+@require_auth
+def billing_validate_coupon():
+    """Validate a discount/coupon code without redeeming it."""
+    try:
+        data = request.get_json(silent=True) or {}
+        code = str(data.get('code') or '').strip()
+        if not code:
+            return jsonify({'success': False, 'valid': False, 'message': 'Coupon code is required'}), 400
+        result = _validate_coupon_code(code)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.exception("Coupon validation endpoint failed")
+        return _safe_api_error('Validation failed', e)
+
+
 @app.route('/api/billing/create-order', methods=['POST'])
 @require_auth
 def billing_create_order():
@@ -3272,6 +3370,19 @@ def billing_create_order():
         if amount_inr <= 0:
             return jsonify({'success': False, 'message': 'Invalid plan price configuration'}), 500
 
+        # --- Coupon / discount ---
+        coupon_code = str(data.get('coupon_code') or '').strip().upper() or None
+        discount_pct = 0
+        coupon_message = ''
+        if coupon_code:
+            coupon_result = _validate_coupon_code(coupon_code)
+            if coupon_result['valid']:
+                discount_pct = coupon_result['discount_pct']
+                amount_inr = int(amount_inr * (100 - discount_pct) // 100)
+                coupon_message = f"{discount_pct}% discount applied"
+            else:
+                return jsonify({'success': False, 'message': coupon_result['message']}), 400
+
         key_id, key_secret = _razorpay_keys()
         if not key_id or not key_secret:
             return jsonify({'success': False, 'message': 'Razorpay is not configured on server'}), 503
@@ -3283,7 +3394,10 @@ def billing_create_order():
             'order': order,
             'plan': plan,
             'amount_inr': amount_inr,
-            'razorpay_key_id': key_id
+            'razorpay_key_id': key_id,
+            'discount_pct': discount_pct,
+            'coupon_code': coupon_code,
+            'coupon_message': coupon_message,
         })
     except Exception as e:
         logger.exception("Billing create order failed")
@@ -3300,6 +3414,7 @@ def billing_verify_payment():
         payment_id = str(data.get('payment_id') or data.get('razorpay_payment_id') or '').strip()
         signature = str(data.get('signature') or data.get('razorpay_signature') or '').strip()
         plan = str(data.get('plan') or '').strip()
+        coupon_code = str(data.get('coupon_code') or '').strip().upper() or None
 
         if not order_id or not payment_id or not signature or not plan:
             return jsonify({'success': False, 'message': 'order_id, payment_id, signature, and plan are required'}), 400
@@ -3314,6 +3429,10 @@ def billing_verify_payment():
         activated = _activate_subscription_from_payment(user_id, normalized[0], payment_id=payment_id, order_id=order_id)
         if not activated:
             return jsonify({'success': False, 'message': 'Failed to activate subscription'}), 500
+
+        # Redeem coupon code if one was supplied with this payment
+        if coupon_code:
+            _redeem_coupon_code(coupon_code)
 
         return jsonify({
             'success': True,
