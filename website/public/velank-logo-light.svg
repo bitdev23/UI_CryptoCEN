@@ -1,0 +1,66 @@
+<svg viewBox="0 0 260 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cg" x1="10%" y1="0%" x2="90%" y2="110%">
+      <stop offset="0%" stop-color="#9f6ffd"/>
+      <stop offset="55%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#5418c8"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0%" y1="0%" x2="55%" y2="80%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+    </linearGradient>
+    <linearGradient id="spk" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e9d5ff"/>
+    </linearGradient>
+    <linearGradient id="cur" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e9d5ff"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="wg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ede9fe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- MARK — 62x50, vertically centred in 60px height -->
+  <g transform="translate(0, 5)">
+    <rect x="0" y="0" width="62" height="50" rx="8" fill="url(#cg)"/>
+    <rect x="0" y="0" width="62" height="50" rx="8" fill="url(#sheen)"/>
+    <rect x="0" y="0" width="62" height="50" rx="8" fill="none" stroke="#b49dff" stroke-width="0.5" opacity="0.3"/>
+    <!-- Schedule badge -->
+    <rect x="4" y="4" width="16" height="5" rx="2.5" fill="white" opacity="0.18"/>
+    <circle cx="7.5" cy="6.5" r="1.2" fill="#c4b5fd" opacity="0.9"/>
+    <rect x="10.5" y="5.2" width="7" height="2.2" rx="1" fill="white" opacity="0.65"/>
+    <!-- Spark -->
+    <path d="M 52 5.5 L 53.8 8.5 L 55.5 5.5 L 53.8 2.5 Z" fill="url(#spk)" opacity="0.97"/>
+    <path d="M 50.3 5.5 L 53.8 4.2 L 57.3 5.5 L 53.8 6.8 Z" fill="url(#spk)" opacity="0.97"/>
+    <circle cx="53.8" cy="5.5" r="1.2" fill="white" opacity="0.95"/>
+    <!-- Content lines -->
+    <rect x="4" y="14" width="54" height="3.8" rx="1.9" fill="white" opacity="0.95"/>
+    <rect x="4" y="20.5" width="54" height="3.2" rx="1.6" fill="white" opacity="0.62"/>
+    <rect x="4" y="26.5" width="54" height="3.2" rx="1.6" fill="white" opacity="0.46"/>
+    <rect x="4" y="32.5" width="30" height="3.2" rx="1.6" fill="white" opacity="0.28"/>
+    <!-- Cursor -->
+    <rect x="36" y="32" width="1.4" height="4.2" rx="0.7" fill="url(#cur)" opacity="0.95"/>
+    <!-- Divider -->
+    <line x1="4" y1="40" x2="58" y2="40" stroke="white" stroke-width="0.4" opacity="0.12"/>
+    <!-- Reaction dots -->
+    <circle cx="8.5" cy="45" r="2.5" fill="white" opacity="0.20"/>
+    <circle cx="14.5" cy="45" r="2.5" fill="white" opacity="0.14"/>
+    <circle cx="20.5" cy="45" r="2.5" fill="white" opacity="0.09"/>
+    <!-- Empty pill -->
+    <rect x="34" y="41.5" width="24" height="7" rx="3.5" fill="white" opacity="0.18"/>
+    <rect x="34" y="41.5" width="24" height="7" rx="3.5" fill="none" stroke="white" stroke-width="0.4" opacity="0.28"/>
+  </g>
+
+  <!-- WORDMARK: Velank AI — white gradient for dark backgrounds -->
+  <text
+    x="76" y="38"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="28"
+    font-weight="700"
+    fill="url(#wg)"
+    letter-spacing="-0.02em">Velank AI</text>
+</svg>

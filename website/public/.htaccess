@@ -1,0 +1,23 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # 1. Force HTTPS
+  # RewriteCond %{HTTPS} off
+  # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 2. Add trailing slash if missing (Standard for Hostinger/Apache with folder-based static sites)
+  # This matches a path that doesn't have a trailing slash and isn't a file
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_URI} !(.*)/$
+  RewriteRule ^(.*)$ $1/ [L,R=301]
+
+  # 3. Custom 404
+  ErrorDocument 404 /404/index.html
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# Ensure index.html is the default file
+DirectoryIndex index.html

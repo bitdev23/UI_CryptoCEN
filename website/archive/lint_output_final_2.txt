@@ -1,0 +1,28 @@
+
+> velank-ai@0.1.0 lint
+> eslint
+
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx
+  51:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:51:5
+  49 |
+  50 |   useEffect(() => {
+> 51 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  52 |     setParticles([...Array(8)].map(() => ({
+  53 |       startX: Math.random() * 600,
+  54 |       startY: Math.random() * 400,  react-hooks/set-state-in-effect
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/layout/Header.tsx
+  9:10  warning  'usePathname' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 2 problems (1 error, 1 warning)
+

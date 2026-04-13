@@ -1,0 +1,135 @@
+
+> velank-ai@0.1.0 lint
+> eslint
+
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/api/checkout/route.ts
+  56:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx
+     9:24   warning  'ChevronDown' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+     9:147  warning  'Copy' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+    45:15   error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:45:15
+  43 |   const particles = useMemo(() => {
+  44 |     return [...Array(8)].map(() => ({
+> 45 |       startX: Math.random() * 600,
+     |               ^^^^^^^^^^^^^ Cannot call impure function
+  46 |       startY: Math.random() * 400,
+  47 |       moveX: (Math.random() - 0.5) * 30,
+  48 |       duration: 4 + Math.random() * 4,  react-hooks/purity
+    46:15   error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:46:15
+  44 |     return [...Array(8)].map(() => ({
+  45 |       startX: Math.random() * 600,
+> 46 |       startY: Math.random() * 400,
+     |               ^^^^^^^^^^^^^ Cannot call impure function
+  47 |       moveX: (Math.random() - 0.5) * 30,
+  48 |       duration: 4 + Math.random() * 4,
+  49 |       delay: Math.random() * 5       react-hooks/purity
+    47:15   error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:47:15
+  45 |       startX: Math.random() * 600,
+  46 |       startY: Math.random() * 400,
+> 47 |       moveX: (Math.random() - 0.5) * 30,
+     |               ^^^^^^^^^^^^^ Cannot call impure function
+  48 |       duration: 4 + Math.random() * 4,
+  49 |       delay: Math.random() * 5
+  50 |     }));                                    react-hooks/purity
+    48:21   error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:48:21
+  46 |       startY: Math.random() * 400,
+  47 |       moveX: (Math.random() - 0.5) * 30,
+> 48 |       duration: 4 + Math.random() * 4,
+     |                     ^^^^^^^^^^^^^ Cannot call impure function
+  49 |       delay: Math.random() * 5
+  50 |     }));
+  51 |   }, []);                                                       react-hooks/purity
+    49:14   error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:49:14
+  47 |       moveX: (Math.random() - 0.5) * 30,
+  48 |       duration: 4 + Math.random() * 4,
+> 49 |       delay: Math.random() * 5
+     |              ^^^^^^^^^^^^^ Cannot call impure function
+  50 |     }));
+  51 |   }, []);
+  52 |                                                                                                 react-hooks/purity
+  1197:82   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react/no-unescaped-entities
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/pricing/page.tsx
+    4:18   warning  'AnimatePresence' is defined but never used                      @typescript-eslint/no-unused-vars
+   11:88   warning  'Loader2' is defined but never used                              @typescript-eslint/no-unused-vars
+   11:97   warning  'Lock' is defined but never used                                 @typescript-eslint/no-unused-vars
+   11:103  warning  'Shield' is defined but never used                               @typescript-eslint/no-unused-vars
+   13:10   warning  'loadStripe' is defined but never used                           @typescript-eslint/no-unused-vars
+  206:10   warning  'paymentLoading' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  208:9    warning  'handlePayment' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  243:40   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  254:36   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  264:21   error    Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  300:28   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  300:41   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  552:141  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  552:152  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  578:24   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  578:48   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/privacy/page.tsx
+  45:84  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  45:97  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/success/page.tsx
+  13:10  warning  'loading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/who-this-is-for/page.tsx
+    9:10   warning  'Sparkles' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+    9:47   warning  'Briefcase' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    9:58   warning  'Globe2' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    9:66   warning  'BarChart3' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    9:77   warning  'Clock' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+    9:96   warning  'ShieldCheck' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   66:30   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+   91:37   warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+   94:19   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+   94:58   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  160:120  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  176:73   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  192:83   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  192:110  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  199:192  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  260:88   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  260:96   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  324:23   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  485:26   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  485:34   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  485:45   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/layout/Header.tsx
+   18:9   warning  'pathname' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  136:30  warning  'i' is defined but never used                  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/ui/MagneticButton.tsx
+  3:18  warning  'useMotionTemplate' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/ui/RevenueCalculator.tsx
+  3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+  4:10  warning  'motion' is defined but never used     @typescript-eslint/no-unused-vars
+
+✖ 55 problems (33 errors, 22 warnings)
+

@@ -1,0 +1,22 @@
+
+> velank-ai@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1409.8ms
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/tools/post-previewer/page.tsx:7:10
+Type error: '"lucide-react"' has no exported member named 'MobileIcon'. Did you mean 'SmileIcon'?
+
+[0m [90m  5 |[39m [36mimport[39m { [33mHeader[39m } [36mfrom[39m [32m"@/components/layout/Header"[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m { [33mFooter[39m } [36mfrom[39m [32m"@/components/layout/Footer"[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { [33mMobileIcon[39m[33m,[39m [33mDesktopIcon[39m[33m,[39m [33mEye[39m[33m,[39m [33mType[39m[33m,[39m [33mInfo[39m } [36mfrom[39m [32m"lucide-react"[39m[33m;[39m
+ [90m    |[39m          [31m[1m^[22m[39m
+ [90m  8 |[39m
+ [90m  9 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mPostPreviewer[39m() {
+ [90m 10 |[39m   [36mconst[39m [content[33m,[39m setContent] [33m=[39m useState([32m""[39m)[33m;[39m[0m
+Next.js build worker exited with code: 1 and signal: null

@@ -1,0 +1,38 @@
+
+> velank-ai@0.1.0 lint
+> eslint
+
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx
+  10:39  warning  'useMemo' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  42:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  45:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/app/page.tsx:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  46 |     setParticles([...Array(8)].map(() => ({
+  47 |       startX: Math.random() * 600,
+  48 |       startY: Math.random() * 400,  react-hooks/set-state-in-effect
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/layout/Header.tsx
+   18:9   warning  'pathname' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  136:30  warning  'i' is defined but never used                  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/ui/MagneticButton.tsx
+  3:18  warning  'useMotionTemplate' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/macbookair/.gemini/antigravity/scratch/fyrano-ai/src/components/ui/RevenueCalculator.tsx
+  3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+  4:10  warning  'motion' is defined but never used     @typescript-eslint/no-unused-vars
+
+✖ 8 problems (2 errors, 6 warnings)
+
