@@ -207,3 +207,25 @@ def send_post_published(
 </div>
 """)
     _send_async(to_email, subject, html)
+
+
+def send_otp_email(to_email: str, otp_code: str) -> None:
+    """Send 6-digit OTP code for password reset (non-blocking)."""
+    subject = f'Your Velank AI reset code: {otp_code}'
+    html = _wrap_html(f"""
+<div class="header">Password reset code</div>
+<div class="body-text">
+  <p>We received a request to reset the password for your Velank AI account.
+     Use the 6-digit code below to continue. <strong>It expires in 10 minutes.</strong></p>
+  <div style="letter-spacing:10px;font-size:38px;font-weight:700;color:#1a1a2e;
+              text-align:center;margin:28px 0;padding:22px 16px;
+              background:#f5f3ff;border-radius:14px;font-family:monospace,monospace">
+    {otp_code}
+  </div>
+  <p style="font-size:13px;color:#888">
+    If you didn't request a password reset, you can safely ignore this email —
+    your account remains secure.
+  </p>
+</div>
+""")
+    _send_async(to_email, subject, html)

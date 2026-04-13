@@ -933,7 +933,8 @@
                                 <label>Work email</label>
                                 <input type="email" id="reset-email" placeholder="you@company.com"/>
                             </div>
-                            <button class="cta" style="margin-top:8px" onclick="resetStep(2)">Send reset code</button>
+                            <button class="cta" id="rp1-btn" style="margin-top:8px" onclick="sendResetCode(event)">Send reset code</button>
+                            <div id="rp1-err" style="display:none;margin-top:10px;padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:13px"></div>
                             <div class="bot" style="margin-top:10px">
                                 <a onclick="showScreen(0)">← Back to sign in</a>
                             </div>
@@ -961,10 +962,11 @@
                                 <input class="otp-inp" maxlength="1" type="tel" inputmode="numeric" pattern="[0-9]*" oninput="otpNav(this,5)" onkeydown="otpBack(event,this,5)"/>
                             </div>
                             <div class="resend-row" style="margin-top:8px">
-                                Didn't get it? <a onclick="startOtpTimer()">Resend code</a> ·
+                                Didn't get it? <a onclick="resendResetCode(event)">Resend code</a> ·
                                 <span id="otp-timer" style="font-variant-numeric:tabular-nums">0:59</span>
                             </div>
-                            <button class="cta" style="margin-top:14px" onclick="resetStep(3)">Verify code</button>
+                            <button class="cta" id="rp2-btn" style="margin-top:14px" onclick="verifyOtpCode(event)">Verify code</button>
+                            <div id="rp2-err" style="display:none;margin-top:10px;padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:13px"></div>
                             <div class="bot" style="margin-top:10px">
                                 <a onclick="resetStep(1)">← Change email</a>
                             </div>
@@ -1007,7 +1009,8 @@
                                 <label>Confirm password</label>
                                 <input type="password" id="npw2" placeholder="Re-enter password"/>
                             </div>
-                            <button class="cta" style="margin-top:8px" onclick="resetStep(4)">Reset password</button>
+                            <button class="cta" id="rp3-btn" style="margin-top:8px" onclick="submitNewPassword(event)">Reset password</button>
+                            <div id="rp3-err" style="display:none;margin-top:10px;padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:13px"></div>
                         </div>
 
                         <!-- Step 4: Success -->
@@ -1685,6 +1688,125 @@
                 const nextEmpty = startIdx + digits.length;
                 if (inputs[nextEmpty]) inputs[nextEmpty].focus();
                 else inputs[inputs.length - 1].focus();
+            }
+
+            // ── Forgot-password API helpers ─────────────────────────────────
+
+            function _rpShowErr(stepId, msg) {
+                const el = document.getElementById(stepId + '-err');
+                if (!el) return;
+                el.textContent = '✗ ' + msg;
+                el.style.display = 'block';
+            }
+            function _rpHideErr(stepId) {
+                const el = document.getElementById(stepId + '-err');
+                if (el) el.style.display = 'none';
+            }
+            function _rpSetLoading(btnId, loading, defaultLabel) {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                btn.disabled = loading;
+                btn.textContent = loading ? 'Please wait…' : defaultLabel;
+            }
+
+            async function sendResetCode(e) {
+                if (e) e.preventDefault();
+                const email = (document.getElementById('reset-email').value || '').trim();
+                if (!email || !email.includes('@')) {
+                    _rpShowErr('rp1', 'Please enter a valid email address.');
+                    return;
+                }
+                _rpHideErr('rp1');
+                _rpSetLoading('rp1-btn', true, 'Send reset code');
+                try {
+                    const res = await fetch('/api/auth/forgot', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email}),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                        resetStep(2);
+                    } else {
+                        _rpShowErr('rp1', d.message || 'Failed to send code. Please try again.');
+                    }
+                } catch (err) {
+                    _rpShowErr('rp1', 'Network error – please check your connection.');
+                } finally {
+                    _rpSetLoading('rp1-btn', false, 'Send reset code');
+                }
+            }
+
+            async function resendResetCode(e) {
+                if (e) e.preventDefault();
+                startOtpTimer();
+                const email = (document.getElementById('reset-email').value || '').trim();
+                if (!email) return;
+                try {
+                    await fetch('/api/auth/forgot', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email}),
+                    });
+                } catch (_) {}
+            }
+
+            async function verifyOtpCode(e) {
+                if (e) e.preventDefault();
+                const email = (document.getElementById('reset-email').value || '').trim();
+                const digits = [...document.querySelectorAll('#otp-row .otp-inp')].map(i => i.value).join('');
+                if (digits.length !== 6) {
+                    _rpShowErr('rp2', 'Please enter all 6 digits of the code.');
+                    return;
+                }
+                _rpHideErr('rp2');
+                _rpSetLoading('rp2-btn', true, 'Verify code');
+                try {
+                    const res = await fetch('/api/auth/verify-otp', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email, otp: digits}),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                        resetStep(3);
+                    } else {
+                        _rpShowErr('rp2', d.message || 'Verification failed. Please try again.');
+                    }
+                } catch (err) {
+                    _rpShowErr('rp2', 'Network error – please check your connection.');
+                } finally {
+                    _rpSetLoading('rp2-btn', false, 'Verify code');
+                }
+            }
+
+            async function submitNewPassword(e) {
+                if (e) e.preventDefault();
+                const email = (document.getElementById('reset-email').value || '').trim();
+                const digits = [...document.querySelectorAll('#otp-row .otp-inp')].map(i => i.value).join('');
+                const pw1 = document.getElementById('npw1').value;
+                const pw2 = document.getElementById('npw2').value;
+                if (pw1.length < 8) { _rpShowErr('rp3', 'Password must be at least 8 characters.'); return; }
+                if (pw1 !== pw2) { _rpShowErr('rp3', 'Passwords do not match.'); return; }
+                _rpHideErr('rp3');
+                _rpSetLoading('rp3-btn', true, 'Reset password');
+                try {
+                    const res = await fetch('/api/auth/reset-password', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({email, otp: digits, newPassword: pw1}),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                        resetStep(4);
+                    } else {
+                        _rpShowErr('rp3', d.message || 'Password reset failed. Please try again.');
+                    }
+                } catch (err) {
+                    _rpShowErr('rp3', 'Network error – please check your connection.');
+                } finally {
+                    _rpSetLoading('rp3-btn', false, 'Reset password');
+                }
             }
 
             function startLoginAnim() {

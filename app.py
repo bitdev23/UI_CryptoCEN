@@ -57,7 +57,7 @@ _load_project_env()
 from ai_provider import AIProvider
 from config import DEFAULT_PROFILE, POST_FORMATS
 from prompt_builder import PromptBuilder as _PromptBuilder
-from notifications import send_welcome_email as _send_welcome_email, send_quota_warning as _send_quota_warning, send_post_published as _send_post_published
+from notifications import send_welcome_email as _send_welcome_email, send_quota_warning as _send_quota_warning, send_post_published as _send_post_published, send_otp_email as _send_otp_email
 from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from database.db_helper import get_db as _get_db_helper
@@ -379,6 +379,10 @@ app.register_blueprint(_admin_bp)
 # ── Scheduler health tracking ───────────────────────────────────────────────
 _SCHEDULER_HEARTBEAT: float = 0.0     # last time scheduler loop ran
 _SCHEDULER_THREAD: Optional[threading.Thread] = None
+
+# ── Password-reset OTP store: {email: {'code': str, 'expiry': datetime}} ───────
+_otp_store: dict = {}
+_OTP_TTL_MINUTES: int = 10
 _SCHEDULER_STALE_SEC = 120            # consider dead if no heartbeat for 2 min
 
 # ── Initialise shared db_helper with auth_supabase client ────────────────────
@@ -3179,6 +3183,92 @@ def auth_password_update():
     except Exception as e:
         logger.exception("Password update failed")
         return _safe_api_error('Failed to update password', e, 400)
+
+
+# ── Forgot-password OTP flow (unauthenticated) ────────────────────────────────
+
+def _get_uid_by_email(email: str) -> Optional[str]:
+    """Look up Supabase auth user ID by email via admin REST API."""
+    import requests as _http
+    service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+    supabase_url = os.getenv('SUPABASE_URL', '').strip().rstrip('/')
+    if not service_key or not supabase_url:
+        return None
+    try:
+        resp = _http.get(
+            f"{supabase_url}/auth/v1/admin/users",
+            headers={'apikey': service_key, 'Authorization': f'Bearer {service_key}'},
+            params={'email': email, 'page': 1, 'per_page': 500},
+            timeout=10,
+        )
+        data = resp.json() or {}
+        users = data.get('users', [])
+        match = next((u for u in users if isinstance(u, dict) and u.get('email', '').lower() == email.lower()), None)
+        return match['id'] if match else None
+    except Exception as e:
+        logger.warning('Email->UID lookup failed: %s', e)
+        return None
+
+
+@app.route('/api/auth/forgot', methods=['POST'])
+@limiter.limit("5 per hour")
+def auth_forgot():
+    """Step 1: generate a 6-digit OTP and email it to the user."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    if not email or '@' not in email:
+        return jsonify({'success': False, 'message': 'A valid email address is required.'}), 400
+    otp = str(secrets.randbelow(10 ** 6)).zfill(6)
+    _otp_store[email] = {'code': otp, 'expiry': datetime.utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)}
+    _send_otp_email(email, otp)
+    logger.info('Password reset OTP sent to %s', email)
+    return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.'})
+
+
+@app.route('/api/auth/verify-otp', methods=['POST'])
+@limiter.limit("10 per hour")
+def auth_verify_otp():
+    """Step 2: validate the 6-digit OTP."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    otp_in = (data.get('otp') or '').strip()
+    entry = _otp_store.get(email)
+    if not entry:
+        return jsonify({'success': False, 'message': 'Code not found – please request a new one.'}), 400
+    if datetime.utcnow() > entry['expiry']:
+        _otp_store.pop(email, None)
+        return jsonify({'success': False, 'message': 'Code expired – please request a new one.'}), 400
+    if otp_in != entry['code']:
+        return jsonify({'success': False, 'message': 'Incorrect code – please try again.'}), 400
+    return jsonify({'success': True})
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+@limiter.limit("5 per hour")
+def auth_reset_password():
+    """Step 3: verify OTP then update password via Supabase admin API."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    otp_in = (data.get('otp') or '').strip()
+    new_password = (data.get('newPassword') or '').strip()
+    if not new_password or len(new_password) < 8:
+        return jsonify({'success': False, 'message': 'Password must be at least 8 characters.'}), 400
+    entry = _otp_store.get(email)
+    if not entry or datetime.utcnow() > entry['expiry'] or otp_in != entry['code']:
+        return jsonify({'success': False, 'message': 'Code invalid or expired – please restart the reset flow.'}), 400
+    if not auth_supabase:
+        return jsonify({'success': False, 'message': 'Auth service not configured.'}), 500
+    user_id = _get_uid_by_email(email)
+    if not user_id:
+        return jsonify({'success': False, 'message': 'No account found for that email address.'}), 404
+    try:
+        auth_supabase.auth.admin.update_user_by_id(user_id, {'password': new_password})
+        _otp_store.pop(email, None)
+        logger.info('Password reset complete for %s', email)
+        return jsonify({'success': True, 'message': 'Password updated successfully.'})
+    except Exception as e:
+        logger.exception('Password reset via admin API failed for %s', email)
+        return _safe_api_error('Failed to update password', e, 500)
 
 
 @app.route('/login')
