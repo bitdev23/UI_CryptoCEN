@@ -4,6 +4,7 @@ Run: python app.py
 Then open: http://localhost:5050
 """
 from flask import Flask, render_template, request, jsonify, redirect, url_for, g, session
+from typing import Optional
 import os
 import json
 import logging
@@ -377,7 +378,7 @@ app.register_blueprint(_admin_bp)
 
 # ── Scheduler health tracking ───────────────────────────────────────────────
 _SCHEDULER_HEARTBEAT: float = 0.0     # last time scheduler loop ran
-_SCHEDULER_THREAD: threading.Thread | None = None
+_SCHEDULER_THREAD: Optional[threading.Thread] = None
 _SCHEDULER_STALE_SEC = 120            # consider dead if no heartbeat for 2 min
 
 # ── Initialise shared db_helper with auth_supabase client ────────────────────
