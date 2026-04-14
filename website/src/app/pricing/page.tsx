@@ -63,7 +63,7 @@ const PRICING_DATA: Record<Region, {
         priceYearly: "0",
         interval: "/ month",
         features: [
-          "5 AI-generated posts / month",
+          "2 AI-generated posts / month",
           "Basic post generation",
           "Knowledge base: 5MB",
           "Preview & manual copy",
@@ -121,26 +121,6 @@ const PRICING_DATA: Record<Region, {
         cta: "👉 Grow My LinkedIn",
         badge: "Best Value",
         recommended: true
-      },
-      {
-        id: "pro",
-        name: "Pro",
-        tagline: "Turn LinkedIn into a growth engine",
-        description: "For founders, agencies, and power users who produce content at scale.",
-        priceMonthly: "4,999",
-        priceYearly: "47,990",
-        interval: "/ month",
-        features: [
-          "500 AI-generated posts / month",
-          "Priority generation (faster queue)",
-          "Multiple knowledge bases",
-          "Knowledge base up to 150MB",
-          "Advanced analytics dashboard",
-          "Priority email support",
-          "Early access to new features"
-        ],
-        cta: "👉 Scale My Content",
-        badge: "For Power Users"
       }
     ]
   },
@@ -163,7 +143,32 @@ const PRICING_DATA: Record<Region, {
         priceYearly: "0",
         interval: "/ month",
         features: [
-          "5 AI-generated posts / month",
+          "2 AI-generated posts / month",
+          "Basic post generation",
+          "Knowledge base: 5MB",
+          "Preview & manual copy",
+          "Velank branding on posts"
+        ],
+        notIncluded: [
+          "Scheduling",
+          "Style clone",
+          "Repurpose content",
+          "Analytics"
+        ],
+        cta: "👉 Get Started Free",
+        footerLine: "No credit card required"
+      },
+    plans: [
+      {
+        id: "free",
+        name: "Free",
+        tagline: "Get started with AI-powered LinkedIn posts",
+        description: "Try the platform and experience AI-generated LinkedIn content in seconds.",
+        priceMonthly: "0",
+        priceYearly: "0",
+        interval: "/ month",
+        features: [
+          "2 AI-generated posts / month",
           "Basic post generation",
           "Knowledge base: 5MB",
           "Preview & manual copy",
@@ -221,26 +226,6 @@ const PRICING_DATA: Record<Region, {
         cta: "👉 Grow My LinkedIn",
         badge: "Best Value",
         recommended: true
-      },
-      {
-        id: "pro",
-        name: "Pro",
-        tagline: "Turn LinkedIn into a growth engine",
-        description: "For founders, agencies, and power users who produce content at scale.",
-        priceMonthly: "55",
-        priceYearly: "528",
-        interval: "/ month",
-        features: [
-          "500 AI-generated posts / month",
-          "Priority generation (faster queue)",
-          "Multiple knowledge bases",
-          "Knowledge base up to 150MB",
-          "Advanced analytics dashboard",
-          "Priority email support",
-          "Early access to new features"
-        ],
-        cta: "👉 Scale My Content",
-        badge: "For Power Users"
       }
     ]
   }

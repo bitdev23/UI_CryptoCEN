@@ -84,9 +84,8 @@ function displayUpgradePlans(planLimits) {
     
     const planInfo = {
         'free': { name: 'Free Plan', description: 'For getting started', price: '₹0', color: '#95a5a6' },
-        '1_month': { name: '1-Month Plan', description: 'Monthly pricing', price: '₹999', color: '#3498db' },
-        '3_month': { name: '3-Month Plan', description: 'Best value', price: '₹2,499', color: '#667eea' },
-        '12_month': { name: 'Annual Plan', description: 'Maximum savings', price: '₹8,999', color: '#e74c3c' }
+        'starter': { name: 'Starter Plan', description: 'Stay consistent', price: '₹599', color: '#3498db' },
+        'creator': { name: 'Creator Plan', description: 'Build authority & grow', price: '₹1,999', color: '#667eea' }
     };
     
     for (const [planKey, limits] of Object.entries(planLimits)) {
@@ -112,7 +111,10 @@ function displayUpgradePlans(planLimits) {
                 <span style="color: ${info.color}; font-weight: bold; font-size: 1.1rem;">${info.price}</span>
             </div>
             <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
-                📊 ${postsLimit} posts/month
+                📊 ${postsLimit} posts/month<br>
+                ${limits.scheduled_posts > 0 ? '📅 ' + limits.scheduled_posts + ' scheduled posts' : 'No scheduling'}<br>
+                💾 ${limits.kb_storage_mb}MB knowledge base<br>
+                ${limits.style_clone ? '🎨 Style cloning' : 'Basic generation only'}
             </p>
         `;
         

@@ -8,3 +8,12 @@ venv/
 data/user_features.json
 _archive_cleanup/
 app.log
+velank-gcp-deployment-docs.pdf
+
+
+
+# Website — ignore build artifacts and dependencies, keep source
+website/node_modules/
+website/.next/
+website/out/
+website/.DS_Store

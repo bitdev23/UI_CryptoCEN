@@ -2143,7 +2143,7 @@ def _normalize_subscription_plan(plan_raw: str):
 PLAN_LIMITS = load_freemium_plan_limits()
 
 
-def _plan_price_inr(plan: str) -> int:
+def _plan_price_inr(plan: str, region: str = 'IN') -> int:
     normalized = _normalize_subscription_plan(plan)
     key = normalized[0] if normalized else 'starter'
     # Map canonical plan names to env vars (reuse existing env var names)
@@ -2152,12 +2152,20 @@ def _plan_price_inr(plan: str) -> int:
         'creator': 'PLAN_PRICE_CREATOR_INR',
         'pro': 'PLAN_PRICE_PRO_INR',
     }
-    # Defaults match existing .env values (PLAN_PRICE_1/3/12_MONTH_INR)
-    default_map = {
-        'starter': int(os.getenv('PLAN_PRICE_1_MONTH_INR', 998)),
-        'creator': int(os.getenv('PLAN_PRICE_3_MONTH_INR', 2498)),
-        'pro': int(os.getenv('PLAN_PRICE_12_MONTH_INR', 4999)),
-    }
+    # Defaults based on region
+    if region == 'ROW':
+        # USD equivalent at ~83 INR/USD
+        default_map = {
+            'starter': 19 * 83,  # 1577
+            'creator': 29 * 83,  # 2407
+            'pro': 49 * 83,      # 4067
+        }
+    else:
+        default_map = {
+            'starter': int(os.getenv('PLAN_PRICE_STARTER_INR', 599)),
+            'creator': int(os.getenv('PLAN_PRICE_CREATOR_INR', 1999)),
+            'pro': int(os.getenv('PLAN_PRICE_PRO_INR', 4999)),
+        }
     env_key = env_map.get(key)
     if not env_key:
         return 0
@@ -3512,7 +3520,8 @@ def billing_create_order():
             return jsonify({'success': False, 'message': 'Invalid plan. Use 1_month, 3_month, or 12_month.'}), 400
 
         plan = normalized[0]
-        amount_inr = _plan_price_inr(plan)
+        region = data.get('region', 'IN')  # Default to IN
+        amount_inr = _plan_price_inr(plan, region)
         if amount_inr <= 0:
             return jsonify({'success': False, 'message': 'Invalid plan price configuration'}), 500
 
@@ -5973,6 +5982,17 @@ def post_now():
         import config as cfg
         
         user_id = get_current_user_id()
+        
+        # Check quota before posting
+        can_generate, quota_meta = _check_generation_guardrail(user_id)
+        if not can_generate:
+            return jsonify({
+                'success': False,
+                'quota_exceeded': True,
+                'quota_info': quota_meta,
+                **quota_meta
+            }), 403
+        
         config_obj = load_config(user_id)
         data = request.get_json() or {}
         use_preview = data.get('usePreview', False)

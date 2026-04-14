@@ -25440,6 +25440,10 @@
         })
         .then(r => parseJsonResponse(r))
         .then(data => {
+            if (data.quota_exceeded) {
+                setTimeout(() => openUpgradeModal('quota_exceeded'), 400);
+                return;
+            }
             if (data.success) {
                 showToast('success', 'Post published to LinkedIn!', 'fas fa-check');
                 const postText = document.getElementById('post-text');
@@ -25758,9 +25762,8 @@
 
     function planDisplayName(plan) {
         const normalized = String(plan || '').trim().toLowerCase();
-        if (normalized === '1_month') return '1 Month Plan';
-        if (normalized === '3_month') return '3 Month Plan';
-        if (normalized === '12_month') return '12 Month Plan';
+        if (normalized === 'starter') return 'Starter Plan';
+        if (normalized === 'creator') return 'Creator Plan';
         return 'Free Plan';
     }
 
@@ -25867,6 +25870,7 @@
         try {
             const orderPayload = { plan: selectedPlan };
             if (couponCode) orderPayload.coupon_code = couponCode;
+            if (window.userRegion) orderPayload.region = window.userRegion;
 
             const orderRes = await authFetch('/api/billing/create-order', {
                 method: 'POST',
@@ -25934,9 +25938,24 @@
         openUpgradeModal();
     }
 
-    function openUpgradeModal(triggerContext) {
+    async function openUpgradeModal(triggerContext) {
         const overlay = document.getElementById('upgrade-modal-overlay');
         if (!overlay) return;
+
+        // Detect region for pricing
+        let userRegion = localStorage.getItem('user_region') || 'ROW';
+        if (userRegion === 'ROW') {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                userRegion = data.country_code === 'IN' ? 'IN' : 'ROW';
+                localStorage.setItem('user_region', userRegion);
+            } catch (e) {
+                userRegion = 'ROW'; // Default to USD
+            }
+        }
+
+        window.userRegion = userRegion; // Store for checkout
 
         // Reset coupon state
         _upgSelectedPlan = null;
@@ -25963,34 +25982,62 @@
             }
         }
 
-        // Build plan cards
+        // Build plan cards based on region
         const grid = document.getElementById('upg-plans-grid');
         if (grid) {
-            const plans = [
+            const isIndia = userRegion === 'IN';
+            const currencySymbol = isIndia ? '₹' : '$';
+            const plans = isIndia ? [
                 {
-                    code: '1_month',
-                    name: '1 Month',
-                    price: '999',
+                    code: 'free',
+                    name: 'Free',
+                    price: '0',
                     period: 'per month',
                     saving: null,
-                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation']
+                    features: ['2 posts / month', '5MB knowledge base', 'Basic generation', 'Velank branding']
                 },
                 {
-                    code: '3_month',
-                    name: '3 Months',
-                    price: '833',
-                    period: 'per month · billed ₹2,499',
-                    saving: 'Save 17%',
+                    code: 'starter',
+                    name: 'Starter',
+                    price: '599',
+                    period: 'per month',
+                    saving: null,
+                    features: ['30 posts / month', '10 scheduled posts', '15MB knowledge base', 'Style cloning + repurposing']
+                },
+                {
+                    code: 'creator',
+                    name: 'Creator',
+                    price: '1,999',
+                    period: 'per month',
+                    saving: 'Best Value',
                     popular: true,
-                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation']
+                    features: ['120 posts / month', 'Unlimited scheduling', '50MB knowledge base', 'All features: best time, analytics']
+                }
+            ] : [
+                {
+                    code: 'free',
+                    name: 'Free',
+                    price: '0',
+                    period: 'per month',
+                    saving: null,
+                    features: ['2 posts / month', '5MB knowledge base', 'Basic generation', 'Velank branding']
                 },
                 {
-                    code: '12_month',
-                    name: '12 Months',
-                    price: '625',
-                    period: 'per month · billed ₹7,499',
-                    saving: 'Save 37%',
-                    features: ['100 posts / month', 'Unlimited KB storage (500 MB)', 'Full scheduling automation', 'Advanced AI tones & styles', 'LinkedIn analytics sync', 'Priority AI generation + Early access']
+                    code: 'starter',
+                    name: 'Starter',
+                    price: '19',
+                    period: 'per month',
+                    saving: null,
+                    features: ['30 posts / month', '10 scheduled posts', '15MB knowledge base', 'Style cloning + repurposing']
+                },
+                {
+                    code: 'creator',
+                    name: 'Creator',
+                    price: '29',
+                    period: 'per month',
+                    saving: 'Best Value',
+                    popular: true,
+                    features: ['120 posts / month', 'Unlimited scheduling', '50MB knowledge base', 'All features: best time, analytics']
                 }
             ];
 
@@ -25998,9 +26045,8 @@
             (latestBillingPlans || []).forEach(p => {
                 const match = plans.find(x => x.code === p.plan);
                 if (match && p.amount_inr) {
-                    if (match.code === '1_month') match.price = String(p.amount_inr);
-                    if (match.code === '3_month') { match.price = String(Math.round(p.amount_inr / 3)); match.period = `per month · billed ₹${p.amount_inr}`; }
-                    if (match.code === '12_month') { match.price = String(Math.round(p.amount_inr / 12)); match.period = `per month · billed ₹${p.amount_inr}`; }
+                    if (match.code === 'starter') match.price = String(p.amount_inr);
+                    if (match.code === 'creator') match.price = String(p.amount_inr);
                 }
             });
 
@@ -26008,7 +26054,7 @@
                 <div class="upg-plan-card ${p.popular ? 'is-popular' : ''}" id="upg-card-${p.code}" onclick="selectUpgradePlan('${p.code}')">
                     ${p.popular ? '<div class="upg-plan-badge">⭐ Most Popular</div>' : ''}
                     <div class="upg-plan-name">${p.name}</div>
-                    <div class="upg-plan-price"><sup>₹</sup>${p.price}</div>
+                    <div class="upg-plan-price"><sup>${currencySymbol}</sup>${p.price}</div>
                     <div class="upg-plan-period">${p.period}</div>
                     ${p.saving ? `<div class="upg-plan-saving">${p.saving}</div>` : '<div style="height:1.55rem;"></div>'}
                     <ul class="upg-plan-features">

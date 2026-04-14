@@ -1,6 +1,6 @@
 {
   "free": {
-    "posts_generated": 5,
+    "posts_generated": 2,
     "scheduled_posts": 0,
     "kb_documents": 9999,
     "kb_storage_mb": 5,
@@ -22,15 +22,6 @@
     "scheduled_posts": 999,
     "kb_documents": 9999,
     "kb_storage_mb": 50,
-    "style_clone": true,
-    "repurpose": true,
-    "best_time": true
-  },
-  "pro": {
-    "posts_generated": 500,
-    "scheduled_posts": 999,
-    "kb_documents": 9999,
-    "kb_storage_mb": 150,
     "style_clone": true,
     "repurpose": true,
     "best_time": true
