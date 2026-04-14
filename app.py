@@ -241,7 +241,8 @@ def set_security_headers(response):
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://checkout.razorpay.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "font-src 'self' https://cdnjs.cloudflare.com; "
-            "img-src 'self' data:; "
+            "img-src 'self' data: https://checkout.razorpay.com; "
+            "frame-src 'self' https://checkout.razorpay.com; "
             "connect-src 'self' https://*.supabase.co https://ipapi.co;"
         )
     return response
