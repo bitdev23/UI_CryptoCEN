@@ -308,7 +308,7 @@ def internal_error(error):
         if user_id:
             error_log['user_id'] = user_id
         
-        supabase.table('error_logs').insert([error_log]).execute()
+        auth_supabase.table('error_logs').insert([error_log]).execute()
     except Exception as e:
         logger.warning('Failed to log error to database: %s', e)
     
@@ -413,7 +413,7 @@ app.register_blueprint(_admin_bp)
 
 # ── Register admin features blueprint (notifications, errors, flags, revenue) ──
 from routes.admin_features import create_admin_features_blueprint as _create_features_bp
-_features_bp = _create_features_bp(auth_supabase=supabase, limiter=limiter)
+_features_bp = _create_features_bp(auth_supabase=auth_supabase, limiter=limiter)
 app.register_blueprint(_features_bp)
 
 # ── Scheduler health tracking ───────────────────────────────────────────────
