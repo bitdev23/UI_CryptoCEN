@@ -23,7 +23,7 @@ import requests
 from urllib.parse import urlencode
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from functools import wraps
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -243,7 +243,7 @@ def set_security_headers(response):
             "font-src 'self' https://cdnjs.cloudflare.com; "
             "img-src 'self' data: https://checkout.razorpay.com; "
             "frame-src 'self' https://checkout.razorpay.com; "
-            "connect-src 'self' https://*.supabase.co https://ipapi.co;"
+            "connect-src 'self' https://*.supabase.co https://ipapi.co https://api.razorpay.com https://checkout.razorpay.com;"
         )
     return response
 
@@ -2580,7 +2580,7 @@ def _parse_iso_utc(value: str):
     try:
         parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
         if parsed.tzinfo is not None:
-            return parsed.astimezone().replace(tzinfo=None)
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
         return parsed
     except Exception:
         return None
@@ -2590,7 +2590,7 @@ def _get_subscription_row(user_id: str) -> dict:
     if not auth_supabase or not is_valid_uuid(user_id):
         return {'plan': 'free', 'status': 'active'}
     try:
-        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute().data or []
+        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).order('updated_at', desc=True).limit(1).execute().data or []
         return rows[0] if rows else {'plan': 'free', 'status': 'active'}
     except Exception as e:
         logger.warning("Subscription lookup failed for user %s: %s", user_id, e)

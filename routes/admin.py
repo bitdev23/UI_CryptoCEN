@@ -70,6 +70,17 @@ def _normalize_subscription_plan(plan_raw: str):
     return plan_map.get(value)
 
 
+def _parse_iso_utc(value: str):
+    text = str(value or '').strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        return parsed
+    except Exception:
+        return None
+
+
 def _read_json_list(file_path: str) -> list:
     if not os.path.exists(file_path):
         return []
@@ -233,6 +244,46 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             'subscription_period_end': period_end,
             'cancel_at_period_end': cancel_at_period_end,
         }
+
+    def _extract_list_users_response(response):
+        if isinstance(response, list):
+            return response, None
+        users = getattr(response, 'users', None)
+        if users is None and isinstance(response, dict):
+            users = response.get('users', [])
+        if users is None:
+            users = []
+        total = getattr(response, 'total', None)
+        if total is None and isinstance(response, dict):
+            total = response.get('total')
+        return users or [], total
+
+    def _list_all_auth_users(max_users: int = 5000, per_page: int = 1000):
+        if not auth_supabase:
+            meta = _get_cache_meta()
+            return meta['users']
+        try:
+            all_users = []
+            page = 1
+            while len(all_users) < max_users:
+                response = auth_supabase.auth.admin.list_users(page=page, per_page=per_page)
+                users, _ = _extract_list_users_response(response)
+                if not users:
+                    break
+                all_users.extend(users)
+                if len(users) < per_page:
+                    break
+                page += 1
+            _set_cache(all_users, stale=False, warning='')
+            return all_users
+        except Exception as e:
+            logger.error('Admin list all users failed: %s', e)
+            meta = _get_cache_meta()
+            if meta['users']:
+                _set_cache(meta['users'], stale=True, warning='Live user list fetch failed. Showing cached results.')
+                return meta['users']
+            _set_cache([], stale=True, warning='Unable to load users from authentication provider.')
+            return []
 
     def _log_action(action: str, target_user_id: str = '', details: dict = None):
         details = details or {}
@@ -503,7 +554,43 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
     @admin_bp.route('/api/admin/users', methods=['GET'])
     @require_admin_api
     def admin_users():
-        users = _list_auth_users()
+        try:
+            page = max(1, int(request.args.get('page', 1)))
+        except Exception:
+            page = 1
+        try:
+            page_size = max(1, min(100, int(request.args.get('page_size', 10))))
+        except Exception:
+            page_size = 10
+        sort_by = str(request.args.get('sort_by') or 'signup_desc').strip()
+        active_filter = str(request.args.get('filter') or 'all').strip().lower()
+        search_query = str(request.args.get('search') or '').strip().lower()
+        filter_country = str(request.args.get('country') or '').strip().lower()
+        filter_plan = str(request.args.get('plan') or '').strip().lower()
+        filter_signup_from = str(request.args.get('signup_from') or '').strip()
+        filter_signup_to = str(request.args.get('signup_to') or '').strip()
+
+        users = _list_all_auth_users()
+        user_ids = []
+        for u in users:
+            if isinstance(u, dict):
+                u_obj = u
+            else:
+                u_obj = getattr(u, 'user', None) or u
+            user_id = str(getattr(u_obj, 'id', '') or (u_obj.get('id') if isinstance(u_obj, dict) else ''))
+            if user_id:
+                user_ids.append(user_id)
+
+        subscription_map = {}
+        try:
+            if auth_supabase and user_ids:
+                subs = auth_supabase.table('subscriptions').select(
+                    'user_id,plan,status,current_period_start,current_period_end,cancel_at_period_end'
+                ).in_('user_id', user_ids).execute().data or []
+                subscription_map = {str(row.get('user_id')): row for row in subs}
+        except Exception as e:
+            logger.error("Admin users subscription lookup failed: %s", e)
+
         filtered_users = []
         for u in users:
             if isinstance(u, dict):
@@ -511,25 +598,66 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             else:
                 u_obj = getattr(u, 'user', None) or u
             md = (u_obj.get('user_metadata') if isinstance(u_obj, dict) else getattr(u_obj, 'user_metadata', {})) or {}
-            if not bool(md.get('soft_deleted')):
-                filtered_users.append(u)
+            if bool(md.get('soft_deleted')):
+                continue
+            row = _user_to_admin_row(u_obj, subscription_map)
+            if active_filter == 'active' and not row.get('active'):
+                continue
+            if active_filter == 'verified' and not row.get('verified'):
+                continue
+            if active_filter == 'paid' and str(row.get('plan', '')).lower() == 'free':
+                continue
+            if search_query:
+                haystack = ' '.join([
+                    str(row.get('email', '')), str(row.get('first_name', '')), str(row.get('last_name', '')),
+                    str(row.get('country', '')), str(row.get('plan', '')), str(row.get('subscription_status', ''))
+                ]).lower()
+                if search_query not in haystack:
+                    continue
+            if filter_country and filter_country not in str(row.get('country', '')).lower():
+                continue
+            if filter_plan and filter_plan not in str(row.get('plan', '')).lower():
+                continue
+            try:
+                if filter_signup_from or filter_signup_to:
+                    signup_date = row.get('signup_date')
+                    if signup_date:
+                        signup_dt = _parse_iso_utc(signup_date)
+                        if signup_dt and filter_signup_from:
+                            from_dt = datetime.fromisoformat(filter_signup_from)
+                            if signup_dt.date() < from_dt.date():
+                                continue
+                        if signup_dt and filter_signup_to:
+                            to_dt = datetime.fromisoformat(filter_signup_to)
+                            if signup_dt.date() > to_dt.date():
+                                continue
+            except Exception as e:
+                logger.debug("Date filter parse failed: %s", e)
+            filtered_users.append(row)
+
+        if sort_by == 'signup_asc':
+            filtered_users.sort(key=lambda item: item.get('signup_date') or '')
+        elif sort_by == 'name_asc':
+            filtered_users.sort(key=lambda item: f"{item.get('first_name', '')} {item.get('last_name', '')}".strip().lower())
+        elif sort_by == 'email_asc':
+            filtered_users.sort(key=lambda item: str(item.get('email', '') or '').lower())
+        elif sort_by == 'plan_asc':
+            filtered_users.sort(key=lambda item: str(item.get('plan', '') or '').lower())
+        else:
+            filtered_users.sort(key=lambda item: item.get('signup_date') or '', reverse=True)
+
+        total = len(filtered_users)
+        start = (page - 1) * page_size
+        rows = filtered_users[start:start + page_size]
 
         cache_meta = _get_cache_meta()
         auth_configured = bool(auth_supabase)
-        subscription_map = {}
-        try:
-            if auth_supabase:
-                subs = auth_supabase.table('subscriptions').select(
-                    'user_id,plan,status,current_period_start,current_period_end,cancel_at_period_end'
-                ).execute().data or []
-                subscription_map = {str(row.get('user_id')): row for row in subs}
-        except Exception as e:
-            logger.error("Admin users subscription lookup failed: %s", e)
-
-        rows = [_user_to_admin_row(user, subscription_map) for user in filtered_users]
-        rows.sort(key=lambda item: item.get('signup_date') or '', reverse=True)
         return jsonify({
-            'success': True, 'users': rows,
+            'success': True,
+            'users': rows,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
             'auth_configured': auth_configured,
             'stale_users': bool(cache_meta.get('stale')),
             'warning': cache_meta.get('warning', ''),
@@ -587,6 +715,17 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             logger.error("Admin user details subscription lookup failed: %s", e)
         details = _user_to_admin_row(selected, subscription_map)
         posts = []
+        analytics = {
+            'total_posts': 0,
+            'published_posts': 0,
+            'scheduled_posts': 0,
+            'failed_posts': 0,
+            'posts_this_month': 0,
+            'last_activity': None,
+            'success_rate': 0.0,
+            'plan_limit': 0,
+            'usage_percent': 0.0,
+        }
         try:
             if auth_supabase:
                 posts = auth_supabase.table('posts').select(
@@ -594,9 +733,54 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
                 ).eq('user_id', user_id).order('created_at', desc=True).limit(50).execute().data or []
         except Exception as e:
             logger.error("Admin user details posts lookup failed: %s", e)
+
+        try:
+            if auth_supabase:
+                month_start = datetime.utcnow().date().replace(day=1).isoformat()
+                usage_rows = auth_supabase.table('usage_monthly').select('month,posts_generated').eq('user_id', user_id).eq('month', month_start).limit(1).execute().data or []
+                if usage_rows:
+                    analytics['posts_this_month'] = int(usage_rows[0].get('posts_generated') or 0)
+        except Exception as e:
+            logger.error("Admin user details usage lookup failed: %s", e)
+
+        last_dates = []
         for post in posts:
             post['content_preview'] = (post.get('content') or '')[:180]
-        return jsonify({'success': True, 'user': details, 'posts': posts})
+            status = str(post.get('status') or '').strip().lower()
+            if status == 'posted':
+                analytics['published_posts'] += 1
+            if status == 'scheduled':
+                analytics['scheduled_posts'] += 1
+            if post.get('error_message'):
+                analytics['failed_posts'] += 1
+            analytics['total_posts'] += 1
+            for field in ('posted_at', 'scheduled_for', 'created_at'):
+                parsed = _parse_iso_utc(post.get(field))
+                if parsed is not None:
+                    last_dates.append(parsed)
+        if last_dates:
+            analytics['last_activity'] = max(last_dates).isoformat() + 'Z'
+
+        try:
+            posted_count = analytics.get('published_posts', 0)
+            total_count = analytics.get('total_posts', 1)
+            if total_count > 0:
+                analytics['success_rate'] = round((posted_count / total_count) * 100, 1)
+        except Exception as e:
+            logger.error("Success rate calculation failed: %s", e)
+
+        try:
+            user_plan = str(details.get('plan', 'free') or 'free').lower().replace(' ', '_')
+            from freemium import get_plan_limits
+            plan_limits = get_plan_limits(user_plan)
+            analytics['plan_limit'] = plan_limits.get('posts_generated', 0)
+            posts_this_month = analytics.get('posts_this_month', 0)
+            if analytics['plan_limit'] > 0:
+                analytics['usage_percent'] = round((posts_this_month / analytics['plan_limit']) * 100, 1)
+        except Exception as e:
+            logger.error("Plan limits calculation failed: %s", e)
+
+        return jsonify({'success': True, 'user': details, 'posts': posts, 'analytics': analytics})
 
     @admin_bp.route('/api/admin/users/<user_id>/status', methods=['POST'])
     @require_admin_api
@@ -1050,6 +1234,7 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
         try:
             auth_supabase.table('subscriptions').upsert({
                 'user_id': user_id, 'plan': plan, 'status': 'active',
+                'billing_provider': 'manual',
                 'current_period_start': now.isoformat() + 'Z',
                 'current_period_end': period_end.isoformat() + 'Z',
                 'cancel_at_period_end': False, 'updated_at': now.isoformat() + 'Z',
@@ -1155,6 +1340,34 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
         except Exception as e:
             logger.error("Admin audit logs fetch failed: %s", e)
             return _safe_api_error('Failed to fetch audit logs', e)
+
+    @admin_bp.route('/api/admin/users/<user_id>/audit-trail', methods=['GET'])
+    @require_admin_api
+    def admin_user_audit_trail(user_id):
+        if not auth_supabase:
+            return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
+        try:
+            raw_limit = request.args.get('limit', '30')
+            try:
+                limit = max(1, min(100, int(raw_limit)))
+            except Exception:
+                limit = 30
+            rows = auth_supabase.table('system_logs') \
+                .select('id,level,message,request_path,request_method,metadata,created_at') \
+                .like('message', 'admin:%') \
+                .order('created_at', desc=True) \
+                .limit(limit * 3) \
+                .execute().data or []
+            filtered_rows = [
+                row for row in rows
+                if row.get('metadata', {}).get('target_user_id') == user_id
+                   or row.get('request_path', '').endswith(f'/users/{user_id}')
+                   or row.get('request_path', '').startswith(f'/api/admin/users/{user_id}')
+            ][:limit]
+            return jsonify({'success': True, 'logs': filtered_rows})
+        except Exception as e:
+            logger.error("User audit trail fetch failed: %s", e)
+            return _safe_api_error('Failed to fetch user audit trail', e)
 
     # ── Dead-Letter Queue (DLQ) visibility & retry ────────────────────────
 
