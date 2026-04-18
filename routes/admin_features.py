@@ -42,10 +42,31 @@ def create_admin_features_blueprint(auth_supabase, limiter):
     # ========================================================================
     
     @features_bp.route('/notifications', methods=['GET'])
+    @require_admin_api
     def get_notifications():
-        """Get user notifications."""
+        """Get recent notifications (admin view of all notifications sent)."""
         try:
-            from flask import session
+            limit = max(1, min(100, int(request.args.get('limit', 50))))
+            
+            rows = auth_supabase.table('notifications') \
+                .select('id,user_id,type,title,message,is_read,priority,action_url,action_label,created_at') \
+                .order('created_at', desc=True) \
+                .limit(limit) \
+                .execute().data or []
+            
+            return jsonify({
+                'success': True,
+                'notifications': rows,
+                'total': len(rows)
+            })
+        except Exception as e:
+            logger.error("Failed to fetch notifications: %s", e)
+            return jsonify({'success': False, 'message': 'Failed to fetch notifications'}), 500
+    
+    @features_bp.route('/user-notifications', methods=['GET'])
+    def get_user_notifications():
+        """Get current user's notifications (user endpoint)."""
+        try:
             user_id = session.get('user_id')
             if not user_id:
                 return jsonify({'success': False, 'message': 'User not authenticated'}), 401
@@ -76,14 +97,13 @@ def create_admin_features_blueprint(auth_supabase, limiter):
                 'unread_count': unread_count.count or 0
             })
         except Exception as e:
-            logger.error("Failed to fetch notifications: %s", e)
+            logger.error("Failed to fetch user notifications: %s", e)
             return jsonify({'success': False, 'message': 'Failed to fetch notifications'}), 500
     
-    @features_bp.route('/notifications/<notification_id>', methods=['POST'])
-    def update_notification(notification_id):
-        """Mark notification as read or archived."""
+    @features_bp.route('/user-notifications/<notification_id>', methods=['POST'])
+    def update_user_notification(notification_id):
+        """Mark user's notification as read or archived."""
         try:
-            from flask import session
             user_id = session.get('user_id')
             if not user_id:
                 return jsonify({'success': False, 'message': 'User not authenticated'}), 401
