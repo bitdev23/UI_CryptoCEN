@@ -1,24 +1,38 @@
 """Admin features blueprint: notifications, error monitoring, feature flags, revenue."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from functools import wraps
 from datetime import datetime, timedelta
 import logging
 import traceback
+import time
 from uuid import UUID
 
 logger = logging.getLogger('velank')
 
+# Admin session timeout (12 hours)
+_ADMIN_SESSION_MAX_AGE = 12 * 60 * 60
 
 def create_admin_features_blueprint(auth_supabase, limiter):
     """Create and return the admin features blueprint."""
     features_bp = Blueprint('admin_features', __name__, url_prefix='/api/admin/features')
     
+    def _admin_session_valid():
+        """Check if admin session is valid and not expired."""
+        if not session.get('is_admin'):
+            return False
+        login_at = session.get('admin_login_at', 0)
+        if login_at and (time.time() - login_at) > _ADMIN_SESSION_MAX_AGE:
+            session.pop('is_admin', None)
+            session.pop('admin_email', None)
+            session.pop('admin_login_at', None)
+            return False
+        return True
+    
     def require_admin_api(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            from flask import session
-            if not session.get('admin_session'):
+            if not _admin_session_valid():
                 return jsonify({'success': False, 'message': 'Admin authentication required'}), 401
             return f(*args, **kwargs)
         return wrapper
