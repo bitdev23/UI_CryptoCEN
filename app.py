@@ -278,6 +278,40 @@ def ratelimit_handler(error):
 @app.errorhandler(500)
 def internal_error(error):
     logger.exception('Internal server error: %s', error)
+    
+    # Log error to database
+    try:
+        import traceback
+        error_type = type(error).__name__
+        error_message = str(error)
+        stack_trace = traceback.format_exc()
+        user_id = None
+        try:
+            user_id = session.get('user_id')
+        except:
+            pass
+        
+        error_log = {
+            'error_type': error_type,
+            'error_message': error_message,
+            'stack_trace': stack_trace,
+            'endpoint': request.path,
+            'request_method': request.method,
+            'status_code': 500,
+            'severity': 'critical',
+            'context': {
+                'referrer': request.referrer,
+                'user_agent': request.user_agent.string
+            },
+            'created_at': datetime.utcnow().isoformat()
+        }
+        if user_id:
+            error_log['user_id'] = user_id
+        
+        supabase.table('error_logs').insert([error_log]).execute()
+    except Exception as e:
+        logger.warning('Failed to log error to database: %s', e)
+    
     if request.path.startswith('/api/'):
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
     return render_template('error.html',
@@ -376,6 +410,11 @@ _BACKGROUND_SERVICES_LOCK_FD = None
 from routes.admin import create_admin_blueprint as _create_admin_bp
 _admin_bp = _create_admin_bp(limiter=limiter, logger=logger, data_dir=DATA_DIR)
 app.register_blueprint(_admin_bp)
+
+# ── Register admin features blueprint (notifications, errors, flags, revenue) ──
+from routes.admin_features import create_admin_features_blueprint as _create_features_bp
+_features_bp = _create_features_bp(auth_supabase=supabase, limiter=limiter)
+app.register_blueprint(_features_bp)
 
 # ── Scheduler health tracking ───────────────────────────────────────────────
 _SCHEDULER_HEARTBEAT: float = 0.0     # last time scheduler loop ran

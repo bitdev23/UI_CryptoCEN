@@ -799,6 +799,99 @@
             </div>
         </section>
 
+        <!-- ========== FEATURES TAB NAVIGATION ========== -->
+        <section style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+                <button class="pill active" onclick="switchFeatureTab('notifications')" style="cursor: pointer;">🔔 Notifications</button>
+                <button class="pill" onclick="switchFeatureTab('errors')" style="cursor: pointer;">⚠️ Error Monitoring</button>
+                <button class="pill" onclick="switchFeatureTab('revenue')" style="cursor: pointer;">📊 Revenue Dashboard</button>
+                <button class="pill" onclick="switchFeatureTab('flags')" style="cursor: pointer;">🚩 Feature Flags</button>
+            </div>
+
+            <!-- NOTIFICATIONS SECTION -->
+            <div id="feature-tab-notifications" class="feature-tab" style="display: block;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">User Notifications</h3>
+                            <p class="panel-sub">Send and manage user notifications</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openNotificationModal()">Send Notification</button>
+                    </div>
+                    <div id="notifications-list" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+
+            <!-- ERROR MONITORING SECTION -->
+            <div id="feature-tab-errors" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Error Monitoring</h3>
+                            <p class="panel-sub">Track and resolve application errors</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="error-severity-filter" onchange="loadErrorLogs()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px;">
+                                <option value="">All Severities</option>
+                                <option value="critical">Critical</option>
+                                <option value="error">Error</option>
+                                <option value="warning">Warning</option>
+                            </select>
+                            <select id="error-time-filter" onchange="loadErrorLogs()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px;">
+                                <option value="24">Last 24 hours</option>
+                                <option value="72">Last 72 hours</option>
+                                <option value="168">Last 7 days</option>
+                            </select>
+                            <button class="btn btn-ghost" onclick="loadErrorLogs()">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="errors-list" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+
+            <!-- REVENUE DASHBOARD SECTION -->
+            <div id="feature-tab-revenue" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Revenue Metrics</h3>
+                            <p class="panel-sub">MRR, ARR, churn rate, and cohort analysis</p>
+                        </div>
+                        <button class="btn btn-ghost" onclick="loadRevenueMetrics()">Refresh</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px;">
+                        <div style="background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 12px; color: #6b7280; font-weight: 500;">Current MRR</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #16a34a; margin-top: 4px;" id="metric-mrr">$0</div>
+                        </div>
+                        <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 12px; color: #6b7280; font-weight: 500;">Churn Rate</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #d97706; margin-top: 4px;" id="metric-churn">0%</div>
+                        </div>
+                        <div style="background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 12px; color: #6b7280; font-weight: 500;">Active Subscriptions</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #2563eb; margin-top: 4px;" id="metric-active-subs">0</div>
+                        </div>
+                    </div>
+                    <div id="revenue-details" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+
+            <!-- FEATURE FLAGS SECTION -->
+            <div id="feature-tab-flags" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Feature Flags</h3>
+                            <p class="panel-sub">Manage gradual feature rollouts</p>
+                        </div>
+                        <button class="btn btn-ghost" onclick="loadFeatureFlags()">Refresh</button>
+                    </div>
+                    <div id="feature-flags-list" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Confirm delete modal -->
         <div id="confirm-delete-modal" class="modal" aria-hidden="true">
             <div class="modal-card">
@@ -1082,6 +1175,92 @@
                     <input id="soft-purge-confirm" placeholder="Type PURGE to confirm permanent deletion" style="padding:8px;border:1px solid #e2e8f0;border-radius:8px;" />
                     <button class="btn btn-ghost" onclick="bulkRestoreSelected()">Restore Selected</button>
                     <button class="btn btn-primary" onclick="bulkPurgeSelected()">Permanently Delete Selected</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Notification Modal -->
+    <div class="modal" id="send-notification-modal">
+        <div class="modal-card">
+            <div class="modal-top">
+                <h3 style="margin:0;">Send User Notification</h3>
+                <button class="modal-close" onclick="closeNotificationModal()">Close</button>
+            </div>
+            <div style="margin-top: 16px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Select Users</label>
+                    <select id="notification-user-scope" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <option value="all">All Users</option>
+                        <option value="active">Active Users</option>
+                        <option value="verified">Verified Users</option>
+                        <option value="custom">Custom User ID(s)</option>
+                    </select>
+                </div>
+                <div id="notification-custom-users" style="display: none; margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">User IDs (comma-separated)</label>
+                    <input id="notification-user-ids" type="text" placeholder="user1,user2,user3" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;" />
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Title</label>
+                    <input id="notification-title" type="text" placeholder="Notification title" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;" />
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Message</label>
+                    <textarea id="notification-message" placeholder="Notification message" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; min-height: 80px;"></textarea>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Priority</label>
+                    <select id="notification-priority" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                    <button class="btn btn-ghost" onclick="closeNotificationModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="sendNotification()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Detail Modal -->
+    <div class="modal" id="error-detail-modal">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-top">
+                <h3 style="margin:0;">Error Details</h3>
+                <button class="modal-close" onclick="closeErrorModal()">Close</button>
+            </div>
+            <div id="error-detail-content" style="margin-top: 16px; max-height: 400px; overflow-y: auto;">
+                <div style="text-align: center; color: #9ca3af;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Flag Modal -->
+    <div class="modal" id="flag-detail-modal">
+        <div class="modal-card">
+            <div class="modal-top">
+                <h3 style="margin:0;">Feature Flag Settings</h3>
+                <button class="modal-close" onclick="closeFlagModal()">Close</button>
+            </div>
+            <div style="margin-top: 16px;">
+                <h4 id="flag-title"></h4>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input id="flag-enabled-toggle" type="checkbox" onchange="updateFlagEnabled()" />
+                        <span>Enable globally</span>
+                    </label>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Rollout Percentage</label>
+                    <input id="flag-rollout-percentage" type="range" min="0" max="100" value="0" onchange="updateFlagRollout()" style="width: 100%;" />
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><span id="flag-rollout-display">0</span>% of users</div>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                    <button class="btn btn-ghost" onclick="closeFlagModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveFlagChanges()">Save</button>
                 </div>
             </div>
         </div>
@@ -2122,6 +2301,294 @@
             } catch (err) {
                 list.innerHTML = `<div class="empty-state">${esc(err.message || 'Failed to load audit logs')}</div>`;
             }
+        }
+
+        // ======== FEATURE TABS & FUNCTIONS ========
+
+        function switchFeatureTab(tabName) {
+            document.querySelectorAll('.feature-tab').forEach(tab => tab.style.display = 'none');
+            document.querySelectorAll('.pill').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`feature-tab-${tabName}`).style.display = 'block';
+            event.target.classList.add('active');
+            
+            if (tabName === 'notifications') setTimeout(() => loadNotifications(), 100);
+            if (tabName === 'errors') setTimeout(() => loadErrorLogs(), 100);
+            if (tabName === 'revenue') setTimeout(() => loadRevenueMetrics(), 100);
+            if (tabName === 'flags') setTimeout(() => loadFeatureFlags(), 100);
+        }
+
+        // Notification Functions
+        function openNotificationModal() {
+            document.getElementById('send-notification-modal').classList.add('open');
+            document.getElementById('notification-user-scope').value = 'all';
+            document.getElementById('notification-custom-users').style.display = 'none';
+        }
+
+        function closeNotificationModal() {
+            document.getElementById('send-notification-modal').classList.remove('open');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const scope = document.getElementById('notification-user-scope');
+            if (scope) {
+                scope.addEventListener('change', (e) => {
+                    const custom = document.getElementById('notification-custom-users');
+                    custom.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                });
+            }
+        });
+
+        async function sendNotification() {
+            const scope = document.getElementById('notification-user-scope').value;
+            const title = document.getElementById('notification-title').value.trim();
+            const message = document.getElementById('notification-message').value.trim();
+            const priority = document.getElementById('notification-priority').value;
+
+            if (!title || !message) {
+                showToast('Title and message are required', 'error');
+                return;
+            }
+
+            let user_ids = [];
+            if (scope === 'custom') {
+                const ids = document.getElementById('notification-user-ids').value.trim();
+                if (!ids) {
+                    showToast('Please enter at least one user ID', 'error');
+                    return;
+                }
+                user_ids = ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
+            }
+
+            showLoading('Sending notification...');
+            try {
+                const payload = {
+                    type: 'system',
+                    title,
+                    message,
+                    priority,
+                    user_ids: scope === 'custom' ? user_ids : scope === 'all' ? [] : [scope]
+                };
+                
+                const data = await api('/api/admin/features/notifications/send', { method: 'POST', body: payload });
+                showToast(`Notification sent to ${data.count || 'users'}`, 'success');
+                closeNotificationModal();
+                await loadNotifications();
+            } catch (err) {
+                showToast(err.message || 'Failed to send notification', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notifications-list');
+            list.innerHTML = '<div style="text-align:center;color:#9ca3af;">Loading notifications...</div>';
+            try {
+                const data = await api('/api/admin/features/notifications?limit=50');
+                const notifs = data.notifications || [];
+                list.innerHTML = '';
+                if (!notifs.length) {
+                    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">No recent notifications</div>';
+                    return;
+                }
+                const html = notifs.map(n => `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 8px; background: ${n.is_read ? '#ffffff' : '#f0f9ff'};">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937;">${esc(n.title)}</div>
+                                <div style="font-size: 13px; color: #6b7280; margin-top: 4px;">${esc(n.message)}</div>
+                                <div style="font-size: 11px; color: #9ca3af; margin-top: 6px;">
+                                    <span style="display: inline-block; padding: 2px 8px; background: #f3f4f6; border-radius: 4px; margin-right: 8px;">${esc(n.type)}</span>
+                                    <span style="display: inline-block; padding: 2px 8px; background: #fef3c7; border-radius: 4px; margin-right: 8px;">${esc(n.priority)}</span>
+                                    <span>${esc(fmtDate(n.created_at))}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                list.innerHTML = html;
+            } catch (err) {
+                list.innerHTML = `<div style="color:#ef4444;">Error: ${esc(err.message)}</div>`;
+            }
+        }
+
+        // Error Monitoring Functions
+        async function loadErrorLogs() {
+            const list = document.getElementById('errors-list');
+            list.innerHTML = '<div style="text-align:center;color:#9ca3af;">Loading errors...</div>';
+            try {
+                const severity = document.getElementById('error-severity-filter').value;
+                const hours = document.getElementById('error-time-filter').value;
+                const params = new URLSearchParams({
+                    limit: 50,
+                    hours: hours,
+                    unresolved: 'true'
+                });
+                if (severity) params.append('severity', severity);
+                
+                const data = await api(`/api/admin/features/errors?${params}`);
+                const errors = data.errors || [];
+                list.innerHTML = '';
+                if (!errors.length) {
+                    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">No errors logged</div>';
+                    return;
+                }
+                const html = errors.map(e => `
+                    <div style="border: 1px solid #fee2e2; border-radius: 8px; padding: 12px; margin-bottom: 8px; background: #fef2f2;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #991b1b;">${esc(e.error_type)}</div>
+                                <div style="font-size: 13px; color: #6b7280; margin-top: 4px; font-family: monospace; overflow-x: auto;">${esc(e.error_message)}</div>
+                                <div style="font-size: 11px; color: #9ca3af; margin-top: 6px;">
+                                    <span style="display: inline-block; padding: 2px 8px; background: #f3f4f6; border-radius: 4px; margin-right: 8px;">${esc(e.endpoint)}</span>
+                                    <span style="display: inline-block; padding: 2px 8px; background: ${e.severity === 'critical' ? '#fee2e2' : '#fef3c7'}; border-radius: 4px; margin-right: 8px;">${esc(e.severity)}</span>
+                                    <span>${esc(fmtDate(e.created_at))}</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;" onclick="viewErrorDetail('${esc(e.id)}')">View</button>
+                        </div>
+                    </div>
+                `).join('');
+                list.innerHTML = html;
+            } catch (err) {
+                list.innerHTML = `<div style="color:#ef4444;">Error: ${esc(err.message)}</div>`;
+            }
+        }
+
+        async function viewErrorDetail(errorId) {
+            try {
+                const data = await api(`/api/admin/features/errors/${errorId}`);
+                const e = data.error;
+                let html = `
+                    <div style="margin-bottom: 12px;">
+                        <strong>Error Type:</strong> ${esc(e.error_type)}
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <strong>Message:</strong> ${esc(e.error_message)}
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <strong>Endpoint:</strong> ${esc(e.endpoint)} (${e.request_method})
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <strong>Stack Trace:</strong>
+                        <pre style="background: #f3f4f6; padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 11px;">${esc(e.stack_trace || 'N/A')}</pre>
+                    </div>
+                `;
+                document.getElementById('error-detail-content').innerHTML = html;
+                document.getElementById('error-detail-modal').classList.add('open');
+            } catch (err) {
+                showToast(err.message || 'Failed to load error detail', 'error');
+            }
+        }
+
+        function closeErrorModal() {
+            document.getElementById('error-detail-modal').classList.remove('open');
+        }
+
+        // Revenue Functions
+        async function loadRevenueMetrics() {
+            try {
+                const data = await api('/api/admin/features/revenue/metrics?months=6');
+                const mrrData = await api('/api/admin/features/revenue/mrr');
+                const churnData = await api('/api/admin/features/revenue/churn');
+                
+                document.getElementById('metric-mrr').textContent = '$' + (mrrData.mrr ? mrrData.mrr.toFixed(2) : '0');
+                document.getElementById('metric-churn').textContent = churnData.churn_rate + '%';
+                
+                const activeSubs = (data.active_subscriptions || {});
+                const totalActive = Object.values(activeSubs).reduce((a, b) => a + b, 0);
+                document.getElementById('metric-active-subs').textContent = totalActive;
+                
+                const details = document.getElementById('revenue-details');
+                let html = '<h4 style="margin-top: 20px; margin-bottom: 12px;">Active Subscriptions by Plan</h4><div style="display: grid; gap: 8px;">';
+                for (const [plan, count] of Object.entries(activeSubs)) {
+                    html += `<div style="display: flex; justify-content: space-between; padding: 8px; background: #f9fafb; border-radius: 6px;"><strong>${esc(plan)}</strong> <span>${count}</span></div>`;
+                }
+                html += '</div>';
+                details.innerHTML = html;
+            } catch (err) {
+                document.getElementById('revenue-details').innerHTML = `<div style="color:#ef4444;">Error: ${esc(err.message)}</div>`;
+            }
+        }
+
+        // Feature Flags Functions
+        let currentFlagId = '';
+        
+        async function loadFeatureFlags() {
+            const list = document.getElementById('feature-flags-list');
+            list.innerHTML = '<div style="text-align:center;color:#9ca3af;">Loading flags...</div>';
+            try {
+                const data = await api('/api/admin/features/flags');
+                const flags = data.flags || [];
+                list.innerHTML = '';
+                if (!flags.length) {
+                    list.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">No feature flags</div>';
+                    return;
+                }
+                const html = flags.map(f => `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937;">${esc(f.name || f.key)}</div>
+                                <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${esc(f.description || '')}</div>
+                                <div style="font-size: 11px; color: #9ca3af; margin-top: 8px;">
+                                    <span style="display: inline-block; padding: 2px 6px; background: ${f.is_enabled_globally ? '#d1fae5' : '#f3f4f6'}; border-radius: 4px; margin-right: 8px;">
+                                        ${f.is_enabled_globally ? '✓ Enabled' : '○ Disabled'}
+                                    </span>
+                                    <span style="display: inline-block; padding: 2px 6px; background: #f3f4f6; border-radius: 4px;">
+                                        Rollout: ${f.rollout_percentage}%
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn btn-ghost" style="font-size: 12px; padding: 4px 8px;" onclick="editFlag('${f.id}', '${esc(f.name || f.key)}', ${f.is_enabled_globally}, ${f.rollout_percentage})">Edit</button>
+                        </div>
+                    </div>
+                `).join('');
+                list.innerHTML = html;
+            } catch (err) {
+                list.innerHTML = `<div style="color:#ef4444;">Error: ${esc(err.message)}</div>`;
+            }
+        }
+
+        function editFlag(flagId, flagName, enabled, rollout) {
+            currentFlagId = flagId;
+            document.getElementById('flag-title').textContent = `${esc(flagName)}`;
+            document.getElementById('flag-enabled-toggle').checked = enabled;
+            document.getElementById('flag-rollout-percentage').value = rollout;
+            document.getElementById('flag-rollout-display').textContent = rollout;
+            document.getElementById('flag-detail-modal').classList.add('open');
+        }
+
+        function updateFlagRollout() {
+            const val = document.getElementById('flag-rollout-percentage').value;
+            document.getElementById('flag-rollout-display').textContent = val;
+        }
+
+        async function saveFlagChanges() {
+            if (!currentFlagId) return;
+            showLoading('Updating flag...');
+            try {
+                const enabled = document.getElementById('flag-enabled-toggle').checked;
+                const rollout = parseInt(document.getElementById('flag-rollout-percentage').value);
+                await api(`/api/admin/features/flags/${currentFlagId}`, {
+                    method: 'POST',
+                    body: {
+                        is_enabled_globally: enabled,
+                        rollout_percentage: rollout
+                    }
+                });
+                showToast('Flag updated', 'success');
+                closeFlagModal();
+                await loadFeatureFlags();
+            } catch (err) {
+                showToast(err.message || 'Failed to update flag', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function closeFlagModal() {
+            document.getElementById('flag-detail-modal').classList.remove('open');
         }
 
         async function loadAll() {
