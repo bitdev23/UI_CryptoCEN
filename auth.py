@@ -802,6 +802,17 @@ def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
                 return success, message, auth_data
 
             if status_code in {400, 401, 403}:
+                # Check if this is an OAuth-only account before returning generic error
+                logger.info(f"[LOGIN_HTTP_ERROR] HTTP login failed with status {status_code}. Message: {message}")
+                if 'invalid' in message.lower() or 'credentials' in message.lower():
+                    logger.info(f"[LOGIN_HTTP_ERROR] Credential error detected, checking if OAuth-only account...")
+                    is_oauth_only, oauth_providers = check_user_oauth_only(email)
+                    logger.info(f"[LOGIN_HTTP_ERROR] OAuth check result: is_oauth_only={is_oauth_only}, providers={oauth_providers}")
+                    
+                    if is_oauth_only and oauth_providers:
+                        provider_names = ', '.join(oauth_providers).title()
+                        return False, f"no_password|This account was created with {provider_names} and has no password. Please log in with {provider_names} or reset your password.", None
+                
                 return False, message, None
 
             logger.warning("HTTP login path failed (status=%s). Attempting SDK fallback.", status_code)
