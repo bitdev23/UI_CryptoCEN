@@ -670,31 +670,38 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
         Where is_oauth_only=True means user exists but can't login with password
     """
     try:
-        if not _auth_http_configured():
+        # Use Supabase Admin API via HTTP to check user identities
+        service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+        supabase_url = os.getenv('SUPABASE_URL', '').strip().rstrip('/')
+        
+        if not service_key or not supabase_url:
+            logger.debug("Service role key or Supabase URL not configured for OAuth check")
             return False, []
         
-        # Query Supabase auth.users directly using service role key
-        # This allows us to check user identities without a valid token
-        client = _get_supabase_client()
-        if not client:
-            return False, []
-        
-        # Use the service role client to query auth.users
-        # Note: This requires SUPABASE_SERVICE_ROLE_KEY to be set
-        result = _run_supabase_with_recovery(
-            lambda c: c.table('auth.users')
-                     .select('id, identities')
-                     .eq('email', email.lower())
-                     .limit(1)
-                     .execute(),
-            'Check user identities for OAuth status'
+        # Query the admin API to get user by email
+        response = requests.get(
+            f"{supabase_url}/auth/v1/admin/users?email={email}",
+            headers={
+                'Authorization': f'Bearer {service_key}',
+                'apikey': os.getenv('SUPABASE_ANON_KEY', service_key),
+                'Content-Type': 'application/json'
+            },
+            timeout=5.0
         )
         
-        if not result or not result.data or len(result.data) == 0:
+        if response.status_code != 200:
+            logger.debug(f"Failed to query user identities (status {response.status_code})")
             return False, []
         
-        user_data = result.data[0]
-        identities = user_data.get('identities', []) or []
+        data = response.json()
+        users = data.get('users', [])
+        
+        if not users or len(users) == 0:
+            # User doesn't exist in system
+            return False, []
+        
+        user = users[0]
+        identities = user.get('identities', []) or []
         
         # Extract provider names from identities
         providers = []
@@ -709,38 +716,18 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
                         if provider == 'email':
                             has_email_provider = True
         
+        logger.debug(f"User {email} has providers: {providers}, has_email: {has_email_provider}")
+        
         # If user exists but doesn't have email provider, they can't login with password
         is_oauth_only = len(providers) > 0 and not has_email_provider
         
         return is_oauth_only, providers
         
+    except requests.RequestException as e:
+        logger.debug(f"HTTP request failed checking OAuth-only status for {email}: {e}")
+        return False, []
     except Exception as e:
         logger.debug(f"Could not check OAuth-only status for {email}: {e}")
-        # Fallback: query our custom table as backup
-        try:
-            if not _auth_http_configured():
-                return False, []
-            
-            client = _get_supabase_client()
-            if not client:
-                return False, []
-            
-            result = _run_supabase_with_recovery(
-                lambda c: c.table('auth_linked_identities')
-                         .select('provider')
-                         .eq('email', email.lower())
-                         .execute(),
-                'Check user OAuth providers (fallback)'
-            )
-            
-            if result and result.data:
-                providers = [item.get('provider', '') for item in result.data if isinstance(item, dict)]
-                has_email = 'email' in providers
-                is_oauth_only = len(providers) > 0 and not has_email
-                return is_oauth_only, providers
-        except Exception as fallback_e:
-            logger.debug(f"Fallback OAuth-only check also failed: {fallback_e}")
-        
         return False, []
 
 
