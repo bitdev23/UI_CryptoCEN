@@ -669,18 +669,24 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
         (is_oauth_only, linked_providers_list)
         Where is_oauth_only=True means user exists but can't login with password
     """
+    logger.info(f"[OAUTH_CHECK] Starting check for email: {email}")
     try:
         # Use Supabase Admin API via HTTP to check user identities
         service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '').strip()
         supabase_url = os.getenv('SUPABASE_URL', '').strip().rstrip('/')
         
+        logger.info(f"[OAUTH_CHECK] Config - Service key present: {bool(service_key)}, URL: {bool(supabase_url)}")
+        
         if not service_key or not supabase_url:
-            logger.debug("Service role key or Supabase URL not configured for OAuth check")
+            logger.info("[OAUTH_CHECK] Missing service key or URL, returning False")
             return False, []
         
         # Query the admin API to get user by email
+        admin_url = f"{supabase_url}/auth/v1/admin/users?email={email}"
+        logger.info(f"[OAUTH_CHECK] Calling Admin API...")
+        
         response = requests.get(
-            f"{supabase_url}/auth/v1/admin/users?email={email}",
+            admin_url,
             headers={
                 'Authorization': f'Bearer {service_key}',
                 'apikey': os.getenv('SUPABASE_ANON_KEY', service_key),
@@ -689,19 +695,23 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
             timeout=5.0
         )
         
+        logger.info(f"[OAUTH_CHECK] Admin API status: {response.status_code}")
+        
         if response.status_code != 200:
-            logger.debug(f"Failed to query user identities (status {response.status_code})")
+            logger.error(f"[OAUTH_CHECK] API failed (status {response.status_code}). Response: {response.text[:200]}")
             return False, []
         
         data = response.json()
         users = data.get('users', [])
+        logger.info(f"[OAUTH_CHECK] Found {len(users)} user(s)")
         
         if not users or len(users) == 0:
-            # User doesn't exist in system
+            logger.info(f"[OAUTH_CHECK] No user found, returning False")
             return False, []
         
         user = users[0]
         identities = user.get('identities', []) or []
+        logger.info(f"[OAUTH_CHECK] Raw identities: {identities}")
         
         # Extract provider names from identities
         providers = []
@@ -716,18 +726,19 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
                         if provider == 'email':
                             has_email_provider = True
         
-        logger.debug(f"User {email} has providers: {providers}, has_email: {has_email_provider}")
+        logger.info(f"[OAUTH_CHECK] Extracted providers: {providers}, has_email: {has_email_provider}")
         
         # If user exists but doesn't have email provider, they can't login with password
         is_oauth_only = len(providers) > 0 and not has_email_provider
+        logger.info(f"[OAUTH_CHECK] Result: is_oauth_only={is_oauth_only}, providers={providers}")
         
         return is_oauth_only, providers
         
     except requests.RequestException as e:
-        logger.debug(f"HTTP request failed checking OAuth-only status for {email}: {e}")
+        logger.error(f"[OAUTH_CHECK] HTTP request failed: {e}")
         return False, []
     except Exception as e:
-        logger.debug(f"Could not check OAuth-only status for {email}: {e}")
+        logger.error(f"[OAUTH_CHECK] Exception: {e}", exc_info=True)
         return False, []
 
 
@@ -874,9 +885,18 @@ def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
                     }
             return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
         
-        if 'invalid' in error_msg.lower() or 'credentials' in error_msg.lower():
+        logger.info(f"[LOGIN_ERROR] Error message: {error_msg[:100]}")
+        logger.info(f"[LOGIN_ERROR] Contains 'invalid': {'invalid' in error_msg.lower()}")
+        logger.info(f"[LOGIN_ERROR] Contains 'credentials': {'credentials' in error_msg.lower()}")
+        logger.info(f"[LOGIN_ERROR] Contains 'unauthorized': {'unauthorized' in error_msg.lower()}")
+        
+        # Check for invalid credentials (covers 'invalid', 'credentials', 'unauthorized')
+        if any(x in error_msg.lower() for x in ['invalid', 'credentials', 'unauthorized', 'failed']):
+            logger.info(f"[LOGIN_ERROR] Matched error pattern, checking if OAuth-only account...")
             # Check if user exists but only has OAuth (no password set)
             is_oauth_only, oauth_providers = check_user_oauth_only(email)
+            
+            logger.info(f"[LOGIN_ERROR] OAuth check result: is_oauth_only={is_oauth_only}, providers={oauth_providers}")
             
             if is_oauth_only and oauth_providers:
                 # User exists but has no password - suggest OAuth login or reset
