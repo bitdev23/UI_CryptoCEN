@@ -2994,6 +2994,19 @@ def auth_login():
         else:
             lowered = (message or '').lower()
             status_code = 401
+            
+            # Check for OAuth-only account (no password set)
+            if message and message.startswith('no_password|'):
+                error_msg = message.replace('no_password|', '')
+                status_code = 400
+                return jsonify({
+                    'success': False,
+                    'message': error_msg,
+                    'error_type': 'oauth_only_account',
+                    'action': 'Use OAuth login or reset password',
+                    'can_reset_password': True
+                }), status_code
+            
             if 'temporarily unavailable' in lowered or 'timeout' in lowered:
                 status_code = 503
             return jsonify({'success': False, 'message': message}), status_code
@@ -3160,6 +3173,130 @@ def auth_health():
         'missing': missing,
         'message': upstream_message
     }), status
+
+
+# ============================================================================
+# ACCOUNT LINKING ROUTES
+# Manage multiple authentication methods (email/password + OAuth) on same account
+# ============================================================================
+
+@app.route('/api/auth/linked-providers', methods=['GET'])
+@require_auth
+def get_linked_providers():
+    """Get all authentication methods linked to the current user's account"""
+    try:
+        from auth import get_user_linked_providers
+        
+        user_id = get_current_user_id()
+        success, providers = get_user_linked_providers(user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'providers': providers,
+                'message': f'Found {len(providers)} linked authentication method(s)'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'providers': [],
+                'message': 'Could not retrieve linked providers'
+            }), 200  # Return 200 even if no providers found
+    except Exception as e:
+        logger.exception("Failed to get linked providers")
+        return _safe_api_error('Failed to get linked providers', e)
+
+
+@app.route('/api/auth/link-oauth', methods=['POST'])
+@require_auth
+def link_oauth_identity():
+    """Link an OAuth identity to the current user's account"""
+    try:
+        from auth import link_oauth_to_account
+        
+        data = request.get_json() or {}
+        provider = (data.get('provider') or '').strip().lower()
+        provider_user_id = (data.get('provider_user_id') or '').strip()
+        email = (data.get('email') or '').strip()
+        
+        if not provider or not provider_user_id:
+            return jsonify({
+                'success': False,
+                'message': 'Provider and provider_user_id required'
+            }), 400
+        
+        user_id = get_current_user_id()
+        success, message = link_oauth_to_account(user_id, provider, provider_user_id, email)
+        
+        status_code = 200 if success else 400
+        return jsonify({
+            'success': success,
+            'message': message,
+            'provider': provider
+        }), status_code
+    except Exception as e:
+        logger.exception("Failed to link OAuth identity")
+        return _safe_api_error('Failed to link OAuth identity', e)
+
+
+@app.route('/api/auth/account-linking-status', methods=['GET'])
+@require_auth
+def check_account_linking_status():
+    """
+    Check if account linking is available and get current status
+    Returns what auth methods the user can link
+    """
+    try:
+        from auth import get_user_linked_providers
+        
+        user_id = get_current_user_id()
+        success, providers = get_user_linked_providers(user_id)
+        
+        # Determine what methods can be linked
+        current_providers = [p.get('provider', '').lower() for p in providers] if providers else []
+        
+        available_methods = {
+            'email': 'email' not in current_providers,
+            'google': 'google' not in current_providers,
+            'github': 'github' not in current_providers,
+            'discord': 'discord' not in current_providers
+        }
+        
+        return jsonify({
+            'success': True,
+            'current_providers': current_providers,
+            'available_methods': available_methods,
+            'can_link': any(available_methods.values()),
+            'message': 'Account linking available'
+        }), 200
+    except Exception as e:
+        logger.exception("Failed to check account linking status")
+        return _safe_api_error('Failed to check account linking status', e)
+
+
+@app.route('/api/auth/user/profile', methods=['GET'])
+@require_auth
+def get_auth_user_profile():
+    """Get authenticated user's profile with auth method information"""
+    try:
+        user = verify_token(request.headers.get('Authorization', '').replace('Bearer ', ''))
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'Invalid token'}), 401
+        
+        from auth import get_user_linked_providers
+        
+        success, providers = get_user_linked_providers(user.get('id'))
+        
+        return jsonify({
+            'success': True,
+            'user': user,
+            'linked_providers': providers if success else [],
+            'auth_method': user.get('auth_provider', 'unknown')
+        }), 200
+    except Exception as e:
+        logger.exception("Failed to get user auth profile")
+        return _safe_api_error('Failed to get user auth profile', e)
 
 
 @app.route('/api/user/profile', methods=['GET'])

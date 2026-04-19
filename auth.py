@@ -657,6 +657,53 @@ def signup_user(email: str, password: str, metadata: Optional[Dict] = None) -> T
             return False, f"Signup failed: {error_msg}", None
 
 
+
+def check_user_oauth_only(email: str) -> Tuple[bool, list]:
+    """
+    Check if a user account exists but only has OAuth methods (no email/password).
+    
+    Args:
+        email: User's email address
+        
+    Returns:
+        (is_oauth_only, linked_providers_list)
+        Where is_oauth_only=True means user exists but can't login with password
+    """
+    try:
+        if not _auth_http_configured():
+            return False, []
+        
+        client = _get_supabase_client()
+        if not client:
+            return False, []
+        
+        # Query auth_linked_identities to see what providers are linked
+        result = _run_supabase_with_recovery(
+            lambda c: c.table('auth_linked_identities')
+                     .select('provider, email')
+                     .eq('email', email.lower())
+                     .execute(),
+            'Check user OAuth providers'
+        )
+        
+        if not result or not result.data:
+            return False, []
+        
+        providers = [item.get('provider', '') for item in result.data if isinstance(item, dict)]
+        
+        # If 'email' provider exists, user has a password
+        has_email_provider = 'email' in providers
+        
+        # If user exists but doesn't have 'email' provider, they're OAuth-only
+        is_oauth_only = len(providers) > 0 and not has_email_provider
+        
+        return is_oauth_only, providers
+        
+    except Exception as e:
+        logger.debug(f"Could not check OAuth-only status for {email}: {e}")
+        return False, []
+
+
 def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
     """
     Log in a user
@@ -801,6 +848,14 @@ def login_user(email: str, password: str) -> Tuple[bool, str, Optional[Dict]]:
             return False, "Authentication service temporarily unavailable (timeout). Please try again in a moment.", None
         
         if 'invalid' in error_msg.lower() or 'credentials' in error_msg.lower():
+            # Check if user exists but only has OAuth (no password set)
+            is_oauth_only, oauth_providers = check_user_oauth_only(email)
+            
+            if is_oauth_only and oauth_providers:
+                # User exists but has no password - suggest OAuth login or reset
+                provider_names = ', '.join(oauth_providers).title()
+                return False, f"no_password|This account was created with {provider_names} and has no password. Please log in with {provider_names} or reset your password.", None
+            
             return False, "Invalid email or password", None
         elif 'not confirmed' in error_msg.lower():
             return False, "Please verify your email before logging in", None
@@ -1036,3 +1091,181 @@ def require_admin(f):
             return jsonify({'error': 'Authentication failed'}), 401
     
     return decorated_function
+
+
+# ============================================================================
+# ACCOUNT LINKING FUNCTIONS
+# Allow users to authenticate with multiple methods (email/password + OAuth)
+# ============================================================================
+
+def find_existing_user_by_email(email: str) -> Optional[Dict]:
+    """
+    Find an existing user by email across all linked identities
+    
+    Returns:
+        User dict if found, None otherwise
+    """
+    try:
+        if not _auth_http_configured():
+            return None
+        
+        # Query the find_user_by_email function
+        client = _get_supabase_client()
+        if not client:
+            return None
+        
+        result = _run_supabase_with_recovery(
+            lambda c: c.rpc('find_user_by_email', {'p_email': email}),
+            'Find user by email'
+        )
+        
+        if result:
+            user_id = result
+            # Now fetch the full user data from Supabase
+            # Note: This would require service role key
+            logger.debug(f"Found existing user for email {email}: {user_id}")
+            return {'id': user_id, 'email': email}
+        
+        return None
+    except Exception as e:
+        logger.debug(f"Could not find user by email {email}: {e}")
+        return None
+
+
+def check_if_identity_linked(provider: str, provider_user_id: str) -> Tuple[bool, str]:
+    """
+    Check if an OAuth identity is already linked to an account
+    
+    Returns:
+        (is_linked, message)
+    """
+    try:
+        if not _auth_http_configured():
+            return False, "Auth not configured"
+        
+        client = _get_supabase_client()
+        if not client:
+            return False, "Supabase not configured"
+        
+        result = _run_supabase_with_recovery(
+            lambda c: c.rpc('is_identity_linked', {
+                'p_provider': provider,
+                'p_provider_user_id': provider_user_id
+            }),
+            'Check identity linked'
+        )
+        
+        return bool(result), "linked" if result else "not linked"
+    except Exception as e:
+        logger.debug(f"Could not check identity link: {e}")
+        return False, "unknown"
+
+
+def link_oauth_to_account(user_id: str, provider: str, provider_user_id: str, email: str) -> Tuple[bool, str]:
+    """
+    Link an OAuth identity to an existing user account
+    
+    Args:
+        user_id: The user's UUID
+        provider: OAuth provider ('google', 'github', etc.)
+        provider_user_id: The provider's unique ID for the user
+        email: Email associated with the OAuth identity
+    
+    Returns:
+        (success, message)
+    """
+    try:
+        if not _auth_http_configured():
+            return False, "Auth not configured"
+        
+        client = _get_supabase_client()
+        if not client:
+            return False, "Supabase not configured"
+        
+        result = _run_supabase_with_recovery(
+            lambda c: c.rpc('link_identity_to_user', {
+                'p_user_id': user_id,
+                'p_provider': provider,
+                'p_provider_user_id': provider_user_id,
+                'p_email': email
+            }),
+            'Link identity to account'
+        )
+        
+        if result:
+            logger.info(f"Successfully linked {provider} identity to user {user_id}")
+            return True, f"Linked {provider} account successfully"
+        return False, "Failed to link account"
+    except Exception as e:
+        logger.error(f"Error linking identity: {e}")
+        if 'already linked' in str(e).lower():
+            return False, "This OAuth account is already linked to another user account"
+        return False, f"Failed to link account: {str(e)}"
+
+
+def get_user_linked_providers(user_id: str) -> Tuple[bool, list]:
+    """
+    Get all linked authentication methods for a user
+    
+    Returns:
+        (success, providers_list)
+    """
+    try:
+        if not _auth_http_configured():
+            return False, []
+        
+        client = _get_supabase_client()
+        if not client:
+            return False, []
+        
+        result = _run_supabase_with_recovery(
+            lambda c: c.rpc('get_user_linked_providers', {'p_user_id': user_id}),
+            'Get linked providers'
+        )
+        
+        if isinstance(result, list):
+            return True, result
+        return False, []
+    except Exception as e:
+        logger.debug(f"Could not retrieve linked providers: {e}")
+        return False, []
+
+
+def handle_oauth_account_linking(oauth_user: Dict, provider: str) -> Tuple[bool, str, Optional[str], Optional[str]]:
+    """
+    Handle account linking when user authenticates with OAuth
+    
+    Args:
+        oauth_user: User object from OAuth token verification
+        provider: OAuth provider ('google', 'github', etc.)
+    
+    Returns:
+        (success, message, user_id, conflict_action)
+        conflict_action can be:
+        - None: No conflict, authentication successful
+        - 'link_required': User needs to link accounts
+        - 'already_linked': Account already linked
+    """
+    try:
+        user_id = oauth_user.get('id')
+        email = oauth_user.get('email', '').lower()
+        auth_provider = oauth_user.get('auth_provider', '')
+        
+        # Check if user was originally created with a different auth method
+        if auth_provider and auth_provider != provider and auth_provider != 'email':
+            # User was created with OAuth but trying to login with different provider
+            # This is allowed - they can have multiple OAuth providers
+            return True, f"Authenticated with {provider}", user_id, None
+        
+        # If user originally signed up with email/password, allow linking with OAuth
+        if auth_provider == 'email' or auth_provider == '':
+            # This is the key case: email/password user trying to OAuth
+            # We'll allow them to proceed, system will link automatically
+            return True, f"Authenticated with {provider}", user_id, None
+        
+        # Otherwise authentication is fine as-is
+        return True, f"Authenticated with {provider}", user_id, None
+        
+    except Exception as e:
+        logger.error(f"Error handling OAuth account linking: {e}")
+        return False, f"Account linking check failed: {str(e)}", None, None
