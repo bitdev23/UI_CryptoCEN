@@ -673,34 +673,74 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
         if not _auth_http_configured():
             return False, []
         
+        # Query Supabase auth.users directly using service role key
+        # This allows us to check user identities without a valid token
         client = _get_supabase_client()
         if not client:
             return False, []
         
-        # Query auth_linked_identities to see what providers are linked
+        # Use the service role client to query auth.users
+        # Note: This requires SUPABASE_SERVICE_ROLE_KEY to be set
         result = _run_supabase_with_recovery(
-            lambda c: c.table('auth_linked_identities')
-                     .select('provider, email')
+            lambda c: c.table('auth.users')
+                     .select('id, identities')
                      .eq('email', email.lower())
+                     .limit(1)
                      .execute(),
-            'Check user OAuth providers'
+            'Check user identities for OAuth status'
         )
         
-        if not result or not result.data:
+        if not result or not result.data or len(result.data) == 0:
             return False, []
         
-        providers = [item.get('provider', '') for item in result.data if isinstance(item, dict)]
+        user_data = result.data[0]
+        identities = user_data.get('identities', []) or []
         
-        # If 'email' provider exists, user has a password
-        has_email_provider = 'email' in providers
+        # Extract provider names from identities
+        providers = []
+        has_email_provider = False
         
-        # If user exists but doesn't have 'email' provider, they're OAuth-only
+        if isinstance(identities, list):
+            for identity in identities:
+                if isinstance(identity, dict):
+                    provider = identity.get('provider', '').lower()
+                    if provider:
+                        providers.append(provider)
+                        if provider == 'email':
+                            has_email_provider = True
+        
+        # If user exists but doesn't have email provider, they can't login with password
         is_oauth_only = len(providers) > 0 and not has_email_provider
         
         return is_oauth_only, providers
         
     except Exception as e:
         logger.debug(f"Could not check OAuth-only status for {email}: {e}")
+        # Fallback: query our custom table as backup
+        try:
+            if not _auth_http_configured():
+                return False, []
+            
+            client = _get_supabase_client()
+            if not client:
+                return False, []
+            
+            result = _run_supabase_with_recovery(
+                lambda c: c.table('auth_linked_identities')
+                         .select('provider')
+                         .eq('email', email.lower())
+                         .execute(),
+                'Check user OAuth providers (fallback)'
+            )
+            
+            if result and result.data:
+                providers = [item.get('provider', '') for item in result.data if isinstance(item, dict)]
+                has_email = 'email' in providers
+                is_oauth_only = len(providers) > 0 and not has_email
+                return is_oauth_only, providers
+        except Exception as fallback_e:
+            logger.debug(f"Fallback OAuth-only check also failed: {fallback_e}")
+        
         return False, []
 
 
