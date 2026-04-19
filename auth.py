@@ -704,29 +704,50 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
         data = response.json()
         users = data.get('users', [])
         logger.info(f"[OAUTH_CHECK] Found {len(users)} user(s)")
+        logger.info(f"[OAUTH_CHECK] Full response: {data}")
         
         if not users or len(users) == 0:
             logger.info(f"[OAUTH_CHECK] No user found, returning False")
             return False, []
         
-        user = users[0]
-        identities = user.get('identities', []) or []
-        logger.info(f"[OAUTH_CHECK] Raw identities: {identities}")
+        # Find the user matching the email address (don't just take first one)
+        user = None
+        for u in users:
+            if u.get('email', '').lower() == email.lower():
+                user = u
+                logger.info(f"[OAUTH_CHECK] Found matching user: {u.get('email')}")
+                break
         
-        # Extract provider names from identities
+        if not user:
+            logger.info(f"[OAUTH_CHECK] No user found matching email {email}. Users in response: {[u.get('email') for u in users]}")
+            return False, []
+        
+        # Try to get providers from two possible locations:
+        # 1. app_metadata.providers (Supabase stores this)
+        # 2. identities array (fallback)
+        
         providers = []
-        has_email_provider = False
+        app_metadata = user.get('app_metadata', {}) or {}
         
-        if isinstance(identities, list):
-            for identity in identities:
-                if isinstance(identity, dict):
-                    provider = identity.get('provider', '').lower()
-                    if provider:
-                        providers.append(provider)
-                        if provider == 'email':
-                            has_email_provider = True
+        # First try app_metadata.providers (more reliable)
+        if app_metadata.get('providers'):
+            providers = app_metadata.get('providers', [])
+            logger.info(f"[OAUTH_CHECK] Got providers from app_metadata.providers: {providers}")
+        else:
+            # Fallback to identities array
+            identities = user.get('identities', [])
+            logger.info(f"[OAUTH_CHECK] Raw identities for {email}: {identities}")
+            
+            if isinstance(identities, list):
+                for identity in identities:
+                    if isinstance(identity, dict):
+                        provider = identity.get('provider', '').lower()
+                        if provider:
+                            providers.append(provider)
+            logger.info(f"[OAUTH_CHECK] Extracted providers from identities: {providers}")
         
-        logger.info(f"[OAUTH_CHECK] Extracted providers: {providers}, has_email: {has_email_provider}")
+        has_email_provider = 'email' in [p.lower() for p in providers]
+        logger.info(f"[OAUTH_CHECK] Providers: {providers}, has_email: {has_email_provider}")
         
         # If user exists but doesn't have email provider, they can't login with password
         is_oauth_only = len(providers) > 0 and not has_email_provider
