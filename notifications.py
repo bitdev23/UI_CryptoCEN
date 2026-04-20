@@ -267,3 +267,31 @@ def send_otp_email(to_email: str, otp_code: str) -> None:
 </div>
 """)
     _send_async(to_email, subject, html)
+
+
+def send_otp_email_sync(to_email: str, otp_code: str) -> bool:
+    """Send 6-digit OTP code synchronously and return send result."""
+    logger.info('[OTP_EMAIL] Sending OTP email synchronously to %s', to_email)
+    subject = f'Your Velank AI reset code: {otp_code}'
+    html = _wrap_html(f"""
+<div class="header">Password reset code</div>
+<div class="body-text">
+  <p>We received a request to reset the password for your Velank AI account.
+     Use the 6-digit code below to continue. <strong>It expires in 10 minutes.</strong></p>
+  <div style="letter-spacing:10px;font-size:38px;font-weight:700;color:#1a1a2e;
+              text-align:center;margin:28px 0;padding:22px 16px;
+              background:#f5f3ff;border-radius:14px;font-family:monospace,monospace">
+    {otp_code}
+  </div>
+  <p style="font-size:13px;color:#888">
+    If you didn't request a password reset, you can safely ignore this email —
+    your account remains secure.
+  </p>
+</div>
+""")
+    result = _send_email(to_email, subject, html)
+    if result:
+        logger.info('[OTP_EMAIL] ✓ Synchronous OTP sent to %s', to_email)
+    else:
+        logger.error('[OTP_EMAIL] ✗ Synchronous OTP failed for %s', to_email)
+    return result
