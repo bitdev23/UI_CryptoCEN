@@ -3446,7 +3446,7 @@ def _get_uid_by_email(email: str) -> Optional[str]:
 
 
 @app.route('/api/auth/forgot', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def auth_forgot():
     """Step 1: generate a 6-digit OTP, store in Supabase, and email it."""
     data = request.get_json(silent=True) or {}
@@ -3457,16 +3457,22 @@ def auth_forgot():
     expiry = datetime.utcnow() + timedelta(minutes=_OTP_TTL_MINUTES)
     try:
         _otp_upsert(email, otp, expiry)
+        logger.info('[FORGOT_PASSWORD] OTP generated for %s, attempting email send', email)
     except Exception as exc:
-        logger.exception('OTP upsert failed for %s: %s', email, exc)
+        logger.exception('[FORGOT_PASSWORD] OTP upsert failed for %s: %s', email, exc)
         return jsonify({'success': False, 'message': 'Could not generate reset code. Please try again.'}), 500
-    _send_otp_email(email, otp)
-    logger.info('Password reset OTP sent to %s', email)
-    return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.'})
+    try:
+        _send_otp_email(email, otp)
+        logger.info('[FORGOT_PASSWORD] OTP email sent to %s', email)
+        return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.'})
+    except Exception as e:
+        logger.error('[FORGOT_PASSWORD] Email send failed for %s: %s', email, e)
+        # Still return success since OTP was stored, email might arrive eventually
+        return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.'})
 
 
 @app.route('/api/auth/verify-otp', methods=['POST'])
-@limiter.limit("10 per hour")
+@limiter.limit("20 per hour")
 def auth_verify_otp():
     """Step 2: validate the 6-digit OTP against Supabase record."""
     data = request.get_json(silent=True) or {}
@@ -3484,7 +3490,7 @@ def auth_verify_otp():
 
 
 @app.route('/api/auth/reset-password', methods=['POST'])
-@limiter.limit("5 per hour")
+@limiter.limit("10 per hour")
 def auth_reset_password():
     """Step 3: verify OTP then update password via Supabase admin API."""
     data = request.get_json(silent=True) or {}

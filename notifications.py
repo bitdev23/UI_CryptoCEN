@@ -52,8 +52,13 @@ def _send_via_resend(to_email: str, subject: str, html_body: str) -> bool:
         logger.warning('resend package not installed — run: pip install "resend>=2.0.0"')
         return False
 
+    if not _RESEND_API_KEY:
+        logger.error('RESEND_API_KEY not configured in environment')
+        return False
+
     resend.api_key = _RESEND_API_KEY
     try:
+        logger.info('[RESEND] Attempting to send email to %s with subject: %s', to_email, subject)
         resp = resend.Emails.send({
             'from': f'{_EMAIL_FROM_NAME} <{_EMAIL_FROM}>',
             'to': [to_email],
@@ -62,10 +67,14 @@ def _send_via_resend(to_email: str, subject: str, html_body: str) -> bool:
         })
         # SDK v2 returns an object; v1 returns a dict — handle both
         email_id = resp.get('id') if isinstance(resp, dict) else getattr(resp, 'id', None)
-        logger.info('Resend email sent to %s — id=%s', to_email, email_id)
-        return bool(email_id)
+        if email_id:
+            logger.info('[RESEND] ✓ Email sent successfully to %s — id=%s', to_email, email_id)
+            return True
+        else:
+            logger.error('[RESEND] Response missing id field: %s', resp)
+            return False
     except Exception as e:
-        logger.exception('Resend send failed for %s: %s', to_email, e)
+        logger.exception('[RESEND] ✗ Send failed for %s: %s', to_email, e)
         return False
 
 
@@ -95,28 +104,39 @@ def _send_via_smtp(to_email: str, subject: str, html_body: str) -> bool:
 def _send_email(to_email: str, subject: str, html_body: str) -> bool:
     """Route to the best available transport."""
     if not _EMAIL_ENABLED:
-        logger.debug('Email disabled by EMAIL_ENABLED flag — skipping "%s"', subject)
+        logger.debug('[EMAIL] Email disabled by EMAIL_ENABLED flag — skipping "%s"', subject)
         return False
     if not to_email:
+        logger.warning('[EMAIL] Empty recipient, skipping')
         return False
 
     if _RESEND_API_KEY:
+        logger.info('[EMAIL] Using Resend transport')
         return _send_via_resend(to_email, subject, html_body)
     elif _SMTP_HOST:
+        logger.info('[EMAIL] Using SMTP transport')
         return _send_via_smtp(to_email, subject, html_body)
     else:
-        logger.debug('No email transport configured — would send "%s" to %s', subject, to_email)
+        logger.warning('[EMAIL] No email transport configured (no RESEND_API_KEY or SMTP_HOST) — would send "%s" to %s', subject, to_email)
         return False
 
 
 def _send_async(to_email: str, subject: str, html_body: str) -> None:
     """Fire-and-forget email send in a daemon thread."""
+    def thread_runner():
+        logger.info('[EMAIL_ASYNC] Starting send to %s (subject: %s)', to_email, subject[:50])
+        result = _send_email(to_email, subject, html_body)
+        if result:
+            logger.info('[EMAIL_ASYNC] ✓ Successfully sent to %s', to_email)
+        else:
+            logger.warning('[EMAIL_ASYNC] ✗ Failed to send to %s', to_email)
+    
     t = threading.Thread(
-        target=_send_email,
-        args=(to_email, subject, html_body),
+        target=thread_runner,
         daemon=True,
         name=f'email-{subject[:30]}',
     )
+    logger.info('[EMAIL_ASYNC] Spawning thread for %s', to_email)
     t.start()
 
 
@@ -211,6 +231,7 @@ def send_post_published(
 
 def send_otp_email(to_email: str, otp_code: str) -> None:
     """Send 6-digit OTP code for password reset (non-blocking)."""
+    logger.info('[OTP_EMAIL] Queuing OTP email to %s', to_email)
     subject = f'Your Velank AI reset code: {otp_code}'
     html = _wrap_html(f"""
 <div class="header">Password reset code</div>
