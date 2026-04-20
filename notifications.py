@@ -46,35 +46,52 @@ _EMAIL_ENABLED: bool = os.getenv('EMAIL_ENABLED', '1').strip().lower() in {'1', 
 
 def _send_via_resend(to_email: str, subject: str, html_body: str) -> bool:
     """Send via Resend API (https://resend.com)."""
+    resend_available = False
     try:
         import resend
+        resend_available = True
     except ImportError:
-        logger.warning('resend package not installed — run: pip install "resend>=2.0.0"')
+        logger.warning('[RESEND] resend package not installed — run: pip install "resend>=2.0.0"')
         return False
 
     if not _RESEND_API_KEY:
-        logger.error('RESEND_API_KEY not configured in environment')
+        logger.error('[RESEND] RESEND_API_KEY not configured in environment')
         return False
 
     resend.api_key = _RESEND_API_KEY
+    logger.info('[RESEND] Package available: %s, API key present: %s', resend_available, bool(_RESEND_API_KEY))
+    
     try:
-        logger.info('[RESEND] Attempting to send email to %s with subject: %s', to_email, subject)
+        logger.info('[RESEND] Attempting to send email to %s', to_email)
+        logger.info('[RESEND] From: %s', f'{_EMAIL_FROM_NAME} <{_EMAIL_FROM}>')
+        
         resp = resend.Emails.send({
             'from': f'{_EMAIL_FROM_NAME} <{_EMAIL_FROM}>',
             'to': [to_email],
             'subject': subject,
             'html': html_body,
         })
+        
+        logger.info('[RESEND] Full response type: %s', type(resp).__name__)
+        logger.info('[RESEND] Full response: %s', resp)
+        
         # SDK v2 returns an object; v1 returns a dict — handle both
         email_id = resp.get('id') if isinstance(resp, dict) else getattr(resp, 'id', None)
+        
         if email_id:
             logger.info('[RESEND] ✓ Email sent successfully to %s — id=%s', to_email, email_id)
             return True
         else:
-            logger.error('[RESEND] Response missing id field: %s', resp)
+            logger.error('[RESEND] Response received but no id field. Response: %s', resp)
+            # Check if there's an error in the response
+            error = resp.get('error') if isinstance(resp, dict) else getattr(resp, 'error', None)
+            if error:
+                logger.error('[RESEND] API error: %s', error)
             return False
+            
     except Exception as e:
-        logger.exception('[RESEND] ✗ Send failed for %s: %s', to_email, e)
+        logger.error('[RESEND] ✗ Exception during send to %s: %s', to_email, str(e))
+        logger.exception('[RESEND] Full traceback:')
         return False
 
 
