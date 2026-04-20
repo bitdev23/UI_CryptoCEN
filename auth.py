@@ -105,6 +105,16 @@ def _build_email_redirect_url() -> str:
     return f"{base_url}/auth/callback"
 
 
+def _build_password_reset_redirect_url() -> str:
+    """Build callback URL used in Supabase password recovery emails."""
+    explicit = (os.getenv('AUTH_RESET_REDIRECT_URL') or '').strip()
+    if explicit:
+        return explicit
+
+    base_url = (os.getenv('APP_BASE_URL') or 'http://127.0.0.1:5050').strip().rstrip('/')
+    return f"{base_url}/auth/reset-callback?type=recovery"
+
+
 def _is_timeout_error(exc: Exception) -> bool:
     msg = str(exc).lower()
     timeout_terms = ['timed out', 'timeout', 'read timeout', 'connect timeout']
@@ -973,8 +983,13 @@ def request_password_reset(email: str) -> Tuple[bool, str]:
         client = _get_supabase_client()
         if not client:
             return False, "Authentication service not configured"
-        
-        client.auth.reset_password_email(email)
+
+        redirect_to = _build_password_reset_redirect_url()
+        try:
+            client.auth.reset_password_email(email, {'redirect_to': redirect_to})
+        except TypeError:
+            # SDK compatibility fallback for versions expecting kwargs
+            client.auth.reset_password_email(email, redirect_to=redirect_to)
         return True, "Password reset email sent. Please check your inbox."
         
     except Exception as e:

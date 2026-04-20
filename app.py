@@ -3537,6 +3537,57 @@ def auth_reset_password():
         return _safe_api_error('Failed to update password', e, 500)
 
 
+@app.route('/api/auth/reset-password-link', methods=['POST'])
+@limiter.limit("10 per hour")
+def auth_reset_password_link():
+    """Set new password using Supabase recovery access token from reset link flow."""
+    data = request.get_json(silent=True) or {}
+    access_token = (data.get('access_token') or '').strip()
+    new_password = (data.get('newPassword') or '').strip()
+
+    if not access_token:
+        return jsonify({'success': False, 'message': 'Missing recovery token.'}), 400
+    if not new_password or len(new_password) < 8:
+        return jsonify({'success': False, 'message': 'Password must be at least 8 characters.'}), 400
+
+    user = verify_token(access_token)
+    if not user:
+        return jsonify({'success': False, 'message': 'Recovery link is invalid or expired.'}), 401
+
+    base_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
+    anon_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
+    if not base_url or not anon_key:
+        return jsonify({'success': False, 'message': 'Auth service not configured.'}), 500
+
+    try:
+        resp = requests.put(
+            f"{base_url}/auth/v1/user",
+            headers={
+                'apikey': anon_key,
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            },
+            json={'password': new_password},
+            timeout=(10, 30),
+        )
+        if resp.status_code >= 400:
+            msg = 'Failed to update password from recovery link.'
+            try:
+                body = resp.json() if resp.content else {}
+                if isinstance(body, dict):
+                    msg = body.get('msg') or body.get('error_description') or body.get('error') or msg
+            except Exception:
+                pass
+            logger.warning('Recovery password update failed: status=%s body=%s', resp.status_code, resp.text[:300])
+            return jsonify({'success': False, 'message': msg}), 400 if resp.status_code < 500 else 502
+
+        logger.info('Password reset complete via recovery link for %s', user.get('email', 'unknown'))
+        return jsonify({'success': True, 'message': 'Password updated successfully.'})
+    except Exception as exc:
+        logger.exception('Password reset via recovery link failed: %s', exc)
+        return jsonify({'success': False, 'message': 'Could not update password right now. Please try again.'}), 502
+
+
 @app.route('/login')
 def login_page():
     """Serve login/signup page"""
@@ -3548,6 +3599,14 @@ def login_page():
 @app.route('/auth/callback')
 def auth_callback_page():
     """Supabase email verification callback handler page."""
+    supabase_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
+    anon_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
+    return render_template('auth_callback.html', supabase_url=supabase_url, supabase_anon_key=anon_key)
+
+
+@app.route('/auth/reset-callback')
+def auth_reset_callback_page():
+    """Supabase password recovery callback handler page."""
     supabase_url = (os.getenv('SUPABASE_URL') or '').strip().rstrip('/')
     anon_key = (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY') or '').strip()
     return render_template('auth_callback.html', supabase_url=supabase_url, supabase_anon_key=anon_key)

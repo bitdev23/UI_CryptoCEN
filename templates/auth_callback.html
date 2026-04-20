@@ -110,6 +110,7 @@
             // Supabase OAuth returns: #access_token=xxx&refresh_token=yyy&expires_in=3600&token_type=Bearer
             var accessToken  = hashParams.get('access_token')  || '';
             var refreshToken = hashParams.get('refresh_token') || '';
+            var flowType = hashParams.get('type') || queryParams.get('type') || '';
 
             // Fallback: check query params in case Supabase uses ?param style
             if (!accessToken) {
@@ -121,6 +122,22 @@
                 clearAuthStorage();
                 showError('Sign-in could not be completed',
                     'Session tokens not received from Supabase. Please try Google sign-in again.');
+                return;
+            }
+
+            // ── 2b. Password recovery flow: redirect to reset screen instead of dashboard ─
+            if (flowType === 'recovery') {
+                titleEl.className = 'ok';
+                titleEl.textContent = 'Reset link verified';
+                messageEl.textContent = 'Redirecting you to set a new password...';
+
+                var next = '/login?reset=recovery#access_token=' + encodeURIComponent(accessToken);
+                if (refreshToken) next += '&refresh_token=' + encodeURIComponent(refreshToken);
+                next += '&type=recovery';
+
+                setTimeout(function () {
+                    window.location.replace(next);
+                }, 250);
                 return;
             }
 

@@ -1283,6 +1283,29 @@
                 if (i === 1) resetStep(1);
             }
 
+            function initRecoveryFlowFromUrl() {
+                var queryParams = new URLSearchParams(window.location.search || '');
+                var hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+                var resetMode = (queryParams.get('reset') || '').toLowerCase();
+                var flowType = (hashParams.get('type') || queryParams.get('type') || '').toLowerCase();
+                var accessToken = hashParams.get('access_token') || queryParams.get('access_token') || '';
+
+                if (resetMode !== 'recovery' && flowType !== 'recovery') return;
+                if (!accessToken) return;
+
+                _tokenStore.setItem('recovery_access_token', accessToken);
+                var refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token') || '';
+                if (refreshToken) _tokenStore.setItem('recovery_refresh_token', refreshToken);
+
+                showScreen(1);
+                resetStep(3);
+                _rpShowOk('rp3', 'Recovery link verified. Please set your new password.');
+
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, '/login?reset=recovery');
+                }
+            }
+
             function s0Panel(p) {
                 ['si', 'su'].forEach(x => {
                     document.getElementById('p0-' + x).classList.toggle('on', x === p);
@@ -1804,18 +1827,28 @@
                 const digits = [...document.querySelectorAll('#otp-row .otp-inp')].map(i => i.value).join('');
                 const pw1 = document.getElementById('npw1').value;
                 const pw2 = document.getElementById('npw2').value;
+                const recoveryToken = _tokenStore.getItem('recovery_access_token') || '';
                 if (pw1.length < 8) { _rpShowErr('rp3', 'Password must be at least 8 characters.'); return; }
                 if (pw1 !== pw2) { _rpShowErr('rp3', 'Passwords do not match.'); return; }
                 _rpHideErr('rp3');
                 _rpSetLoading('rp3-btn', true, 'Reset password');
                 try {
-                    const res = await fetch('/api/auth/reset-password', {
+                    const endpoint = recoveryToken ? '/api/auth/reset-password-link' : '/api/auth/reset-password';
+                    const payload = recoveryToken
+                        ? {access_token: recoveryToken, newPassword: pw1}
+                        : {email, otp: digits, newPassword: pw1};
+
+                    const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({email, otp: digits, newPassword: pw1}),
+                        body: JSON.stringify(payload),
                     });
                     const d = await res.json();
                     if (d.success) {
+                        if (recoveryToken) {
+                            _tokenStore.removeItem('recovery_access_token');
+                            _tokenStore.removeItem('recovery_refresh_token');
+                        }
                         resetStep(4);
                     } else {
                         _rpShowErr('rp3', d.message || 'Password reset failed. Please try again.');
@@ -1826,6 +1859,8 @@
                     _rpSetLoading('rp3-btn', false, 'Reset password');
                 }
             }
+
+            initRecoveryFlowFromUrl();
 
             function startLoginAnim() {
                 const items = [
