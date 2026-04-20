@@ -1696,6 +1696,16 @@
                 const el = document.getElementById(stepId + '-err');
                 if (!el) return;
                 el.textContent = '✗ ' + msg;
+                el.style.background = '#fee2e2';
+                el.style.color = '#dc2626';
+                el.style.display = 'block';
+            }
+            function _rpShowOk(stepId, msg) {
+                const el = document.getElementById(stepId + '-err');
+                if (!el) return;
+                el.textContent = '✓ ' + msg;
+                el.style.background = '#dcfce7';
+                el.style.color = '#166534';
                 el.style.display = 'block';
             }
             function _rpHideErr(stepId) {
@@ -1726,7 +1736,11 @@
                     });
                     const d = await res.json();
                     if (d.success) {
-                        resetStep(2);
+                        if (d.reset_mode === 'link') {
+                            _rpShowOk('rp1', d.message || 'Reset email sent. Please check your inbox and use the link.');
+                        } else {
+                            resetStep(2);
+                        }
                     } else {
                         _rpShowErr('rp1', d.message || 'Failed to send code. Please try again.');
                     }
@@ -1743,11 +1757,15 @@
                 const email = (document.getElementById('reset-email').value || '').trim();
                 if (!email) return;
                 try {
-                    await fetch('/api/auth/forgot', {
+                    const res = await fetch('/api/auth/forgot', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({email}),
                     });
+                    const d = await res.json();
+                    if (d && d.success && d.reset_mode === 'link') {
+                        _rpShowErr('rp2', 'A reset link was sent to your email. Please use that link to continue.');
+                    }
                 } catch (_) {}
             }
 
