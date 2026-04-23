@@ -71,6 +71,105 @@
         body.mobile-nav-open {
             overflow: hidden;
         }
+        .logout-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10050;
+            padding: 20px;
+        }
+        .logout-modal-backdrop.open {
+            display: flex;
+        }
+        .logout-modal {
+            width: min(100%, 460px);
+            background: #ffffff;
+            border: 1px solid rgba(102, 126, 234, 0.16);
+            border-radius: 18px;
+            box-shadow: 0 22px 50px rgba(15, 23, 42, 0.26);
+            overflow: hidden;
+            transform: translateY(8px) scale(0.98);
+            opacity: 0;
+            transition: transform 180ms ease, opacity 180ms ease;
+        }
+        .logout-modal-backdrop.open .logout-modal {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        .logout-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 20px 12px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12));
+            border-bottom: 1px solid rgba(102, 126, 234, 0.18);
+        }
+        .logout-modal-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            background: rgba(102, 126, 234, 0.14);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            flex-shrink: 0;
+        }
+        .logout-modal-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1f2a44;
+        }
+        .logout-modal-body {
+            padding: 14px 20px 6px;
+            color: #4b5563;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+        .logout-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 20px 20px;
+        }
+        .logout-modal-btn {
+            border: 1px solid transparent;
+            border-radius: 10px;
+            height: 40px;
+            padding: 0 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease;
+            font-family: inherit;
+        }
+        .logout-modal-btn.secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }
+        .logout-modal-btn.secondary:hover {
+            background: #e5e7eb;
+        }
+        .logout-modal-btn.danger {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #ffffff;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.26);
+        }
+        .logout-modal-btn.danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.34);
+        }
+        .logout-modal-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
         .app-container {
             height: 100vh;
             display: grid;
@@ -18710,6 +18809,22 @@
             </div>
         </header>
 
+        <div id="logout-modal-backdrop" class="logout-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title" onclick="handleLogoutBackdropClick(event)">
+            <div class="logout-modal">
+                <div class="logout-modal-header">
+                    <div class="logout-modal-icon" aria-hidden="true"><i class="fas fa-right-from-bracket"></i></div>
+                    <h3 id="logout-modal-title" class="logout-modal-title">Sign out of Velank AI?</h3>
+                </div>
+                <div class="logout-modal-body">
+                    You will be signed out from this browser session and redirected to the login screen.
+                </div>
+                <div class="logout-modal-actions">
+                    <button id="logout-cancel-btn" class="logout-modal-btn secondary" type="button" onclick="closeLogoutModal()">Cancel</button>
+                    <button class="logout-modal-btn danger" type="button" onclick="confirmLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MAIN PANEL -->
         <main class="main-content">
             <!-- DASHBOARD TAB -->
@@ -29729,16 +29844,48 @@
     }
 
     function logout() {
-        if (confirm('Are you sure you want to logout?')) {
-            _tokenStore.removeItem('access_token');
-            _tokenStore.removeItem('refresh_token');
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('user_email');
-            localStorage.removeItem('first_name');
-            localStorage.removeItem('last_name');
-            localStorage.removeItem('country');
-            window.location.href = '/login';
+        openLogoutModal();
+    }
+
+    function openLogoutModal() {
+        const backdrop = document.getElementById('logout-modal-backdrop');
+        if (!backdrop) return;
+        backdrop.classList.add('open');
+        document.body.classList.add('mobile-nav-open');
+        const cancelBtn = document.getElementById('logout-cancel-btn');
+        if (cancelBtn) cancelBtn.focus();
+    }
+
+    function closeLogoutModal() {
+        const backdrop = document.getElementById('logout-modal-backdrop');
+        if (!backdrop) return;
+        backdrop.classList.remove('open');
+        document.body.classList.remove('mobile-nav-open');
+    }
+
+    function handleLogoutBackdropClick(event) {
+        if (event.target && event.target.id === 'logout-modal-backdrop') {
+            closeLogoutModal();
         }
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        const backdrop = document.getElementById('logout-modal-backdrop');
+        if (backdrop && backdrop.classList.contains('open')) {
+            closeLogoutModal();
+        }
+    });
+
+    function confirmLogout() {
+        _tokenStore.removeItem('access_token');
+        _tokenStore.removeItem('refresh_token');
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_email');
+        localStorage.removeItem('first_name');
+        localStorage.removeItem('last_name');
+        localStorage.removeItem('country');
+        window.location.href = '/login';
     }
 
     function updateHeaderDateBadge() {
