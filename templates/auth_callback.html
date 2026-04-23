@@ -7,63 +7,294 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
     <!-- No SDK needed: implicit flow delivers tokens directly in URL hash -->
     <style>
+        :root {
+            --bg-a: #eef2ff;
+            --bg-b: #e5e7eb;
+            --ink: #111827;
+            --muted: #4b5563;
+            --brand: #7c3aed;
+            --brand-2: #4f46e5;
+            --ok: #166534;
+            --ok-soft: #dcfce7;
+            --err: #991b1b;
+            --err-soft: #fee2e2;
+            --card: rgba(255, 255, 255, 0.88);
+            --card-border: rgba(255, 255, 255, 0.7);
+        }
+
+        * { box-sizing: border-box; }
+
         body {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f6f8fb;
-            color: #1f2937;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background:
+                radial-gradient(1000px 500px at 10% 0%, rgba(124, 58, 237, 0.22), transparent 65%),
+                radial-gradient(900px 450px at 100% 100%, rgba(16, 185, 129, 0.12), transparent 70%),
+                linear-gradient(160deg, var(--bg-a), var(--bg-b));
+            color: var(--ink);
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            padding: 24px;
         }
+
         .card {
-            background: white;
-            width: 92%;
-            max-width: 520px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            padding: 28px;
-            text-align: center;
+            position: relative;
+            overflow: hidden;
+            background: var(--card);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            width: min(760px, 100%);
+            border-radius: 24px;
+            box-shadow: 0 30px 80px rgba(17, 24, 39, 0.18);
+            padding: 34px 34px 28px;
         }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--brand), var(--brand-2));
+        }
+
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
         .brand-logo {
-            width: 160px;
+            width: 34px;
             height: 34px;
-            display: block;
-            margin: 0 auto 14px;
             object-fit: contain;
         }
-        h1 {
-            margin: 0 0 10px;
-            font-size: 22px;
+
+        .brand-name {
+            font-size: 31px;
+            font-weight: 900;
+            letter-spacing: 0.01em;
+            color: #111827;
+            line-height: 1;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
         }
-        p {
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            border: 1px solid #ddd6fe;
+            background: #f5f3ff;
+            color: #5b21b6;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 8px 12px;
             margin: 0;
-            color: #4b5563;
-            line-height: 1.5;
         }
-        .ok {
-            color: #166534;
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--brand);
+            box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55);
+            animation: pulse 1.8s infinite;
         }
-        .err {
-            color: #991b1b;
+
+        .title {
+            margin: 14px 0 10px;
+            font-size: clamp(28px, 4.2vw, 42px);
+            line-height: 1.08;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
         }
-        .hint {
-            margin-top: 14px;
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 23px;
+            line-height: 1.55;
+            max-width: 62ch;
+        }
+
+        .progress-wrap {
+            margin-top: 22px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            width: 35%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--brand), var(--brand-2));
+            transition: width 280ms ease;
+        }
+
+        .steps {
+            margin: 14px 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .step {
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: rgba(255, 255, 255, 0.78);
+            padding: 10px 12px;
             font-size: 13px;
             color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+
+        .step strong {
+            color: #1f2937;
+            font-weight: 700;
+        }
+
+        .step-icon {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .step.on .step-icon {
+            background: var(--brand);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.16);
+        }
+
+        .hint {
+            margin-top: 18px;
+            font-size: 17px;
+            color: #64748b;
+        }
+
         a {
             color: #2563eb;
+            font-weight: 600;
             text-decoration: none;
+        }
+
+        body.state-success .status-pill {
+            border-color: #86efac;
+            background: var(--ok-soft);
+            color: var(--ok);
+        }
+
+        body.state-success .status-dot {
+            background: #16a34a;
+            animation: none;
+            box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.18);
+        }
+
+        body.state-success .title {
+            color: var(--ok);
+        }
+
+        body.state-success .progress-fill {
+            width: 100%;
+            background: linear-gradient(90deg, #16a34a, #059669);
+        }
+
+        body.state-success .step {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+        }
+
+        body.state-success .step .step-icon {
+            background: #16a34a;
+            box-shadow: none;
+        }
+
+        body.state-error .status-pill {
+            border-color: #fecaca;
+            background: var(--err-soft);
+            color: var(--err);
+        }
+
+        body.state-error .status-dot {
+            background: #dc2626;
+            animation: none;
+            box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+        }
+
+        body.state-error .title {
+            color: var(--err);
+        }
+
+        body.state-error .progress-fill {
+            width: 100%;
+            background: linear-gradient(90deg, #dc2626, #b91c1c);
+        }
+
+        body.state-error .step {
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+
+        body.state-error .step .step-icon {
+            background: #dc2626;
+            box-shadow: none;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55); }
+            70% { box-shadow: 0 0 0 10px rgba(124, 58, 237, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                border-radius: 18px;
+                padding: 24px 18px 20px;
+            }
+            .steps {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <img class="brand-logo" src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank logo">
-        <h1 id="title">Verifying your account...</h1>
-        <p id="message">Please wait while we finish your sign-in.</p>
+        <div class="brand-row">
+            <img class="brand-logo" src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank logo">
+            <div class="brand-name">Velank AI</div>
+        </div>
+
+        <div class="status-pill"><span class="status-dot"></span><span id="stageBadge">Securing session</span></div>
+        <h1 id="title" class="title">Completing sign-in...</h1>
+        <p id="message" class="subtitle">Validating your session and preparing your workspace.</p>
+
+        <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <ul class="steps">
+                <li class="step on" id="st1"><span class="step-icon"></span><strong>Session verified</strong></li>
+                <li class="step" id="st2"><span class="step-icon"></span><strong>Redirecting to dashboard</strong></li>
+            </ul>
+        </div>
+
         <p class="hint">If this takes too long, <a href="/login">go to login</a>.</p>
     </div>
 
@@ -71,12 +302,27 @@
         (function () {
             var titleEl = document.getElementById('title');
             var messageEl = document.getElementById('message');
+            var stageBadgeEl = document.getElementById('stageBadge');
+            var progressFillEl = document.getElementById('progressFill');
+            var step1El = document.getElementById('st1');
+            var step2El = document.getElementById('st2');
             var _tokenStore = sessionStorage;   // tokens in sessionStorage (XSS-safe)
 
+            function setStage(mode, title, msg, badge, progress) {
+                document.body.classList.remove('state-success', 'state-error');
+                if (mode === 'success') document.body.classList.add('state-success');
+                if (mode === 'error') document.body.classList.add('state-error');
+
+                titleEl.textContent = title || '';
+                messageEl.textContent = msg || '';
+                if (stageBadgeEl) stageBadgeEl.textContent = badge || '';
+                if (progressFillEl && typeof progress === 'number') progressFillEl.style.width = Math.max(0, Math.min(100, progress)) + '%';
+                if (step1El) step1El.classList.add('on');
+                if (step2El) step2El.classList.toggle('on', mode === 'success');
+            }
+
             function showError(title, msg) {
-                titleEl.className = 'err';
-                titleEl.textContent = title || 'Sign-in could not be completed';
-                messageEl.textContent = msg || 'Please try again.';
+                setStage('error', title || 'Sign-in could not be completed', msg || 'Please try again.', 'Action required', 100);
             }
 
             function clearAuthStorage() {
@@ -127,9 +373,7 @@
 
             // ── 2b. Password recovery flow: redirect to reset screen instead of dashboard ─
             if (flowType === 'recovery') {
-                titleEl.className = 'ok';
-                titleEl.textContent = 'Reset link verified';
-                messageEl.textContent = 'Redirecting you to set a new password...';
+                setStage('success', 'Reset link verified', 'Redirecting you to set a new password...', 'Recovery validated', 100);
 
                 var next = '/login?reset=recovery#access_token=' + encodeURIComponent(accessToken);
                 if (refreshToken) next += '&refresh_token=' + encodeURIComponent(refreshToken);
@@ -142,9 +386,7 @@
             }
 
             // ── 3. Verify the token with our backend ─────────────────────────────
-            titleEl.className = 'ok';
-            titleEl.textContent = 'Completing sign-in...';
-            messageEl.textContent = 'Validating your session. Please wait.';
+            setStage('loading', 'Completing sign-in...', 'Validating your session. Please wait.', 'Securing session', 56);
 
             fetch('/api/auth/verify-token', {
                 method: 'POST',
@@ -196,9 +438,7 @@
                         })
                         .catch(function () {})
                         .finally(function () {
-                            titleEl.className = 'ok';
-                            titleEl.textContent = 'Sign-in successful';
-                            messageEl.textContent = 'Redirecting to dashboard...';
+                            setStage('success', 'Sign-in successful', 'Redirecting to dashboard...', 'Ready', 100);
                             setTimeout(function () { window.location.replace('/'); }, 400);
                         });
                     };
@@ -215,9 +455,7 @@
                     if (refreshToken) _tokenStore.setItem('refresh_token', refreshToken);
                     localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
 
-                    titleEl.className = 'ok';
-                    titleEl.textContent = 'Sign-in successful';
-                    messageEl.textContent = 'Redirecting to dashboard...';
+                    setStage('success', 'Sign-in successful', 'Redirecting to dashboard...', 'Ready', 100);
                     setTimeout(function () { window.location.replace('/'); }, 400);
                 }
             })
@@ -229,9 +467,7 @@
                     if (refreshToken) _tokenStore.setItem('refresh_token', refreshToken);
                     localStorage.setItem('auth_just_signed_in_at', String(Date.now()));
                     
-                    titleEl.className = 'ok';
-                    titleEl.textContent = 'Sign-in successful';
-                    messageEl.textContent = 'Redirecting to dashboard...';
+                    setStage('success', 'Sign-in successful', 'Redirecting to dashboard...', 'Ready', 100);
                     setTimeout(function () { window.location.replace('/'); }, 400);
                 } else {
                     clearAuthStorage();
