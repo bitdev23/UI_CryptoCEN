@@ -245,6 +245,13 @@ def set_security_headers(response):
             "frame-src 'self' https://checkout.razorpay.com; "
             "connect-src 'self' https://*.supabase.co https://ipapi.co https://api.razorpay.com https://checkout.razorpay.com;"
         )
+
+    # Auth screens must not be cached, otherwise users can get stale JS flows
+    # after deploys (especially behind CDN/proxy layers).
+    if request.path in {'/login', '/auth/callback', '/auth/reset-callback'}:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     return response
 
 
