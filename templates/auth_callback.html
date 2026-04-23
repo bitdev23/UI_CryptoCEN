@@ -47,7 +47,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 24px;
+            padding: 20px;
         }
 
         .card {
@@ -57,10 +57,12 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid var(--card-border);
-            width: min(760px, 100%);
-            border-radius: 24px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 22px;
             box-shadow: 0 30px 80px rgba(17, 24, 39, 0.18);
-            padding: 34px 34px 28px;
+            text-align: center;
+            padding: 38px 34px 30px;
         }
 
         .card::before {
@@ -75,19 +77,20 @@
         .brand-row {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .brand-logo {
-            width: 34px;
-            height: 34px;
+            width: 28px;
+            height: 28px;
             object-fit: contain;
         }
 
         .brand-name {
-            font-size: 31px;
-            font-weight: 900;
+            font-size: 32px;
+            font-weight: 800;
             letter-spacing: 0.01em;
             color: #1f2a44;
             line-height: 1;
@@ -102,11 +105,11 @@
             border: 1px solid #ddd6fe;
             background: #f5f3ff;
             color: #5b21b6;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            padding: 8px 12px;
+            padding: 7px 11px;
             margin: 0;
         }
 
@@ -120,21 +123,21 @@
         }
 
         .title {
-            margin: 14px 0 10px;
-            font-size: clamp(28px, 4.2vw, 42px);
-            line-height: 1.08;
-            font-weight: 900;
-            letter-spacing: -0.02em;
-            color: #0f172a;
+            margin: 14px 0 8px;
+            font-size: 20px;
+            line-height: 1.22;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            color: var(--ink);
             font-family: 'Syne', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
         }
 
         .subtitle {
             margin: 0;
             color: var(--muted);
-            font-size: 23px;
-            line-height: 1.55;
-            max-width: 62ch;
+            font-size: 13.5px;
+            line-height: 1.6;
+            max-width: 100%;
             font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
         }
 
@@ -144,9 +147,9 @@
 
         .progress-track {
             width: 100%;
-            height: 10px;
-            border-radius: 999px;
-            background: #e5e7eb;
+            height: 4px;
+            border-radius: 4px;
+            background: #f0eef8;
             overflow: hidden;
         }
 
@@ -162,9 +165,10 @@
             margin: 14px 0 0;
             padding: 0;
             list-style: none;
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 10px;
+            text-align: left;
         }
 
         .step {
@@ -172,7 +176,7 @@
             border: 1px solid #e5e7eb;
             background: rgba(255, 255, 255, 0.78);
             padding: 10px 12px;
-            font-size: 13px;
+            font-size: 12.8px;
             color: #6b7280;
             display: flex;
             align-items: center;
@@ -198,9 +202,9 @@
         }
 
         .hint {
-            margin-top: 18px;
-            font-size: 17px;
-            color: #64748b;
+            margin-top: 14px;
+            font-size: 12.5px;
+            color: var(--muted);
             font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
         }
 
@@ -281,10 +285,7 @@
         @media (max-width: 640px) {
             .card {
                 border-radius: 18px;
-                padding: 24px 18px 20px;
-            }
-            .steps {
-                grid-template-columns: 1fr;
+                padding: 30px 18px 20px;
             }
         }
     </style>
@@ -399,7 +400,7 @@
             }
 
             // ── 3. Verify the token with our backend ─────────────────────────────
-            setStage('loading', 'Completing sign-in...', 'Validating your session. Please wait.', 'Securing session', 56);
+            setStage('loading', 'Signing you in...', 'Validating your session. Please wait.', 'Securing session', 56);
 
             fetch('/api/auth/verify-token', {
                 method: 'POST',
