@@ -3979,6 +3979,44 @@ def billing_create_order():
         return _safe_api_error('An unexpected error occurred', e)
 
 
+@app.route('/api/billing/cancel', methods=['POST'])
+@require_auth
+def billing_cancel():
+    """
+    Cancel subscription at end of current billing period.
+    User keeps their paid plan until period_end, then drops to free.
+    Does NOT immediately downgrade.
+    """
+    try:
+        user_id = get_current_user_id()
+        if not auth_supabase or not is_valid_uuid(user_id):
+            return jsonify({'success': False, 'message': 'Invalid session'}), 401
+
+        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
+        sub = rows.data[0] if rows.data else None
+
+        if not sub or not _is_subscription_active(sub):
+            return jsonify({'success': False, 'message': 'No active subscription to cancel'}), 400
+
+        period_end = sub.get('current_period_end', '')
+        now = datetime.utcnow()
+
+        auth_supabase.table('subscriptions').update({
+            'cancel_at_period_end': True,
+            'updated_at': now.isoformat() + 'Z'
+        }).eq('user_id', user_id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': f'Subscription will be cancelled at end of billing period.',
+            'cancel_at_period_end': True,
+            'current_period_end': period_end
+        })
+    except Exception as e:
+        logger.exception("Billing cancel failed")
+        return _safe_api_error('An unexpected error occurred', e)
+
+
 @app.route('/api/billing/upgrade-plan', methods=['POST'])
 @require_auth
 def billing_upgrade_plan():

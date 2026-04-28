@@ -26658,6 +26658,31 @@
     let _upgOriginalAmount = null;  // base amount for the selected plan
 
     function selectUpgradePlan(planCode) {
+        const currentPlan = String(latestBillingSnapshot?.effective_plan || 'free');
+
+        // If paid user clicks "Free Plan" → offer cancellation at period end, not checkout
+        if (planCode === 'free' && currentPlan !== 'free') {
+            closeUpgradeModal();
+            const periodEnd = latestBillingSnapshot?.subscription?.current_period_end;
+            const endDate = periodEnd
+                ? new Date(periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                : 'end of billing period';
+            if (confirm(`Cancel subscription?\n\nYou'll keep ${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan access until ${endDate}, then move to the Free plan.\n\nConfirm cancellation?`)) {
+                authFetch('/api/billing/cancel', { method: 'POST', headers: getAuthHeaders() })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('info', `Subscription cancelled. You'll have access until ${endDate}.`, 'fas fa-circle-info');
+                            refreshBillingStatus(false);
+                        } else {
+                            showToast('error', data.message || 'Could not cancel subscription', 'fas fa-exclamation-circle');
+                        }
+                    })
+                    .catch(() => showToast('error', 'Could not cancel subscription', 'fas fa-exclamation-circle'));
+            }
+            return;
+        }
+
         // Highlight selected card
         document.querySelectorAll('.upg-plan-card').forEach(c => c.classList.remove('is-selected'));
         const card = document.getElementById(`upg-card-${planCode}`);
