@@ -246,6 +246,41 @@ def send_post_published(
     _send_async(to_email, subject, html)
 
 
+def send_subscription_expiry_reminder(
+    to_email: str,
+    display_name: Optional[str] = None,
+    plan: str = 'starter',
+    days_remaining: int = 3,
+    renewal_url: str = '',
+) -> None:
+    """Notify user that their paid plan is close to expiry (manual renewal flow)."""
+    name = display_name or 'there'
+    safe_days = max(0, int(days_remaining or 0))
+    plan_name = (plan or 'starter').replace('_', ' ').title()
+    link = renewal_url or f"{_APP_URL}#/settings?tab=billing"
+
+    if safe_days <= 0:
+        subject = f'Your {plan_name} plan has expired'
+        body_line = 'Your paid plan has expired. Renew now to continue with paid limits and features.'
+    elif safe_days == 1:
+        subject = f'Your {plan_name} plan expires tomorrow'
+        body_line = 'Your paid plan expires in 1 day. Renew now to avoid interruption.'
+    else:
+        subject = f'Your {plan_name} plan expires in {safe_days} days'
+        body_line = f'Your paid plan expires in {safe_days} days. Renew early to avoid interruption.'
+
+    html = _wrap_html(f"""
+<div class=\"header\">Plan expiry reminder, {name}</div>
+<div class=\"body-text\">
+  <p>{body_line}</p>
+  <p><strong>Current plan:</strong> {plan_name}</p>
+  <p>This account uses one-time payments (no auto-debit). Renewal is manual.</p>
+  <a class=\"cta-btn\" href=\"{link}\">Renew / Manage Plan →</a>
+</div>
+""")
+    _send_async(to_email, subject, html)
+
+
 def send_otp_email(to_email: str, otp_code: str) -> None:
     """Send 6-digit OTP code for password reset (non-blocking)."""
     logger.info('[OTP_EMAIL] Queuing OTP email to %s', to_email)

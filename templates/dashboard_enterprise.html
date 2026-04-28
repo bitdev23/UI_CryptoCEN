@@ -26778,11 +26778,21 @@
     });
 
     function showInvoiceInfo() {
-        showToast('info', 'Invoice download will be enabled in the next update.', 'fas fa-circle-info');
+        const plan = String(latestBillingSnapshot?.effective_plan || 'free');
+        if (plan === 'free') {
+            showToast('info', 'No paid invoice yet. Your account is currently on Free plan.', 'fas fa-circle-info');
+            return;
+        }
+        showToast('info', 'Invoices are not generated in-app yet. For now, use your Razorpay payment receipt / bank statement. Need GST invoice? Contact support.', 'fas fa-circle-info');
     }
 
     function showPaymentUpdateInfo() {
-        showToast('info', 'Payment method updates are handled inside Razorpay checkout for now.', 'fas fa-circle-info');
+        const plan = String(latestBillingSnapshot?.effective_plan || 'free');
+        if (plan === 'free') {
+            openUpgradePlanFlow();
+            return;
+        }
+        showToast('info', 'This account uses one-time payments (no auto-debit), so there is no saved card to update. Renew manually from Upgrade Plan when needed.', 'fas fa-circle-info');
     }
 
     function syncSettingsPanelsFromConfig() {

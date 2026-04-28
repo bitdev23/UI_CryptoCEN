@@ -57,7 +57,7 @@ _load_project_env()
 from ai_provider import AIProvider
 from config import DEFAULT_PROFILE, POST_FORMATS
 from prompt_builder import PromptBuilder as _PromptBuilder
-from notifications import send_welcome_email as _send_welcome_email, send_quota_warning as _send_quota_warning, send_post_published as _send_post_published, send_otp_email_sync as _send_otp_email_sync
+from notifications import send_welcome_email as _send_welcome_email, send_quota_warning as _send_quota_warning, send_post_published as _send_post_published, send_otp_email_sync as _send_otp_email_sync, send_subscription_expiry_reminder as _send_subscription_expiry_reminder
 from linkedin_poster import LinkedInPoster
 from auth import require_auth, signup_user, login_user, logout_user, verify_token, refresh_access_token, request_password_reset, auth_healthcheck, supabase as auth_supabase
 from database.db_helper import get_db as _get_db_helper
@@ -2745,6 +2745,61 @@ def _get_effective_plan(user_id: str) -> str:
     return 'free'
 
 
+def _maybe_send_subscription_expiry_reminder(user_id: str, subscription: dict, plan: str, user_email: str = '') -> None:
+    """Best-effort reminder email for manual-renewal plans (7d, 3d, 1d, 0d)."""
+    try:
+        if not subscription or plan == 'free':
+            return
+        if not _is_subscription_active(subscription):
+            return
+
+        period_end = _parse_iso_utc(subscription.get('current_period_end'))
+        if not period_end:
+            return
+
+        now = datetime.utcnow()
+        seconds_left = (period_end - now).total_seconds()
+        if seconds_left < 0:
+            days_remaining = 0
+        else:
+            days_remaining = int(seconds_left // 86400)
+
+        if days_remaining not in {7, 3, 1, 0}:
+            return
+
+        email = str(user_email or '').strip()
+        if not email:
+            blob = _read_feature_blob_for_user(user_id)
+            email = str((blob.get('user_config') or {}).get('email') or '').strip()
+        if not email:
+            return
+
+        blob = _read_feature_blob_for_user(user_id)
+        reminders = blob.get('billing_reminders') if isinstance(blob.get('billing_reminders'), dict) else {}
+        today_key = now.date().isoformat()
+        last_sent_date = str(reminders.get('expiry_last_sent_date') or '').strip()
+        last_sent_bucket = reminders.get('expiry_last_sent_days')
+
+        # Prevent duplicate sends from repeated dashboard polls on same day and same bucket.
+        if last_sent_date == today_key and int(last_sent_bucket or -1) == int(days_remaining):
+            return
+
+        _send_subscription_expiry_reminder(
+            email,
+            plan=plan,
+            days_remaining=days_remaining,
+            renewal_url=(os.getenv('APP_BASE_URL') or 'https://app.velank.io').rstrip('/') + '/#settings?tab=billing',
+        )
+
+        reminders['expiry_last_sent_date'] = today_key
+        reminders['expiry_last_sent_days'] = int(days_remaining)
+        blob['billing_reminders'] = reminders
+        _write_feature_blob_for_user(user_id, blob)
+    except Exception:
+        # Reminders are best-effort and should never break billing APIs.
+        pass
+
+
 def _get_monthly_usage_row(user_id: str, month_start: date = None) -> dict:
     month_key = (month_start or _month_start_date_utc()).isoformat()
     if not auth_supabase or not is_valid_uuid(user_id):
@@ -3882,6 +3937,9 @@ def billing_status():
     limits = _get_plan_limits(effective_plan)
     usage_row = _get_monthly_usage_row(user_id)
     scheduled_count = _get_user_scheduled_count(user_id)
+
+    # Best-effort reminder: manual renewal warning near plan expiry.
+    _maybe_send_subscription_expiry_reminder(user_id, subscription, effective_plan, getattr(g, 'user_email', ''))
 
     return jsonify({
         'success': True,
