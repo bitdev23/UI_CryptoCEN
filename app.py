@@ -1974,7 +1974,7 @@ def _run_subscription_expiry_reminder_batch():
                 continue
 
             blob = _read_feature_blob_for_user(user_id)
-            email = str((blob.get('user_config') or {}).get('email') or '').strip()
+            email = _resolve_notification_email(user_id, str((blob.get('user_config') or {}).get('email') or '').strip())
             if not email:
                 continue
 
@@ -2828,6 +2828,50 @@ def _get_effective_plan(user_id: str) -> str:
     return 'free'
 
 
+def _resolve_notification_email(user_id: str, preferred_email: str = '') -> str:
+    """Resolve user's email for notifications with fallback to Supabase Auth profile."""
+    email = str(preferred_email or '').strip()
+    if email:
+        return email
+
+    # Primary: user_features.user_config.email
+    blob = _read_feature_blob_for_user(user_id)
+    cfg = blob.get('user_config') if isinstance(blob.get('user_config'), dict) else {}
+    email = str((cfg or {}).get('email') or '').strip()
+    if email:
+        return email
+
+    # Fallback: Supabase Auth user email via admin API
+    try:
+        if auth_supabase and is_valid_uuid(user_id):
+            resp = auth_supabase.auth.admin.get_user_by_id(user_id)
+            candidate = ''
+
+            if isinstance(resp, dict):
+                user_obj = resp.get('user') or resp.get('data') or {}
+                if isinstance(user_obj, dict):
+                    candidate = str(user_obj.get('email') or '').strip()
+                else:
+                    candidate = str(getattr(user_obj, 'email', '') or '').strip()
+            else:
+                user_obj = getattr(resp, 'user', None) or getattr(resp, 'data', None)
+                if isinstance(user_obj, dict):
+                    candidate = str(user_obj.get('email') or '').strip()
+                else:
+                    candidate = str(getattr(user_obj, 'email', '') or '').strip()
+
+            if candidate:
+                # Cache recovered email in user_features for future reads.
+                cfg['email'] = candidate
+                blob['user_config'] = cfg
+                _write_feature_blob_for_user(user_id, blob)
+                return candidate
+    except Exception:
+        pass
+
+    return ''
+
+
 def _maybe_send_subscription_expiry_reminder(user_id: str, subscription: dict, plan: str, user_email: str = '') -> None:
     """Best-effort reminder email for manual-renewal plans (7d, 3d, 1d, 0d)."""
     try:
@@ -2850,10 +2894,7 @@ def _maybe_send_subscription_expiry_reminder(user_id: str, subscription: dict, p
         if days_remaining not in {7, 3, 1, 0}:
             return
 
-        email = str(user_email or '').strip()
-        if not email:
-            blob = _read_feature_blob_for_user(user_id)
-            email = str((blob.get('user_config') or {}).get('email') or '').strip()
+        email = _resolve_notification_email(user_id, str(user_email or '').strip())
         if not email:
             return
 
