@@ -2248,7 +2248,15 @@ def _plan_checkout_price(plan: str, region: str = 'IN') -> tuple:
 def _get_plan_limits(plan: str) -> dict:
     normalized = _normalize_subscription_plan(plan)
     key = normalized[0] if normalized else 'free'
-    return PLAN_LIMITS.get(key, PLAN_LIMITS['free'])
+    # Try canonical key first (e.g. 'starter', 'creator')
+    if key in PLAN_LIMITS:
+        return PLAN_LIMITS[key]
+    # Fallback: try legacy keys that may exist in older plan_limits.json on server
+    legacy_map = {'starter': '1_month', 'creator': '3_month', 'pro': '12_month'}
+    legacy_key = legacy_map.get(key)
+    if legacy_key and legacy_key in PLAN_LIMITS:
+        return PLAN_LIMITS[legacy_key]
+    return PLAN_LIMITS.get('free', {})
 
 
 def _plan_limit_int(limits: dict, key: str, default_value: int) -> int:

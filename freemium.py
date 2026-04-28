@@ -45,29 +45,61 @@ def get_default_plan_limits() -> dict:
     """Return default plan limits."""
     return {
         'free': {
-            'posts_generated': 3,
+            'posts_generated': 2,
             'scheduled_posts': 0,
-            'kb_documents': 1,
+            'kb_documents': 9999,
             'kb_storage_mb': 5,
+            'style_clone': False,
+            'repurpose': False,
+            'best_time': False,
         },
+        'starter': {
+            'posts_generated': 30,
+            'scheduled_posts': 10,
+            'kb_documents': 9999,
+            'kb_storage_mb': 15,
+            'style_clone': True,
+            'repurpose': True,
+            'best_time': False,
+        },
+        # Legacy alias kept for backward compat with old plan_limits.json on servers
         '1_month': {
-            'posts_generated': 100,
-            'scheduled_posts': 30,
-            'kb_documents': 100,
-            'kb_storage_mb': 500,
+            'posts_generated': 30,
+            'scheduled_posts': 10,
+            'kb_documents': 9999,
+            'kb_storage_mb': 15,
+            'style_clone': True,
+            'repurpose': True,
+            'best_time': False,
         },
+        'creator': {
+            'posts_generated': 120,
+            'scheduled_posts': 999,
+            'kb_documents': 9999,
+            'kb_storage_mb': 50,
+            'style_clone': True,
+            'repurpose': True,
+            'best_time': True,
+        },
+        # Legacy alias kept for backward compat
         '3_month': {
-            'posts_generated': 100,
-            'scheduled_posts': 30,
-            'kb_documents': 100,
-            'kb_storage_mb': 500,
+            'posts_generated': 120,
+            'scheduled_posts': 999,
+            'kb_documents': 9999,
+            'kb_storage_mb': 50,
+            'style_clone': True,
+            'repurpose': True,
+            'best_time': True,
         },
         '12_month': {
-            'posts_generated': 100,
-            'scheduled_posts': 30,
-            'kb_documents': 100,
-            'kb_storage_mb': 500,
-        }
+            'posts_generated': 120,
+            'scheduled_posts': 999,
+            'kb_documents': 9999,
+            'kb_storage_mb': 50,
+            'style_clone': True,
+            'repurpose': True,
+            'best_time': True,
+        },
     }
 
 
