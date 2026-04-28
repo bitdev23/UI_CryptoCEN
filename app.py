@@ -1932,6 +1932,82 @@ def _prewarm_embedding_model():
     threading.Thread(target=_warm, daemon=True, name='embedding-prewarm').start()
 
 
+def _run_subscription_expiry_reminder_batch():
+    """Daily batch: send expiry reminders independent of user login."""
+    try:
+        if not auth_supabase:
+            return
+
+        result = auth_supabase.table('subscriptions').select(
+            'user_id,plan,status,current_period_end,cancel_at_period_end'
+        ).limit(2000).execute()
+        rows = result.data or []
+        if not rows:
+            logger.info('Expiry reminder batch: no subscriptions found')
+            return
+
+        scanned = 0
+        considered = 0
+        sent = 0
+        for sub in rows:
+            scanned += 1
+            user_id = str(sub.get('user_id') or '').strip()
+            if not is_valid_uuid(user_id):
+                continue
+
+            status = str(sub.get('status') or '').strip().lower()
+            if status not in {'active', 'trialing'}:
+                continue
+
+            plan = str(sub.get('plan') or '').strip().lower()
+            if not plan or plan == 'free':
+                continue
+
+            period_end = _parse_iso_utc(sub.get('current_period_end'))
+            if not period_end:
+                continue
+
+            now = datetime.utcnow()
+            seconds_left = (period_end - now).total_seconds()
+            days_remaining = 0 if seconds_left < 0 else int(seconds_left // 86400)
+            if days_remaining not in {7, 3, 1, 0}:
+                continue
+
+            blob = _read_feature_blob_for_user(user_id)
+            email = str((blob.get('user_config') or {}).get('email') or '').strip()
+            if not email:
+                continue
+
+            reminders = blob.get('billing_reminders') if isinstance(blob.get('billing_reminders'), dict) else {}
+            today_key = now.date().isoformat()
+            last_sent_date = str(reminders.get('expiry_last_sent_date') or '').strip()
+            last_sent_bucket = reminders.get('expiry_last_sent_days')
+            if last_sent_date == today_key and int(last_sent_bucket or -1) == int(days_remaining):
+                continue
+
+            considered += 1
+            _send_subscription_expiry_reminder(
+                email,
+                plan=plan,
+                days_remaining=days_remaining,
+                renewal_url=(os.getenv('APP_BASE_URL') or 'https://app.velank.io').rstrip('/') + '/#settings?tab=billing',
+            )
+            reminders['expiry_last_sent_date'] = today_key
+            reminders['expiry_last_sent_days'] = int(days_remaining)
+            blob['billing_reminders'] = reminders
+            _write_feature_blob_for_user(user_id, blob)
+            sent += 1
+
+        logger.info(
+            'Expiry reminder batch complete: scanned=%s considered=%s sent=%s',
+            scanned,
+            considered,
+            sent,
+        )
+    except Exception as e:
+        logger.exception('Expiry reminder batch failed: %s', e)
+
+
 def start_scheduler():
     """Start the background scheduler - runs even in TEST_MODE but marks posts appropriately"""
     global _SCHEDULER_THREAD, _SCHEDULER_HEARTBEAT
@@ -1941,10 +2017,17 @@ def start_scheduler():
         config = load_config()
         tz = pytz.timezone(config['TIMEZONE'])
         schedule_time = f"{config['POST_TIME_HOUR']:02d}:{config['POST_TIME_MINUTE']:02d}"
+        reminder_batch_time = str(os.getenv('EXPIRY_REMINDER_BATCH_TIME', '09:15')).strip()
+
+        # Guard against invalid HH:MM env value.
+        if not re.match(r'^\d{2}:\d{2}$', reminder_batch_time):
+            reminder_batch_time = '09:15'
         
         # Always schedule daily jobs - TEST_MODE will be respected in the job itself
         schedule.every().day.at(schedule_time).do(scheduled_post_job)
+        schedule.every().day.at(reminder_batch_time).do(_run_subscription_expiry_reminder_batch)
         logger.info("✓ Daily scheduler started - will post daily at %s %s (TEST_MODE: %s)", schedule_time, config['TIMEZONE'], config['TEST_MODE'])
+        logger.info("✓ Expiry reminder batch scheduled daily at %s", reminder_batch_time)
         
         while True:
             _SCHEDULER_HEARTBEAT = time.time()
