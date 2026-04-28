@@ -2817,13 +2817,31 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
 
     normalized_plan, months = normalized
     now = datetime.utcnow()
-    period_end = _add_months_utc(now, months)
+    
+    # Check if this is an upgrade (user already has an active subscription)
+    is_upgrade = False
+    existing_period_end = None
+    try:
+        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
+        existing_sub = rows.data[0] if rows.data else None
+        if existing_sub and _is_subscription_active(existing_sub):
+            is_upgrade = True
+            existing_period_end = existing_sub.get('current_period_end')
+    except Exception:
+        pass
+    
+    # For upgrades, keep the existing period_end. For new subscriptions, set new period_end
+    if is_upgrade and existing_period_end:
+        period_end = existing_period_end  # Keep existing end date
+    else:
+        period_end = _add_months_utc(now, months)
+    
     payload = {
         'user_id': user_id,
         'plan': normalized_plan,
         'status': 'active',
         'current_period_start': now.isoformat() + 'Z',
-        'current_period_end': period_end.isoformat() + 'Z',
+        'current_period_end': period_end if isinstance(period_end, str) else (period_end.isoformat() + 'Z'),
         'cancel_at_period_end': False,
         'updated_at': now.isoformat() + 'Z',
         'billing_provider': 'razorpay'
@@ -2841,7 +2859,7 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
             'plan': normalized_plan,
             'status': 'active',
             'current_period_start': now.isoformat() + 'Z',
-            'current_period_end': period_end.isoformat() + 'Z',
+            'current_period_end': period_end if isinstance(period_end, str) else (period_end.isoformat() + 'Z'),
             'cancel_at_period_end': False,
             'updated_at': now.isoformat() + 'Z'
         }
@@ -2853,7 +2871,102 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
     return {
         'plan': normalized_plan,
         'current_period_start': payload['current_period_start'],
-        'current_period_end': payload['current_period_end']
+        'current_period_end': payload['current_period_end'],
+        'is_upgrade': is_upgrade
+    }
+
+
+def _calculate_proration(user_id: str, new_plan: str, region: str = 'ROW') -> dict:
+    """
+    Calculate prorated charge for plan upgrade.
+    
+    Returns: {
+        'prorated_amount': float,          # Amount user owes (or 0 if downgrade/same plan)
+        'current_plan': str,              # Current plan name
+        'new_plan': str,                  # New plan name
+        'days_remaining': int,            # Days left in current billing period
+        'current_plan_daily_rate': float, # Cost per day of current plan
+        'new_plan_daily_rate': float      # Cost per day of new plan
+    }
+    """
+    if not auth_supabase or not is_valid_uuid(user_id):
+        return {'prorated_amount': 0, 'error': 'Invalid user'}
+    
+    # Get current subscription
+    try:
+        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
+        current_sub = rows.data[0] if rows.data else None
+    except Exception:
+        return {'prorated_amount': 0, 'error': 'Could not fetch subscription'}
+    
+    if not current_sub:
+        return {'prorated_amount': 0, 'error': 'No active subscription'}
+    
+    current_plan = str(current_sub.get('plan') or 'free').lower().strip()
+    new_plan = str(new_plan or '').lower().strip()
+    
+    # Only allow upgrades, not downgrades
+    plan_order = {'free': 0, 'starter': 1, 'creator': 2, 'pro': 3}
+    current_level = plan_order.get(current_plan, 0)
+    new_level = plan_order.get(new_plan, 0)
+    
+    if new_level <= current_level:
+        return {'prorated_amount': 0, 'reason': 'Downgrade not allowed, same plan, or invalid plan'}
+    
+    # Check if subscription is actually active
+    if not _is_subscription_active(current_sub):
+        return {'prorated_amount': 0, 'error': 'Current subscription not active'}
+    
+    # Calculate days remaining in current period
+    period_end = _parse_iso_utc(current_sub.get('current_period_end'))
+    now = datetime.utcnow()
+    
+    if not period_end:
+        return {'prorated_amount': 0, 'error': 'Could not determine period end'}
+    
+    days_remaining = max(0, (period_end - now).days)
+    if days_remaining == 0:
+        # Less than 1 day remaining, charge full month for new plan
+        days_remaining = 1
+    
+    # Get prices for current and new plans (use current market prices for fairness)
+    is_india = region.upper() == 'IN'
+    
+    current_price = _plan_price_inr(current_plan) if is_india else _plan_price_usd(current_plan)
+    new_price = _plan_price_inr(new_plan) if is_india else _plan_price_usd(new_plan)
+    
+    # Handle free plan (no prior charge to prorate)
+    if current_price == 0:
+        # User upgrading from free: charge full month for new plan
+        prorated_amount = new_price
+    else:
+        # Standard proration: refund unused days of old plan, charge new plan for remaining days
+        days_in_month = 30  # Simplified: treat all months as 30 days
+        
+        current_daily_rate = current_price / days_in_month
+        new_daily_rate = new_price / days_in_month
+        
+        # Amount already paid for remaining days under old plan
+        credit = current_daily_rate * days_remaining
+        # Amount owed for remaining days under new plan
+        new_charge = new_daily_rate * days_remaining
+        # Net charge (new - credit)
+        prorated_amount = new_charge - credit
+    
+    # Round to nearest paisa/cent to avoid floating point issues
+    prorated_amount = round(prorated_amount, 2)
+    # Ensure positive (if proration results in credit, user gets free upgrade)
+    prorated_amount = max(0, prorated_amount)
+    
+    return {
+        'success': True,
+        'prorated_amount': prorated_amount,
+        'current_plan': current_plan,
+        'new_plan': new_plan,
+        'days_remaining': days_remaining,
+        'currency': 'INR' if is_india else 'USD',
+        'price_current_plan': current_price,
+        'price_new_plan': new_price
     }
 
 
@@ -3855,6 +3968,129 @@ def billing_create_order():
         })
     except Exception as e:
         logger.exception("Billing create order failed")
+        return _safe_api_error('An unexpected error occurred', e)
+
+
+@app.route('/api/billing/upgrade-plan', methods=['POST'])
+@require_auth
+def billing_upgrade_plan():
+    """
+    Upgrade current plan to a better plan with proration.
+    
+    Request: {
+        "new_plan": "creator",  # "starter" or "creator"
+        "region": "IN"          # "IN" or "ROW" (defaults to IN)
+    }
+    
+    Response: {
+        "success": true,
+        "prorated_amount": 67,
+        "currency": "INR",
+        "upgrade_type": "free_charge" | "prorated_charge" | "free_upgrade",
+        "order": { ... },  // Only if prorated_amount > 0
+        "message": "..."
+    }
+    """
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json(silent=True) or {}
+        new_plan = str(data.get('new_plan') or '').strip().lower()
+        region = str(data.get('region') or 'IN').strip().upper()
+        
+        if not new_plan or new_plan not in {'starter', 'creator', 'pro'}:
+            return jsonify({'success': False, 'message': 'Invalid plan. Use starter or creator.'}), 400
+        
+        # Calculate proration
+        proration = _calculate_proration(user_id, new_plan, region)
+        
+        if 'error' in proration:
+            return jsonify({'success': False, 'message': proration['error']}), 400
+        
+        if 'reason' in proration:
+            return jsonify({
+                'success': False,
+                'message': proration['reason'],
+                'can_upgrade': False
+            }), 400
+        
+        prorated_amount = proration['prorated_amount']
+        currency = proration['currency']
+        
+        # If prorated amount is 0 or very small, it's a free upgrade
+        if prorated_amount <= 0:
+            # Free upgrade: directly activate new plan
+            period_end_str = str(proration.get('period_end') or '')  # Keep existing end date
+            try:
+                rows = auth_supabase.table('subscriptions').select('current_period_end').eq('user_id', user_id).limit(1).execute()
+                if rows.data:
+                    period_end_str = rows.data[0].get('current_period_end', '')
+            except Exception:
+                pass
+            
+            normalized = _normalize_subscription_plan(new_plan)
+            if normalized:
+                now = datetime.utcnow()
+                payload = {
+                    'user_id': user_id,
+                    'plan': normalized[0],
+                    'status': 'active',
+                    'current_period_start': now.isoformat() + 'Z',
+                    # Keep same end date, just update plan
+                    'updated_at': now.isoformat() + 'Z',
+                    'billing_provider': 'razorpay'
+                }
+                if period_end_str:
+                    payload['current_period_end'] = period_end_str
+                
+                try:
+                    auth_supabase.table('subscriptions').upsert(payload, on_conflict='user_id').execute()
+                    auth_supabase.table('billing_events').insert({
+                        'event_type': 'plan_upgrade',
+                        'user_id': user_id,
+                        'plan': new_plan,
+                        'prorated_amount': 0,
+                        'upgrade_type': 'free_upgrade',
+                    }).execute()
+                except Exception as e:
+                    logger.warning(f"Free upgrade activation failed: {e}")
+            
+            return jsonify({
+                'success': True,
+                'prorated_amount': 0,
+                'currency': currency,
+                'upgrade_type': 'free_upgrade',
+                'message': f'Upgraded to {new_plan} at no additional cost!'
+            })
+        
+        # Prorated charge required: create Razorpay order
+        key_id, key_secret = _razorpay_keys()
+        if not key_id or not key_secret:
+            return jsonify({'success': False, 'message': 'Razorpay is not configured on server'}), 503
+        
+        # Convert prorated amount to paise/cents
+        amount_major = int(round(prorated_amount * 100))  # to paise/cents
+        
+        receipt = f"upg_{new_plan}_{user_id[:8]}_{int(time.time())}"
+        order = _create_razorpay_order(
+            amount_major=amount_major,
+            currency=currency,
+            receipt=receipt,
+            user_id=user_id,
+            plan=new_plan,
+        )
+        
+        return jsonify({
+            'success': True,
+            'prorated_amount': prorated_amount,
+            'currency': currency,
+            'upgrade_type': 'prorated_charge',
+            'order': order,
+            'razorpay_key_id': key_id,
+            'message': f'Prorated charge: {prorated_amount} {currency} for {proration["days_remaining"]} days remaining'
+        })
+        
+    except Exception as e:
+        logger.exception("Billing upgrade plan failed")
         return _safe_api_error('An unexpected error occurred', e)
 
 
