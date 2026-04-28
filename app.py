@@ -4074,9 +4074,21 @@ def billing_upgrade_plan():
         key_id, key_secret = _razorpay_keys()
         if not key_id or not key_secret:
             return jsonify({'success': False, 'message': 'Razorpay is not configured on server'}), 503
-        
-        # Convert prorated amount to paise/cents
-        amount_major = int(round(prorated_amount * 100))  # to paise/cents
+
+        # amount_major is in major currency units (₹ or $).
+        # _create_razorpay_order multiplies by 100 internally to get paise/cents.
+        # Round to nearest integer (Razorpay requires whole paise amounts).
+        amount_major = int(round(prorated_amount))
+
+        # If rounding brings it to zero, treat as free upgrade
+        if amount_major <= 0:
+            return jsonify({
+                'success': True,
+                'prorated_amount': 0,
+                'currency': currency,
+                'upgrade_type': 'free_upgrade',
+                'message': f'Upgraded to {new_plan} at no additional cost!'
+            })
         
         receipt = f"upg_{new_plan}_{user_id[:8]}_{int(time.time())}"
         order = _create_razorpay_order(
