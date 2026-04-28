@@ -3836,6 +3836,9 @@ def auth_forgot():
     """Step 1: generate a 6-digit OTP, store in Supabase, and email it."""
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
+    allow_supabase_reset_fallback = str(
+        os.getenv('PASSWORD_RESET_SUPABASE_FALLBACK', 'false')
+    ).strip().lower() in {'1', 'true', 'yes', 'on'}
     if not email or '@' not in email:
         return jsonify({'success': False, 'message': 'A valid email address is required.'}), 400
     otp = str(secrets.randbelow(10 ** 6)).zfill(6)
@@ -3850,29 +3853,35 @@ def auth_forgot():
         sent = _send_otp_email_sync(email, otp)
         if not sent:
             logger.error('[FORGOT_PASSWORD] OTP email failed to send to %s', email)
-            fallback_ok, fallback_msg = request_password_reset(email)
-            if fallback_ok:
-                logger.info('[FORGOT_PASSWORD] Supabase fallback reset email sent for %s', email)
-                return jsonify({
-                    'success': True,
-                    'message': 'Reset email sent via backup provider. Please check your inbox.',
-                    'reset_mode': 'link'
-                })
-            logger.error('[FORGOT_PASSWORD] Supabase fallback failed for %s: %s', email, fallback_msg)
+            if allow_supabase_reset_fallback:
+                fallback_ok, fallback_msg = request_password_reset(email)
+                if fallback_ok:
+                    logger.info('[FORGOT_PASSWORD] Supabase fallback reset email sent for %s', email)
+                    return jsonify({
+                        'success': True,
+                        'message': 'Reset email sent via backup provider. Please check your inbox.',
+                        'reset_mode': 'link'
+                    })
+                logger.error('[FORGOT_PASSWORD] Supabase fallback failed for %s: %s', email, fallback_msg)
+            else:
+                logger.info('[FORGOT_PASSWORD] Supabase fallback disabled for %s', email)
             return jsonify({'success': False, 'message': 'Could not send reset code right now. Please try again in a minute.'}), 502
         logger.info('[FORGOT_PASSWORD] OTP email sent to %s', email)
         return jsonify({'success': True, 'message': 'Reset code sent – check your inbox.', 'reset_mode': 'otp'})
     except Exception as e:
         logger.error('[FORGOT_PASSWORD] Email send failed for %s: %s', email, e)
-        fallback_ok, fallback_msg = request_password_reset(email)
-        if fallback_ok:
-            logger.info('[FORGOT_PASSWORD] Supabase fallback reset email sent for %s after exception', email)
-            return jsonify({
-                'success': True,
-                'message': 'Reset email sent via backup provider. Please check your inbox.',
-                'reset_mode': 'link'
-            })
-        logger.error('[FORGOT_PASSWORD] Supabase fallback failed after exception for %s: %s', email, fallback_msg)
+        if allow_supabase_reset_fallback:
+            fallback_ok, fallback_msg = request_password_reset(email)
+            if fallback_ok:
+                logger.info('[FORGOT_PASSWORD] Supabase fallback reset email sent for %s after exception', email)
+                return jsonify({
+                    'success': True,
+                    'message': 'Reset email sent via backup provider. Please check your inbox.',
+                    'reset_mode': 'link'
+                })
+            logger.error('[FORGOT_PASSWORD] Supabase fallback failed after exception for %s: %s', email, fallback_msg)
+        else:
+            logger.info('[FORGOT_PASSWORD] Supabase fallback disabled after exception for %s', email)
         return jsonify({'success': False, 'message': 'Could not send reset code right now. Please try again in a minute.'}), 502
 
 
