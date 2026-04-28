@@ -239,12 +239,12 @@ def set_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://checkout.razorpay.com; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-            "font-src 'self' https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: https://checkout.razorpay.com; "
-            "frame-src 'self' https://checkout.razorpay.com; "
-            "connect-src 'self' https://*.supabase.co https://ipapi.co https://api.razorpay.com https://checkout.razorpay.com;"
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.razorpay.com https://checkout.razorpay.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+            "img-src 'self' data: https://checkout.razorpay.com https://static.razorpay.com; "
+            "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com; "
+            "connect-src 'self' https://*.supabase.co https://ipapi.co https://api.razorpay.com https://checkout.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com;"
         )
 
     # Auth screens must not be cached, otherwise users can get stale JS flows
