@@ -30662,6 +30662,114 @@
         document.body.classList.remove('mobile-nav-open');
     }
 
+    let appVersionProbe = {
+        bootId: '',
+        intervalId: null,
+        bannerVisible: false,
+    };
+
+    function showAppUpdateBanner(versionLabel) {
+        if (appVersionProbe.bannerVisible) {
+            return;
+        }
+        appVersionProbe.bannerVisible = true;
+
+        const existing = document.getElementById('app-update-banner');
+        if (existing) {
+            existing.remove();
+        }
+
+        const banner = document.createElement('div');
+        banner.id = 'app-update-banner';
+        banner.style.position = 'fixed';
+        banner.style.left = '50%';
+        banner.style.bottom = '16px';
+        banner.style.transform = 'translateX(-50%)';
+        banner.style.zIndex = '12000';
+        banner.style.display = 'flex';
+        banner.style.gap = '10px';
+        banner.style.alignItems = 'center';
+        banner.style.padding = '10px 14px';
+        banner.style.borderRadius = '12px';
+        banner.style.background = '#111827';
+        banner.style.color = '#f9fafb';
+        banner.style.boxShadow = '0 10px 30px rgba(0,0,0,0.35)';
+        banner.innerHTML = `
+            <span style="font-size:13px;">New update is available${versionLabel ? ` (${escapeHtml(versionLabel)})` : ''}. Refresh to load latest changes.</span>
+            <button id="app-update-refresh-btn" class="btn btn-primary btn-sm" type="button">Refresh</button>
+            <button id="app-update-dismiss-btn" class="btn btn-secondary btn-sm" type="button">Later</button>
+        `;
+
+        document.body.appendChild(banner);
+
+        const refreshBtn = document.getElementById('app-update-refresh-btn');
+        const dismissBtn = document.getElementById('app-update-dismiss-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', function () {
+                banner.remove();
+                appVersionProbe.bannerVisible = false;
+            });
+        }
+    }
+
+    async function fetchAppVersionInfo() {
+        const response = await fetch('/api/app-version', {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache'
+            }
+        });
+        if (!response.ok) {
+            return null;
+        }
+        const data = await response.json().catch(() => null);
+        if (!data || !data.success) {
+            return null;
+        }
+        return data;
+    }
+
+    async function probeForAppUpdate() {
+        if (document.hidden) {
+            return;
+        }
+        try {
+            const info = await fetchAppVersionInfo();
+            if (!info || !info.boot_id) {
+                return;
+            }
+            if (!appVersionProbe.bootId) {
+                appVersionProbe.bootId = String(info.boot_id);
+                return;
+            }
+            if (appVersionProbe.bootId !== String(info.boot_id)) {
+                showAppUpdateBanner(String(info.version || 'new build'));
+            }
+        } catch (_) {
+            // Non-blocking: silent fail for transient network errors
+        }
+    }
+
+    async function initializeAppVersionProbe() {
+        try {
+            const info = await fetchAppVersionInfo();
+            if (info && info.boot_id) {
+                appVersionProbe.bootId = String(info.boot_id);
+            }
+        } catch (_) {}
+
+        if (appVersionProbe.intervalId) {
+            clearInterval(appVersionProbe.intervalId);
+        }
+        appVersionProbe.intervalId = setInterval(probeForAppUpdate, 45000);
+    }
+
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', async function() {
         // ══ Auth pre-check: verify (or refresh) the token BEFORE firing any API calls.
@@ -30728,6 +30836,8 @@
         if (!restored) {
             switchTab('dashboard', null, true);
         }
+
+        initializeAppVersionProbe();
         // Remove the synchronous flash-prevention style now that the correct tab is active
         var _preloadFix = document.getElementById('tab-preload-fix');
         if (_preloadFix) _preloadFix.remove();

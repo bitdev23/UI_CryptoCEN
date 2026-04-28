@@ -84,6 +84,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 _APP_START_TIME = time.time()
+_APP_BOOT_ID = uuid4().hex
 
 # ── Sentry error tracking ─────────────────────────────────────────────────
 _sentry_dsn = os.getenv('SENTRY_DSN', '').strip()
@@ -4008,6 +4009,17 @@ def health_check():
         'version': os.getenv('APP_VERSION', 'unknown'),
         'uptime_seconds': int(time.time() - _APP_START_TIME),
     }), status_code
+
+
+@app.route('/api/app-version', methods=['GET'])
+def app_version_info():
+    """Expose app boot/version info so clients can detect new deployments."""
+    return jsonify({
+        'success': True,
+        'boot_id': _APP_BOOT_ID,
+        'version': os.getenv('APP_VERSION', os.getenv('GIT_SHA', 'unknown')),
+        'started_at_unix': int(_APP_START_TIME),
+    }), 200
 
 
 @app.route('/')
