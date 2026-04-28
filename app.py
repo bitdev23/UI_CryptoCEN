@@ -2027,7 +2027,12 @@ def start_scheduler():
         schedule.every().day.at(schedule_time).do(scheduled_post_job)
         schedule.every().day.at(reminder_batch_time).do(_run_subscription_expiry_reminder_batch)
         logger.info("✓ Daily scheduler started - will post daily at %s %s (TEST_MODE: %s)", schedule_time, config['TIMEZONE'], config['TEST_MODE'])
-        logger.info("✓ Expiry reminder batch scheduled daily at %s", reminder_batch_time)
+        logger.info(
+            "✓ Expiry reminder batch scheduled daily at %s %s (ENV EXPIRY_REMINDER_BATCH_TIME=%s)",
+            reminder_batch_time,
+            config['TIMEZONE'],
+            os.getenv('EXPIRY_REMINDER_BATCH_TIME', '09:15'),
+        )
         
         while True:
             _SCHEDULER_HEARTBEAT = time.time()
