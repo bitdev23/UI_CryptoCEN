@@ -26397,27 +26397,65 @@
         }
 
         try {
-            const orderPayload = { plan: selectedPlan };
-            if (couponCode) orderPayload.coupon_code = couponCode;
-            if (window.userRegion) orderPayload.region = window.userRegion;
+            const region = window.userRegion || 'IN';
 
-            const orderRes = await authFetch('/api/billing/create-order', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(orderPayload)
-            });
-            const orderData = await parseJsonResponse(orderRes);
+            // Detect if user has an active paid plan → use proration upgrade path
+            const currentPlan = String(latestBillingSnapshot?.effective_plan || 'free');
+            const planOrder = { 'free': 0, 'starter': 1, 'creator': 2, 'pro': 3 };
+            const isUpgrade = currentPlan !== 'free' && (planOrder[selectedPlan] || 0) > (planOrder[currentPlan] || 0);
+
+            let orderData;
+
+            if (isUpgrade) {
+                // --- PRORATION PATH ---
+                const prorationRes = await authFetch('/api/billing/upgrade-plan', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ new_plan: selectedPlan, region })
+                });
+                const prorationData = await parseJsonResponse(prorationRes);
+                if (!prorationData.success) {
+                    throw new Error(prorationData.message || 'Could not calculate upgrade price');
+                }
+
+                // Free upgrade (e.g. credit exceeds new plan cost) — no payment needed
+                if (prorationData.upgrade_type === 'free_upgrade') {
+                    showToast('success', prorationData.message || 'Plan upgraded successfully!', 'fas fa-check');
+                    await refreshBillingStatus(true);
+                    return;
+                }
+
+                orderData = prorationData;
+            } else {
+                // --- FRESH SUBSCRIPTION PATH ---
+                const orderPayload = { plan: selectedPlan, region };
+                if (couponCode) orderPayload.coupon_code = couponCode;
+
+                const orderRes = await authFetch('/api/billing/create-order', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(orderPayload)
+                });
+                orderData = await parseJsonResponse(orderRes);
+            }
+
             if (!orderData.success || !orderData.order?.id) {
                 throw new Error(orderData.message || 'Could not create payment order');
             }
 
             const order = orderData.order;
+            const proratedAmount = orderData.prorated_amount;
+            const isProrated = !!proratedAmount;
+            const description = isProrated
+                ? `Upgrade to ${planDisplayName(selectedPlan)} · Prorated: ${orderData.currency === 'INR' ? '₹' : '$'}${proratedAmount}`
+                : `${planDisplayName(selectedPlan)} subscription`;
+
             const options = {
                 key: orderData.razorpay_key_id,
                 amount: order.amount,
                 currency: order.currency || 'INR',
                 name: 'Velank AI',
-                description: `${planDisplayName(selectedPlan)} subscription`,
+                description,
                 order_id: order.id,
                 handler: async function (response) {
                     try {
@@ -26437,7 +26475,7 @@
                         if (!verifyData.success) {
                             throw new Error(verifyData.message || 'Payment verification failed');
                         }
-                        showToast('success', 'Subscription activated successfully', 'fas fa-check');
+                        showToast('success', isProrated ? `Upgraded to ${planDisplayName(selectedPlan)}!` : 'Subscription activated successfully', 'fas fa-check');
                         await refreshBillingStatus(true);
                     } catch (verifyError) {
                         showToast('error', verifyError.message || 'Payment verification failed', 'fas fa-exclamation-circle');
