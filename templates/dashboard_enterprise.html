@@ -26471,6 +26471,9 @@
         const overlay = document.getElementById('upgrade-modal-overlay');
         if (!overlay) return;
 
+        // FORCE REFRESH billing data before showing modal to avoid stale cached prices
+        await refreshBillingStatus(false);
+
         // Detect region for pricing
         let userRegion = localStorage.getItem('user_region') || 'ROW';
         if (userRegion === 'ROW') {
@@ -26580,8 +26583,17 @@
                 }
             });
 
-            grid.innerHTML = plans.map(p => `
-                <div class="upg-plan-card ${p.popular ? 'is-popular' : ''}" id="upg-card-${p.code}" onclick="selectUpgradePlan('${p.code}')">
+            // Detect current active plan
+            const currentPlan = String(latestBillingSnapshot?.effective_plan || 'free');
+
+            grid.innerHTML = plans.map(p => {
+                const isCurrentPlan = (p.code === currentPlan && currentPlan !== 'free');
+                const buttonText = isCurrentPlan ? 'Current Plan' : `Get ${p.name} Plan`;
+                const buttonClass = isCurrentPlan ? 'upg-select-btn is-current-plan' : 'upg-select-btn';
+                const currentBadge = isCurrentPlan ? '<div class="upg-current-badge">✓ Active Plan</div>' : '';
+                return `
+                <div class="upg-plan-card ${p.popular ? 'is-popular' : ''} ${isCurrentPlan ? 'is-current' : ''}" id="upg-card-${p.code}" onclick="selectUpgradePlan('${p.code}')">
+                    ${currentBadge}
                     ${p.popular ? '<div class="upg-plan-badge">⭐ Most Popular</div>' : ''}
                     <div class="upg-plan-name">${p.name}</div>
                     <div class="upg-plan-price"><sup>${currencySymbol}</sup>${p.price}</div>
@@ -26590,11 +26602,13 @@
                     <ul class="upg-plan-features">
                         ${p.features.map(f => `<li><i class="fas fa-check upg-check"></i><span>${f}</span></li>`).join('')}
                     </ul>
-                    <button class="upg-select-btn" onclick="event.stopPropagation(); selectUpgradePlan('${p.code}')">
-                        Get ${p.name} Plan
+                    <button class="${buttonClass}" onclick="event.stopPropagation(); selectUpgradePlan('${p.code}')">
+                        ${buttonText}
                     </button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+
         }
 
         overlay.classList.add('is-open');
@@ -28815,7 +28829,15 @@
     function refreshUsageCard(analyticsOverride = null) {
         const analytics = analyticsOverride || latestAnalyticsSnapshot || {};
         const postsUsed = getBillingUsage('posts_generated', Number(analytics.total_posts || 0));
-        const postsLimit = getBillingLimit('posts_generated', 100);
+        // Get actual plan limit from billing snapshot, use sensible defaults based on current plan
+        let postsLimit = getBillingLimit('posts_generated', null);
+        if (postsLimit === null || postsLimit === undefined) {
+            // If limits aren't loaded, use defaults based on effective_plan
+            const currentPlan = String(latestBillingSnapshot?.effective_plan || 'free');
+            if (currentPlan === 'starter') postsLimit = 30;
+            else if (currentPlan === 'creator') postsLimit = 120;
+            else postsLimit = 2;  // free plan
+        }
 
         const kbSizeMb = (kbUploadedFilesCache || []).reduce((acc, file) => acc + (Number(file.size) || 0), 0);
         const kbLimitMb = getBillingLimit('kb_storage_mb', 500);
@@ -31904,16 +31926,38 @@
         color: #667eea;
     }
     .upg-plan-card.is-popular .upg-select-btn,
-    .upg-plan-card.is-selected .upg-select-btn {
+    .upg-plan-card.is-selected .upg-select-btn,
+    .upg-select-btn.is-current-plan {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: #fff;
         border-color: transparent;
+        cursor: default;
     }
-    .upg-select-btn:hover {
+    .upg-select-btn:hover:not(.is-current-plan) {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: #fff;
         border-color: transparent;
         box-shadow: 0 4px 14px rgba(102,126,234,0.35);
+    }
+
+    /* Current plan badge & styling */
+    .upg-current-badge {
+        position: absolute;
+        top: 0.8rem;
+        right: 0.8rem;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #fff;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .upg-plan-card.is-current {
+        border-color: #10b981;
+        border-width: 2px;
+        box-shadow: 0 0 0 1px #10b98133, 0 4px 12px rgba(16, 185, 129, 0.15);
     }
 
     .upg-footer-note {
