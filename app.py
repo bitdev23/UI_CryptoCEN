@@ -2199,20 +2199,11 @@ def _plan_price_inr(plan: str, region: str = 'IN') -> int:
         'creator': 'PLAN_PRICE_CREATOR_INR',
         'pro': 'PLAN_PRICE_PRO_INR',
     }
-    # Defaults based on region
-    if region == 'ROW':
-        # USD equivalent at ~83 INR/USD
-        default_map = {
-            'starter': 19 * 83,  # 1577
-            'creator': 29 * 83,  # 2407
-            'pro': 49 * 83,      # 4067
-        }
-    else:
-        default_map = {
-            'starter': int(os.getenv('PLAN_PRICE_STARTER_INR', 599)),
-            'creator': int(os.getenv('PLAN_PRICE_CREATOR_INR', 1999)),
-            'pro': int(os.getenv('PLAN_PRICE_PRO_INR', 4999)),
-        }
+    default_map = {
+        'starter': int(os.getenv('PLAN_PRICE_STARTER_INR', 599)),
+        'creator': int(os.getenv('PLAN_PRICE_CREATOR_INR', 1299)),
+        'pro': int(os.getenv('PLAN_PRICE_PRO_INR', 4999)),
+    }
     env_key = env_map.get(key)
     if not env_key:
         return 0
@@ -2221,6 +2212,36 @@ def _plan_price_inr(plan: str, region: str = 'IN') -> int:
         return max(0, value)
     except Exception:
         return default_map[key]
+
+
+def _plan_price_usd(plan: str) -> int:
+    normalized = _normalize_subscription_plan(plan)
+    key = normalized[0] if normalized else 'starter'
+    env_map = {
+        'starter': 'PLAN_PRICE_STARTER_USD',
+        'creator': 'PLAN_PRICE_CREATOR_USD',
+        'pro': 'PLAN_PRICE_PRO_USD',
+    }
+    default_map = {
+        'starter': int(os.getenv('PLAN_PRICE_STARTER_USD', 19)),
+        'creator': int(os.getenv('PLAN_PRICE_CREATOR_USD', 29)),
+        'pro': int(os.getenv('PLAN_PRICE_PRO_USD', 49)),
+    }
+    env_key = env_map.get(key)
+    if not env_key:
+        return 0
+    try:
+        value = int(str(os.getenv(env_key, default_map[key])).strip())
+        return max(0, value)
+    except Exception:
+        return default_map[key]
+
+
+def _plan_checkout_price(plan: str, region: str = 'IN') -> tuple:
+    region_key = str(region or 'IN').strip().upper()
+    if region_key == 'ROW':
+        return _plan_price_usd(plan), 'USD'
+    return _plan_price_inr(plan), 'INR'
 
 
 def _get_plan_limits(plan: str) -> dict:
@@ -2845,14 +2866,14 @@ def _razorpay_webhook_secret() -> str:
     return str(os.getenv('RAZORPAY_WEBHOOK_SECRET') or '').strip()
 
 
-def _create_razorpay_order(amount_inr: int, receipt: str, user_id: str, plan: str) -> dict:
+def _create_razorpay_order(amount_major: int, currency: str, receipt: str, user_id: str, plan: str) -> dict:
     key_id, key_secret = _razorpay_keys()
     if not key_id or not key_secret:
         raise RuntimeError('Razorpay keys are not configured')
 
     payload = {
-        'amount': int(amount_inr * 100),
-        'currency': 'INR',
+        'amount': int(amount_major * 100),
+        'currency': str(currency or 'INR').upper(),
         'receipt': receipt,
         'notes': {
             'user_id': user_id,
@@ -3667,12 +3688,13 @@ def account_link_request():
 @require_auth
 def billing_plans():
     plans = []
-    for plan_code in ('1_month', '3_month', '12_month'):
+    for plan_code in ('starter', 'creator'):
         normalized = _normalize_subscription_plan(plan_code)
         plans.append({
             'plan': plan_code,
             'duration_months': normalized[1] if normalized else 0,
             'amount_inr': _plan_price_inr(plan_code),
+            'amount_usd': _plan_price_usd(plan_code),
             'limits': _get_plan_limits(plan_code)
         })
     return jsonify({'success': True, 'plans': plans})
@@ -3786,12 +3808,12 @@ def billing_create_order():
         data = request.get_json(silent=True) or {}
         normalized = _normalize_subscription_plan(data.get('plan'))
         if not normalized or normalized[0] == 'free':
-            return jsonify({'success': False, 'message': 'Invalid plan. Use 1_month, 3_month, or 12_month.'}), 400
+            return jsonify({'success': False, 'message': 'Invalid plan. Use starter or creator.'}), 400
 
         plan = normalized[0]
-        region = data.get('region', 'IN')  # Default to IN
-        amount_inr = _plan_price_inr(plan, region)
-        if amount_inr <= 0:
+        region = str(data.get('region', 'IN') or 'IN').strip().upper()
+        amount_major, currency = _plan_checkout_price(plan, region)
+        if amount_major <= 0:
             return jsonify({'success': False, 'message': 'Invalid plan price configuration'}), 500
 
         # --- Coupon / discount ---
@@ -3802,7 +3824,7 @@ def billing_create_order():
             coupon_result = _validate_coupon_code(coupon_code)
             if coupon_result['valid']:
                 discount_pct = coupon_result['discount_pct']
-                amount_inr = int(amount_inr * (100 - discount_pct) // 100)
+                amount_major = int(amount_major * (100 - discount_pct) // 100)
                 coupon_message = f"{discount_pct}% discount applied"
             else:
                 return jsonify({'success': False, 'message': coupon_result['message']}), 400
@@ -3812,12 +3834,19 @@ def billing_create_order():
             return jsonify({'success': False, 'message': 'Razorpay is not configured on server'}), 503
 
         receipt = f"sub_{plan}_{user_id[:8]}_{int(time.time())}"
-        order = _create_razorpay_order(amount_inr=amount_inr, receipt=receipt, user_id=user_id, plan=plan)
+        order = _create_razorpay_order(
+            amount_major=amount_major,
+            currency=currency,
+            receipt=receipt,
+            user_id=user_id,
+            plan=plan,
+        )
         return jsonify({
             'success': True,
             'order': order,
             'plan': plan,
-            'amount_inr': amount_inr,
+            'amount': amount_major,
+            'currency': currency,
             'razorpay_key_id': key_id,
             'discount_pct': discount_pct,
             'coupon_code': coupon_code,

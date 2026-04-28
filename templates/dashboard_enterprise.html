@@ -26290,7 +26290,14 @@
 
     function findPlanPrice(plan) {
         const match = (latestBillingPlans || []).find(item => String(item.plan || '') === String(plan || ''));
-        return Number(match?.amount_inr || 0);
+        const region = String(localStorage.getItem('user_region') || 'IN').toUpperCase();
+        const key = region === 'ROW' ? 'amount_usd' : 'amount_inr';
+        return Number(match?.[key] || match?.amount_inr || 0);
+    }
+
+    function getPlanCurrencySymbol() {
+        const region = String(localStorage.getItem('user_region') || 'IN').toUpperCase();
+        return region === 'ROW' ? '$' : '₹';
     }
 
     function getBillingLimit(metricKey, fallbackValue) {
@@ -26342,8 +26349,9 @@
         if (planMeta) {
             const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
             const hasValidDate = periodEnd && !Number.isNaN(periodEnd.getTime());
-            const priceInr = findPlanPrice(effectivePlan);
-            const priceText = priceInr > 0 ? `₹${formatKpiNumber(priceInr)} / cycle` : 'Free tier';
+            const priceValue = findPlanPrice(effectivePlan);
+            const currencySymbol = getPlanCurrencySymbol();
+            const priceText = priceValue > 0 ? `${currencySymbol}${formatKpiNumber(priceValue)} / cycle` : 'Free tier';
             if (hasValidDate) {
                 planMeta.textContent = `${priceText} · Next billing ${periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             } else {
@@ -26528,7 +26536,7 @@
                 {
                     code: 'creator',
                     name: 'Creator',
-                    price: '1,999',
+                    price: '1,299',
                     period: 'per month',
                     saving: 'Best Value',
                     popular: true,
@@ -26565,9 +26573,10 @@
             // Override prices from live data if available
             (latestBillingPlans || []).forEach(p => {
                 const match = plans.find(x => x.code === p.plan);
-                if (match && p.amount_inr) {
-                    if (match.code === 'starter') match.price = String(p.amount_inr);
-                    if (match.code === 'creator') match.price = String(p.amount_inr);
+                const livePrice = isIndia ? Number(p.amount_inr) : Number(p.amount_usd || p.amount_inr);
+                if (match && livePrice > 0) {
+                    if (match.code === 'starter') match.price = String(livePrice);
+                    if (match.code === 'creator') match.price = String(livePrice);
                 }
             });
 

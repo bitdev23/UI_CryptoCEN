@@ -34,6 +34,8 @@ rq==1.16.2
 
 # HTTP requests
 requests==2.32.3
+# macOS system Python may use LibreSSL; urllib3 v2 emits NotOpenSSLWarning there.
+urllib3<2.0.0
 
 # Utilities
 schedule==1.2.2

@@ -29,6 +29,11 @@ _SALT_ENV = os.getenv("ENCRYPTION_SALT", "").strip()
 if _SALT_ENV:
     _SALT = _SALT_ENV.encode("utf-8")
 else:
+    if (os.getenv("FLASK_ENV", "").strip().lower() == "production"):
+        raise RuntimeError(
+            "ENCRYPTION_SALT env var is required in production. "
+            "Set ENCRYPTION_SALT to a unique random string."
+        )
     _SALT = b"velank-api-key-encryption-salt-v1"
     logger.warning(
         "ENCRYPTION_SALT env var is not set — using legacy hardcoded salt. "

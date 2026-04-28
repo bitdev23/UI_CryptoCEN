@@ -48,11 +48,11 @@ const PRICING_DATA: Record<Region, {
     currency: "INR",
     symbol: "₹",
     locale: "en-IN",
-    annualCost: 19190,
+    annualCost: 12490,
     defaultPipeline: 5000000,
     maxPipeline: 50000000,
     latte: "599",
-    lunch: "1,999",
+    lunch: "1,299",
     plans: [
       {
         id: "free",
@@ -106,8 +106,8 @@ const PRICING_DATA: Record<Region, {
         name: "Creator",
         tagline: "Build authority & grow faster",
         description: "For creators, founders, and professionals serious about LinkedIn growth.",
-        priceMonthly: "1,999",
-        priceYearly: "19,190",
+        priceMonthly: "1,299",
+        priceYearly: "12,490",
         interval: "/ month",
         features: [
           "150 AI-generated posts / month",
@@ -133,31 +133,6 @@ const PRICING_DATA: Record<Region, {
     maxPipeline: 2500000,
     latte: "19", 
     lunch: "29",
-    plans: [
-      {
-        id: "free",
-        name: "Free",
-        tagline: "Get started with AI-powered LinkedIn posts",
-        description: "Try the platform and experience AI-generated LinkedIn content in seconds.",
-        priceMonthly: "0",
-        priceYearly: "0",
-        interval: "/ month",
-        features: [
-          "2 AI-generated posts / month",
-          "Basic post generation",
-          "Knowledge base: 5MB",
-          "Preview & manual copy",
-          "Velank branding on posts"
-        ],
-        notIncluded: [
-          "Scheduling",
-          "Style clone",
-          "Repurpose content",
-          "Analytics"
-        ],
-        cta: "👉 Get Started Free",
-        footerLine: "No credit card required"
-      },
     plans: [
       {
         id: "free",
@@ -381,7 +356,13 @@ export default function Pricing() {
                     className="text-indigo-600 font-bold text-xs bg-indigo-50/80 px-4 py-1.5 rounded-full border border-indigo-100/50 flex items-center gap-2"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    Save {region === 'IN' ? `₹${(1999 * 12 - 19190).toLocaleString()}` : `$${(24 * 12 - 230).toLocaleString()}`} yearly on Creator
+                    {(() => {
+                      const creatorPlan = currentData.plans.find((p) => p.id === 'creator');
+                      const monthly = Number(String(creatorPlan?.priceMonthly || '0').replace(/,/g, ''));
+                      const yearly = Number(String(creatorPlan?.priceYearly || '0').replace(/,/g, ''));
+                      const savings = Math.max(0, monthly * 12 - yearly);
+                      return `Save ${currentData.symbol}${savings.toLocaleString()} yearly on Creator`;
+                    })()}
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -9,6 +9,8 @@ data/user_features.json
 _archive_cleanup/
 app.log
 velank-gcp-deployment-docs.pdf
+.env_prod
+.env_prod.txt
 
 
 
