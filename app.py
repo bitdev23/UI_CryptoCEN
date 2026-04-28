@@ -3922,7 +3922,21 @@ def auth_reset_password():
     if not user_id:
         return jsonify({'success': False, 'message': 'No account found for that email address.'}), 404
     try:
-        auth_supabase.auth.admin.update_user_by_id(user_id, {'password': new_password})
+        current_meta = {}
+        try:
+            user_resp = auth_supabase.auth.admin.get_user_by_id(user_id)
+            user_obj = getattr(user_resp, 'user', None) or getattr(user_resp, 'data', None) or user_resp
+            if isinstance(user_obj, dict):
+                current_meta = dict(user_obj.get('user_metadata') or {})
+            else:
+                current_meta = dict(getattr(user_obj, 'user_metadata', {}) or {})
+        except Exception:
+            current_meta = {}
+        current_meta['has_password'] = True
+        auth_supabase.auth.admin.update_user_by_id(user_id, {
+            'password': new_password,
+            'user_metadata': current_meta,
+        })
         _otp_delete(email)
         logger.info('Password reset complete for %s', email)
         return jsonify({'success': True, 'message': 'Password updated successfully.'})
@@ -3974,6 +3988,23 @@ def auth_reset_password_link():
                 pass
             logger.warning('Recovery password update failed: status=%s body=%s', resp.status_code, resp.text[:300])
             return jsonify({'success': False, 'message': msg}), 400 if resp.status_code < 500 else 502
+
+        try:
+            if auth_supabase and user.get('id'):
+                current_meta = {}
+                try:
+                    user_resp = auth_supabase.auth.admin.get_user_by_id(user.get('id'))
+                    user_obj = getattr(user_resp, 'user', None) or getattr(user_resp, 'data', None) or user_resp
+                    if isinstance(user_obj, dict):
+                        current_meta = dict(user_obj.get('user_metadata') or {})
+                    else:
+                        current_meta = dict(getattr(user_obj, 'user_metadata', {}) or {})
+                except Exception:
+                    current_meta = {}
+                current_meta['has_password'] = True
+                auth_supabase.auth.admin.update_user_by_id(user.get('id'), {'user_metadata': current_meta})
+        except Exception:
+            logger.warning('Could not persist has_password marker for %s', user.get('email', 'unknown'))
 
         logger.info('Password reset complete via recovery link for %s', user.get('email', 'unknown'))
         return jsonify({'success': True, 'message': 'Password updated successfully.'})

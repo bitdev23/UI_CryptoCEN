@@ -731,6 +731,11 @@ def check_user_oauth_only(email: str) -> Tuple[bool, list]:
         if not user:
             logger.info(f"[OAUTH_CHECK] No user found matching email {email}. Users in response: {[u.get('email') for u in users]}")
             return False, []
+
+        user_metadata = user.get('user_metadata', {}) or {}
+        if bool(user_metadata.get('has_password')):
+            logger.info(f"[OAUTH_CHECK] User %s has_password metadata=true, not treating as OAuth-only", email)
+            return False, []
         
         # Try to get providers from two possible locations:
         # 1. app_metadata.providers (Supabase stores this)
