@@ -328,6 +328,57 @@ def internal_error(error):
         error_message="An unexpected error occurred on our end. Our team has been notified. Please try again in a few moments."
     ), 500
 
+    @app.route('/api/billing/schedule-downgrade', methods=['POST'])
+    @require_auth
+    def billing_schedule_downgrade():
+        """
+        Schedule a plan downgrade to take effect at end of current billing period.
+        User keeps their current plan until period_end, then switches to the lower plan.
+        Request: { "new_plan": "starter" }
+        """
+        try:
+            user_id = get_current_user_id()
+            if not auth_supabase or not is_valid_uuid(user_id):
+                return jsonify({'success': False, 'message': 'Invalid session'}), 401
+
+            data = request.get_json(silent=True) or {}
+            new_plan = str(data.get('new_plan') or '').strip().lower()
+
+            if new_plan not in {'starter', 'free'}:
+                return jsonify({'success': False, 'message': 'Invalid plan for downgrade. Use starter or free.'}), 400
+
+            rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
+            sub = rows.data[0] if rows.data else None
+
+            if not sub or not _is_subscription_active(sub):
+                return jsonify({'success': False, 'message': 'No active subscription found'}), 400
+
+            current_plan = str(sub.get('plan') or 'free').lower()
+            plan_order = {'free': 0, 'starter': 1, 'creator': 2, 'pro': 3}
+
+            if plan_order.get(new_plan, 0) >= plan_order.get(current_plan, 0):
+                return jsonify({'success': False, 'message': 'That is not a downgrade from your current plan'}), 400
+
+            period_end = sub.get('current_period_end', '')
+            now = datetime.utcnow()
+
+            auth_supabase.table('subscriptions').update({
+                'scheduled_plan': new_plan,
+                'cancel_at_period_end': (new_plan == 'free'),
+                'updated_at': now.isoformat() + 'Z'
+            }).eq('user_id', user_id).execute()
+
+            return jsonify({
+                'success': True,
+                'message': f'Downgrade to {new_plan.capitalize()} scheduled.',
+                'scheduled_plan': new_plan,
+                'effective_from': period_end
+            })
+        except Exception as e:
+            logger.exception("Billing schedule downgrade failed")
+            return _safe_api_error('An unexpected error occurred', e)
+
+
 
 @app.errorhandler(403)
 def forbidden_error(error):

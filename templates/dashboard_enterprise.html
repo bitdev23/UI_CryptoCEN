@@ -26660,25 +26660,43 @@
     function selectUpgradePlan(planCode) {
         const currentPlan = String(latestBillingSnapshot?.effective_plan || 'free');
 
-        // If paid user clicks "Free Plan" → offer cancellation at period end, not checkout
-        if (planCode === 'free' && currentPlan !== 'free') {
+        // Detect downgrade attempt (e.g. creator → starter, or any → free)
+        const planOrder = { 'free': 0, 'starter': 1, 'creator': 2, 'pro': 3 };
+        const isDowngrade = currentPlan !== 'free' && (planOrder[planCode] || 0) < (planOrder[currentPlan] || 0);
+
+        if (isDowngrade) {
             closeUpgradeModal();
             const periodEnd = latestBillingSnapshot?.subscription?.current_period_end;
             const endDate = periodEnd
                 ? new Date(periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                 : 'end of billing period';
-            if (confirm(`Cancel subscription?\n\nYou'll keep ${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan access until ${endDate}, then move to the Free plan.\n\nConfirm cancellation?`)) {
-                authFetch('/api/billing/cancel', { method: 'POST', headers: getAuthHeaders() })
+            const targetPlanName = planCode.charAt(0).toUpperCase() + planCode.slice(1);
+            const currentPlanName = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+            const endpoint = planCode === 'free' ? '/api/billing/cancel' : '/api/billing/schedule-downgrade';
+            const body = planCode === 'free' ? {} : { new_plan: planCode };
+            const msg = planCode === 'free'
+                ? `Cancel subscription?\n\nYou'll keep ${currentPlanName} plan access until ${endDate}, then move to the Free plan.\n\nConfirm cancellation?`
+                : `Schedule downgrade?\n\nYou'll keep ${currentPlanName} plan access until ${endDate}, then switch to ${targetPlanName}.\n\nMid-month downgrade is not allowed. Confirm?`;
+
+            if (confirm(msg)) {
+                authFetch(endpoint, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(body)
+                })
                     .then(r => r.json())
                     .then(data => {
                         if (data.success) {
-                            showToast('info', `Subscription cancelled. You'll have access until ${endDate}.`, 'fas fa-circle-info');
+                            const toastMsg = planCode === 'free'
+                                ? `Subscription cancelled. You'll have access until ${endDate}.`
+                                : `Downgrade to ${targetPlanName} scheduled for ${endDate}.`;
+                            showToast('info', toastMsg, 'fas fa-circle-info');
                             refreshBillingStatus(false);
                         } else {
-                            showToast('error', data.message || 'Could not cancel subscription', 'fas fa-exclamation-circle');
+                            showToast('error', data.message || 'Could not process request', 'fas fa-exclamation-circle');
                         }
                     })
-                    .catch(() => showToast('error', 'Could not cancel subscription', 'fas fa-exclamation-circle'));
+                    .catch(() => showToast('error', 'Could not process request', 'fas fa-exclamation-circle'));
             }
             return;
         }
