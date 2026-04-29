@@ -22985,6 +22985,98 @@
         showToast('info', 'Upload your files and click Train AI Model, then return to generate your first grounded post.', 'fas fa-database');
     }
 
+    function handleFtuKbFileSelect(input) {
+        const meta = document.getElementById('ftu-kb-file-meta');
+        const files = input?.files ? Array.from(input.files) : [];
+        if (!meta) {
+            return;
+        }
+        if (!files.length) {
+            meta.textContent = 'No files selected yet.';
+            return;
+        }
+        const totalMb = files.reduce((acc, f) => acc + (Number(f.size) || 0), 0) / (1024 * 1024);
+        meta.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected (${totalMb.toFixed(2)} MB)`;
+    }
+
+    async function ftuUploadKnowledgeBaseFiles() {
+        const fileInput = document.getElementById('ftu-kb-file');
+        const statusEl = document.getElementById('ftu-kb-upload-status');
+        const uploadBtn = document.getElementById('ftu-kb-upload-btn');
+        const files = fileInput?.files ? Array.from(fileInput.files) : [];
+
+        if (!files.length) {
+            if (statusEl) {
+                statusEl.textContent = 'Select at least one file to upload.';
+            }
+            return;
+        }
+
+        const formData = new FormData();
+        files.forEach(file => formData.append('files', file));
+
+        const original = uploadBtn ? uploadBtn.innerHTML : '';
+        if (uploadBtn) {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Uploading and starting indexing...';
+        }
+
+        try {
+            const response = await authFetch('/api/upload-knowledge-base', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await parseJsonResponse(response);
+            if (!data.success) {
+                throw new Error(data.message || 'Upload failed');
+            }
+
+            if (statusEl) {
+                statusEl.textContent = data.message || 'Files uploaded. Indexing started.';
+            }
+            showToast('success', data.message || 'Knowledge Base files uploaded', 'fas fa-check');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            handleFtuKbFileSelect(fileInput);
+            refreshKnowledgeBaseFiles();
+            await ftuRefreshKbReadiness();
+        } catch (error) {
+            if (statusEl) {
+                statusEl.textContent = error.message || 'Upload failed';
+            }
+            showToast('error', error.message || 'Upload failed', 'fas fa-exclamation-circle');
+        } finally {
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = original || '<i class="fas fa-upload"></i> Upload &amp; Index';
+            }
+        }
+    }
+
+    async function ftuRefreshKbReadiness() {
+        const statusEl = document.getElementById('ftu-kb-upload-status');
+        try {
+            await refreshKnowledgeBaseStatus();
+            refreshKnowledgeBaseFiles();
+            renderFtuKbStatus();
+            updateFtuCompletionMetrics();
+            setFirstRunOnboardingStep(3);
+            if (statusEl) {
+                statusEl.textContent = onboardingState.kbReady
+                    ? 'Knowledge Base is ready for grounded generation.'
+                    : 'Files uploaded. Indexing may still be in progress; refresh again shortly.';
+            }
+        } catch (_) {
+            if (statusEl) {
+                statusEl.textContent = 'Could not refresh KB status right now. Please try again.';
+            }
+        }
+    }
+
     function getFirstRunOnboardingKey() {
         const identity = (
             localStorage.getItem('user_id')
@@ -23237,8 +23329,19 @@
                     nextBtn.innerHTML = '<i class="fas fa-bolt"></i> Generate my first grounded post';
                     nextBtn.onclick = () => startOnboardingPostFlow(true);
                 } else if (completion.profileDone && completion.scheduleDone && !completion.kbDone) {
-                    nextBtn.innerHTML = '<i class="fas fa-database"></i> Upload KB to unlock grounded generation';
-                    nextBtn.onclick = () => startOnboardingKbFlow();
+                    const hasUploadedFiles = Number(onboardingState.kbFiles || 0) > 0;
+                    if (hasUploadedFiles) {
+                        nextBtn.innerHTML = '<i class="fas fa-hourglass-half"></i> KB indexing in progress - refresh status';
+                        nextBtn.onclick = () => ftuRefreshKbReadiness();
+                    } else {
+                        nextBtn.innerHTML = '<i class="fas fa-database"></i> Upload KB to unlock grounded generation';
+                        nextBtn.onclick = () => {
+                            const picker = document.getElementById('ftu-kb-file');
+                            if (picker) {
+                                picker.click();
+                            }
+                        };
+                    }
                 } else if (!completion.profileDone) {
                     nextBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Complete profile first';
                     nextBtn.onclick = () => setFirstRunOnboardingStep(1);
@@ -23308,6 +23411,18 @@
         const ftuTopic = document.getElementById('ftu-topic');
         if (ftuTopic && !String(ftuTopic.value || '').trim()) {
             ftuTopic.value = '3 practical lessons from this week that helped me ship faster and reduce rework';
+        }
+        const ftuKbFileInput = document.getElementById('ftu-kb-file');
+        if (ftuKbFileInput) {
+            ftuKbFileInput.value = '';
+        }
+        const ftuKbMeta = document.getElementById('ftu-kb-file-meta');
+        if (ftuKbMeta) {
+            ftuKbMeta.textContent = 'No files selected yet.';
+        }
+        const ftuKbUploadStatus = document.getElementById('ftu-kb-upload-status');
+        if (ftuKbUploadStatus) {
+            ftuKbUploadStatus.textContent = '';
         }
         clearFirstRunOnboardingTransition();
         ftuCelebrated = false;
@@ -32720,6 +32835,29 @@
     .ftu-metric.is-done i {
         color: #16a34a;
     }
+    .ftu-kb-upload-box {
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 12px;
+        background: #f8faff;
+        padding: 0.65rem 0.7rem;
+        margin-top: 0.55rem;
+    }
+    .ftu-kb-upload-head {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #312e81;
+    }
+    .ftu-kb-upload-box input[type="file"] {
+        width: 100%;
+        font-size: 0.78rem;
+        margin-top: 0.25rem;
+    }
+    .ftu-kb-upload-actions {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+        margin-top: 0.45rem;
+    }
     .ftu-panel .form-group input,
     .ftu-panel .form-group select,
     .ftu-panel .form-group textarea {
@@ -32912,6 +33050,16 @@
     body.dark-mode .ftu-metric.is-done i {
         color: #4ade80;
     }
+    body.dark-mode .ftu-kb-upload-box {
+        background: #191944;
+        border-color: #35356f;
+    }
+    body.dark-mode .ftu-kb-upload-head {
+        color: #c7d2fe;
+    }
+    body.dark-mode .ftu-kb-upload-box input[type="file"] {
+        color: #e2e8f0;
+    }
     body.dark-mode .ftu-feedback.is-success {
         background: #163028;
         border-color: #2f6b4f;
@@ -33082,6 +33230,17 @@
                     <h4>Step 3: Activate your knowledge advantage</h4>
                     <p>Upload and train your Knowledge Base so every generated draft reflects your actual IP and voice.</p>
                     <div id="ftu-kb-status" class="form-hint" style="margin-top:0.45rem;"></div>
+                    <div class="ftu-kb-upload-box">
+                        <div class="ftu-kb-upload-head">Upload files for your Knowledge Base</div>
+                        <p class="form-hint" style="margin:0.2rem 0 0.55rem;">PDF, DOCX, TXT, MD, CSV, PPTX supported. Files are indexed for grounded generation.</p>
+                        <input id="ftu-kb-file" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,.pptx" onchange="handleFtuKbFileSelect(this)">
+                        <div id="ftu-kb-file-meta" class="form-hint" style="margin-top:0.35rem;">No files selected yet.</div>
+                        <div class="ftu-kb-upload-actions">
+                            <button id="ftu-kb-upload-btn" class="btn btn-primary" type="button" onclick="ftuUploadKnowledgeBaseFiles()"><i class="fas fa-upload"></i> Upload &amp; Index</button>
+                            <button class="btn btn-secondary" type="button" onclick="ftuRefreshKbReadiness()"><i class="fas fa-rotate"></i> Refresh KB Status</button>
+                        </div>
+                        <div id="ftu-kb-upload-status" class="form-hint" style="margin-top:0.45rem;"></div>
+                    </div>
                     <div class="ftu-metrics-row" id="ftu-metrics-row">
                         <div class="ftu-metric" id="ftu-metric-profile"><i class="fas fa-circle"></i><span>Profile set</span></div>
                         <div class="ftu-metric" id="ftu-metric-schedule"><i class="fas fa-circle"></i><span>Schedule set</span></div>
