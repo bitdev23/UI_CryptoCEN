@@ -22993,10 +22993,12 @@
         }
         if (!files.length) {
             meta.textContent = 'No files selected yet.';
-            return;
+        } else {
+            const totalMb = files.reduce((acc, f) => acc + (Number(f.size) || 0), 0) / (1024 * 1024);
+            meta.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected (${totalMb.toFixed(2)} MB)`;
         }
-        const totalMb = files.reduce((acc, f) => acc + (Number(f.size) || 0), 0) / (1024 * 1024);
-        meta.textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected (${totalMb.toFixed(2)} MB)`;
+        // Refresh the Next button CTA so it reflects whether files are ready to upload
+        setFirstRunOnboardingStep(3);
     }
 
     async function ftuUploadKnowledgeBaseFiles() {
@@ -23054,6 +23056,14 @@
                 uploadBtn.disabled = false;
                 uploadBtn.innerHTML = original || '<i class="fas fa-upload"></i> Upload &amp; Index';
             }
+        }
+    }
+
+    async function ftuUploadAndAdvance() {
+        await ftuUploadKnowledgeBaseFiles();
+        // ftuUploadKnowledgeBaseFiles already calls ftuRefreshKbReadiness which updates onboardingState
+        if (onboardingState.kbReady) {
+            handleFirstRunOnboardingNext();
         }
     }
 
@@ -23345,18 +23355,21 @@
                 } else {
                     const hasUploadedFiles = Number(onboardingState.kbFiles || 0) > 0;
                     if (hasUploadedFiles) {
-                        nextBtn.innerHTML = '<i class="fas fa-hourglass-half"></i> KB indexing in progress - refresh status';
+                        nextBtn.innerHTML = '<i class="fas fa-hourglass-half"></i> KB indexing in progress – refresh status';
                         nextBtn.disabled = false;
                         nextBtn.onclick = () => ftuRefreshKbReadiness();
                     } else {
-                        nextBtn.innerHTML = '<i class="fas fa-database"></i> Upload KB to continue';
-                        nextBtn.disabled = false;
-                        nextBtn.onclick = () => {
-                            const picker = document.getElementById('ftu-kb-file');
-                            if (picker) {
-                                picker.click();
-                            }
-                        };
+                        const picker = document.getElementById('ftu-kb-file');
+                        const hasSelectedFiles = picker && picker.files && picker.files.length > 0;
+                        if (hasSelectedFiles) {
+                            nextBtn.innerHTML = '<i class="fas fa-upload"></i> Upload &amp; Continue';
+                            nextBtn.disabled = false;
+                            nextBtn.onclick = () => ftuUploadAndAdvance();
+                        } else {
+                            nextBtn.innerHTML = '<i class="fas fa-folder-open"></i> Choose files to upload';
+                            nextBtn.disabled = false;
+                            nextBtn.onclick = () => { if (picker) picker.click(); };
+                        }
                     }
                 }
             } else {
@@ -33263,10 +33276,10 @@
                     <div class="ftu-kb-upload-box">
                         <div class="ftu-kb-upload-head">Upload files for your Knowledge Base</div>
                         <p class="form-hint" style="margin:0.2rem 0 0.55rem;">PDF, DOCX, TXT, MD, CSV, PPTX supported. Files are indexed for grounded generation.</p>
-                        <input id="ftu-kb-file" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,.pptx" onchange="handleFtuKbFileSelect(this)">
+                        <label class="ftu-kb-file-label" for="ftu-kb-file"><i class="fas fa-folder-open"></i> Choose files</label>
+                        <input id="ftu-kb-file" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,.pptx" style="display:none;" onchange="handleFtuKbFileSelect(this)">
                         <div id="ftu-kb-file-meta" class="form-hint" style="margin-top:0.35rem;">No files selected yet.</div>
                         <div class="ftu-kb-upload-actions">
-                            <button id="ftu-kb-upload-btn" class="btn btn-primary" type="button" onclick="ftuUploadKnowledgeBaseFiles()"><i class="fas fa-upload"></i> Upload &amp; Index</button>
                             <button class="btn btn-secondary" type="button" onclick="ftuRefreshKbReadiness()"><i class="fas fa-rotate"></i> Refresh KB Status</button>
                         </div>
                         <div id="ftu-kb-upload-status" class="form-hint" style="margin-top:0.45rem;"></div>
