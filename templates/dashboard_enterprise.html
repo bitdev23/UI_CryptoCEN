@@ -22631,6 +22631,12 @@
     let ftuWizardStep = 1;
     let ftuStepAdvanceTimer = null;
     let ftuCelebrated = false;
+    let ftuKbTrainingTimer = null;
+    let ftuKbTrainingStartTs = 0;
+    let ftuKbTrainingEtaSeconds = 0;
+    let ftuKbAutoPollTimer = null;
+    let ftuKbAutoPollInFlight = false;
+    let ftuKbAutoAdvanceDone = false;
     const KB_DEFAULT_TEMPLATE_ID = 'ws_all_files';
     const KB_CREATE_TEMPLATE_VALUE = '__create_new_template__';
     let authRefreshPromise = null;
@@ -23021,6 +23027,164 @@
         setFirstRunOnboardingStep(3);
     }
 
+    function formatFtuEta(totalSeconds) {
+        const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+        const mins = Math.floor(safe / 60);
+        const secs = safe % 60;
+        if (mins <= 0) {
+            return `${secs}s`;
+        }
+        return `${mins}m ${String(secs).padStart(2, '0')}s`;
+    }
+
+    function estimateFtuKbEtaSeconds(files = []) {
+        const list = Array.isArray(files) ? files : [];
+        const totalMb = list.reduce((acc, file) => acc + ((Number(file?.size) || 0) / (1024 * 1024)), 0);
+        const estimate = 45 + (list.length * 12) + Math.round(totalMb * 1.8);
+        return Math.max(45, Math.min(240, estimate));
+    }
+
+    function renderFtuKbProgress({ active = false, etaSeconds = 0, note = '', done = false } = {}) {
+        const box = document.getElementById('ftu-kb-training-progress');
+        const fill = document.getElementById('ftu-kb-progress-fill');
+        const eta = document.getElementById('ftu-kb-progress-eta');
+        const noteEl = document.getElementById('ftu-kb-progress-note');
+        if (!box || !fill || !eta || !noteEl) {
+            return;
+        }
+        if (!active && !done) {
+            box.hidden = true;
+            box.classList.remove('is-running');
+            return;
+        }
+
+        box.hidden = false;
+        box.classList.toggle('is-running', active && !done);
+
+        if (done) {
+            fill.style.width = '100%';
+            eta.textContent = 'Completed';
+            noteEl.textContent = note || 'Training complete. Your Knowledge Base is ready for grounded generation.';
+            return;
+        }
+
+        const elapsed = Math.max(0, Math.floor((Date.now() - ftuKbTrainingStartTs) / 1000));
+        const total = Math.max(1, Number(ftuKbTrainingEtaSeconds) || 1);
+        const completion = Math.min(95, Math.max(8, Math.round((elapsed / total) * 100)));
+        fill.style.width = `${completion}%`;
+        eta.textContent = `ETA ${formatFtuEta(etaSeconds)}`;
+        noteEl.textContent = note || 'Knowledge Base is indexing now. You can keep this open and click Refresh KB Status when ETA is near zero.';
+    }
+
+    function stopFtuKbTrainingProgress(markReady = false) {
+        if (ftuKbTrainingTimer) {
+            clearInterval(ftuKbTrainingTimer);
+            ftuKbTrainingTimer = null;
+        }
+        if (markReady) {
+            renderFtuKbProgress({ done: true, note: 'Training complete. Continue to Step 4.' });
+        }
+    }
+
+    function startFtuKbTrainingProgress(etaSeconds = 90) {
+        const safeEta = Math.max(30, Number(etaSeconds) || 90);
+        if (!ftuKbTrainingStartTs || !ftuKbTrainingEtaSeconds) {
+            ftuKbTrainingStartTs = Date.now();
+            ftuKbTrainingEtaSeconds = safeEta;
+        }
+        if (!ftuKbTrainingTimer) {
+            ftuKbTrainingTimer = setInterval(() => {
+                if (onboardingState.kbReady) {
+                    stopFtuKbTrainingProgress(true);
+                    return;
+                }
+                const elapsed = Math.max(0, Math.floor((Date.now() - ftuKbTrainingStartTs) / 1000));
+                const remaining = Math.max(0, ftuKbTrainingEtaSeconds - elapsed);
+                const note = remaining > 0
+                    ? 'Training in progress. Keep this step open, then click Refresh KB Status to confirm readiness.'
+                    : 'Almost done. Indexing can take a bit longer for larger documents. Click Refresh KB Status now.';
+                renderFtuKbProgress({ active: true, etaSeconds: remaining, note });
+            }, 1000);
+        }
+
+        const initialRemaining = Math.max(0, ftuKbTrainingEtaSeconds - Math.floor((Date.now() - ftuKbTrainingStartTs) / 1000));
+        renderFtuKbProgress({
+            active: true,
+            etaSeconds: initialRemaining,
+            note: 'Training in progress. Keep this step open, then click Refresh KB Status to confirm readiness.'
+        });
+    }
+
+    function syncFtuKbTrainingProgress() {
+        if (onboardingState.kbReady) {
+            stopFtuKbTrainingProgress(true);
+            return;
+        }
+        if (Number(onboardingState.kbFiles || 0) > 0) {
+            if (!ftuKbTrainingStartTs || !ftuKbTrainingEtaSeconds) {
+                ftuKbTrainingStartTs = Date.now();
+                ftuKbTrainingEtaSeconds = 120;
+            }
+            startFtuKbTrainingProgress(ftuKbTrainingEtaSeconds || 120);
+            return;
+        }
+        stopFtuKbTrainingProgress(false);
+        ftuKbTrainingStartTs = 0;
+        ftuKbTrainingEtaSeconds = 0;
+        renderFtuKbProgress({ active: false });
+    }
+
+    function stopFtuKbAutoPolling() {
+        if (ftuKbAutoPollTimer) {
+            clearInterval(ftuKbAutoPollTimer);
+            ftuKbAutoPollTimer = null;
+        }
+        ftuKbAutoPollInFlight = false;
+    }
+
+    function startFtuKbAutoPolling() {
+        stopFtuKbAutoPolling();
+        ftuKbAutoPollTimer = setInterval(async () => {
+            const overlay = document.getElementById('ftu-onboarding-overlay');
+            const isStep3Open = overlay && overlay.classList.contains('is-open') && Number(ftuWizardStep || 1) === 3;
+            if (!isStep3Open || onboardingState.kbReady) {
+                stopFtuKbAutoPolling();
+                return;
+            }
+            if (ftuKbAutoPollInFlight) {
+                return;
+            }
+            ftuKbAutoPollInFlight = true;
+            try {
+                await ftuRefreshKbReadiness(true);
+            } finally {
+                ftuKbAutoPollInFlight = false;
+            }
+        }, 12000);
+    }
+
+    function maybeAutoAdvanceFromKbReady() {
+        if (ftuKbAutoAdvanceDone || !onboardingState.kbReady || Number(ftuWizardStep || 1) !== 3) {
+            return;
+        }
+        const overlay = document.getElementById('ftu-onboarding-overlay');
+        if (!overlay || !overlay.classList.contains('is-open')) {
+            return;
+        }
+        ftuKbAutoAdvanceDone = true;
+        const statusEl = document.getElementById('ftu-kb-upload-status');
+        if (statusEl) {
+            statusEl.textContent = 'Knowledge Base ready. Moving to Step 4...';
+        }
+        setTimeout(() => {
+            const stillOpen = overlay.classList.contains('is-open');
+            const stillStep3 = Number(ftuWizardStep || 1) === 3;
+            if (stillOpen && stillStep3 && onboardingState.kbReady) {
+                handleFirstRunOnboardingNext();
+            }
+        }, 650);
+    }
+
     async function ftuUploadKnowledgeBaseFiles() {
         const fileInput = document.getElementById('ftu-kb-file');
         const statusEl = document.getElementById('ftu-kb-upload-status');
@@ -23059,6 +23223,10 @@
             if (statusEl) {
                 statusEl.textContent = data.message || 'Files uploaded. Indexing started.';
             }
+            ftuKbTrainingStartTs = Date.now();
+            ftuKbTrainingEtaSeconds = estimateFtuKbEtaSeconds(files);
+            startFtuKbTrainingProgress(ftuKbTrainingEtaSeconds);
+            startFtuKbAutoPolling();
             showToast('success', data.message || 'Knowledge Base files uploaded', 'fas fa-check');
             if (fileInput) {
                 fileInput.value = '';
@@ -23081,28 +23249,33 @@
 
     async function ftuUploadAndAdvance() {
         await ftuUploadKnowledgeBaseFiles();
-        // ftuUploadKnowledgeBaseFiles already calls ftuRefreshKbReadiness which updates onboardingState
-        if (onboardingState.kbReady) {
-            handleFirstRunOnboardingNext();
-        }
     }
 
-    async function ftuRefreshKbReadiness() {
+    async function ftuRefreshKbReadiness(isAutoPoll = false) {
         const statusEl = document.getElementById('ftu-kb-upload-status');
         try {
             await refreshKnowledgeBaseStatus();
             refreshKnowledgeBaseFiles();
             renderFtuKbStatus();
+            syncFtuKbTrainingProgress();
             updateFtuCompletionMetrics();
             setFirstRunOnboardingStep(3);
+            if (onboardingState.kbReady) {
+                stopFtuKbAutoPolling();
+                maybeAutoAdvanceFromKbReady();
+            }
             if (statusEl) {
                 statusEl.textContent = onboardingState.kbReady
                     ? 'Knowledge Base is ready for grounded generation.'
-                    : 'Files uploaded. Indexing may still be in progress; refresh again shortly.';
+                    : (isAutoPoll
+                        ? 'Auto-checking KB training... we will move forward as soon as it is ready.'
+                        : 'Files uploaded. Indexing may still be in progress; refresh again shortly.');
             }
         } catch (_) {
             if (statusEl) {
-                statusEl.textContent = 'Could not refresh KB status right now. Please try again.';
+                statusEl.textContent = isAutoPoll
+                    ? 'Auto-check paused due to a temporary issue. You can click Refresh KB Status.'
+                    : 'Could not refresh KB status right now. Please try again.';
             }
         }
     }
@@ -23420,14 +23593,24 @@
 
         if (normalized === 1) {
             showFirstRunOnboardingFeedback('Step 1 of 4 - set your strategic defaults.', 'info');
+            stopFtuKbAutoPolling();
         } else if (normalized === 3) {
             renderFtuKbStatus();
+            syncFtuKbTrainingProgress();
+            if (!onboardingState.kbReady && Number(onboardingState.kbFiles || 0) > 0) {
+                startFtuKbAutoPolling();
+            } else {
+                stopFtuKbAutoPolling();
+            }
         } else if (normalized === 4) {
             renderFtuKbStatus();
+            stopFtuKbAutoPolling();
             if (!ftuCelebrated) {
                 triggerFtuCelebration();
                 ftuCelebrated = true;
             }
+        } else {
+            stopFtuKbAutoPolling();
         }
     }
 
@@ -23535,6 +23718,7 @@
         }
         clearFirstRunOnboardingTransition();
         ftuCelebrated = false;
+        ftuKbAutoAdvanceDone = false;
         const confettiLayer = document.getElementById('ftu-confetti-layer');
         if (confettiLayer) {
             confettiLayer.innerHTML = '';
@@ -23555,6 +23739,8 @@
         if (!overlay) {
             return;
         }
+        stopFtuKbAutoPolling();
+        ftuKbAutoAdvanceDone = false;
         clearFirstRunOnboardingTransition();
         overlay.classList.remove('is-open');
         document.body.style.overflow = '';
@@ -32968,6 +33154,72 @@
         flex-wrap: wrap;
         margin-top: 0.45rem;
     }
+    .ftu-kb-progress {
+        margin-top: 0.55rem;
+        border: 1px solid rgba(99, 102, 241, 0.26);
+        border-radius: 10px;
+        background: #eef2ff;
+        padding: 0.5rem 0.55rem;
+    }
+    .ftu-kb-progress[hidden] {
+        display: none;
+    }
+    .ftu-kb-progress-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.35rem;
+    }
+    .ftu-kb-progress-title {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #312e81;
+    }
+    .ftu-kb-progress-eta {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #4f46e5;
+        white-space: nowrap;
+    }
+    .ftu-kb-progress-track {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(99, 102, 241, 0.16);
+    }
+    .ftu-kb-progress-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+        transition: width 220ms ease;
+    }
+    .ftu-kb-progress.is-running .ftu-kb-progress-fill {
+        background-size: 20px 20px;
+        background-image: linear-gradient(
+            45deg,
+            rgba(99, 102, 241, 0.92) 25%,
+            rgba(79, 70, 229, 0.96) 25%,
+            rgba(79, 70, 229, 0.96) 50%,
+            rgba(99, 102, 241, 0.92) 50%,
+            rgba(99, 102, 241, 0.92) 75%,
+            rgba(79, 70, 229, 0.96) 75%,
+            rgba(79, 70, 229, 0.96) 100%
+        );
+        animation: ftuKbStripe 1.15s linear infinite;
+    }
+    .ftu-kb-progress-note {
+        margin-top: 0.38rem;
+        font-size: 0.76rem;
+        color: #475569;
+        line-height: 1.35;
+    }
+    @keyframes ftuKbStripe {
+        0% { background-position: 0 0; }
+        100% { background-position: 20px 0; }
+    }
     .ftu-panel .form-group input,
     .ftu-panel .form-group select,
     .ftu-panel .form-group textarea {
@@ -33170,6 +33422,22 @@
     body.dark-mode .ftu-kb-upload-box input[type="file"] {
         color: #e2e8f0;
     }
+    body.dark-mode .ftu-kb-progress {
+        background: #17173f;
+        border-color: #3a3a78;
+    }
+    body.dark-mode .ftu-kb-progress-title {
+        color: #c7d2fe;
+    }
+    body.dark-mode .ftu-kb-progress-eta {
+        color: #a5b4fc;
+    }
+    body.dark-mode .ftu-kb-progress-track {
+        background: rgba(129, 140, 248, 0.2);
+    }
+    body.dark-mode .ftu-kb-progress-note {
+        color: #cbd5e1;
+    }
     body.dark-mode .ftu-feedback.is-success {
         background: #163028;
         border-color: #2f6b4f;
@@ -33354,6 +33622,16 @@
                             <button class="btn btn-secondary" type="button" onclick="ftuRefreshKbReadiness()"><i class="fas fa-rotate"></i> Refresh KB Status</button>
                         </div>
                         <div id="ftu-kb-upload-status" class="form-hint" style="margin-top:0.45rem;"></div>
+                        <div id="ftu-kb-training-progress" class="ftu-kb-progress" hidden>
+                            <div class="ftu-kb-progress-head">
+                                <div class="ftu-kb-progress-title"><i class="fas fa-gears"></i> Training your Knowledge Base</div>
+                                <div id="ftu-kb-progress-eta" class="ftu-kb-progress-eta">ETA --</div>
+                            </div>
+                            <div class="ftu-kb-progress-track">
+                                <div id="ftu-kb-progress-fill" class="ftu-kb-progress-fill"></div>
+                            </div>
+                            <div id="ftu-kb-progress-note" class="ftu-kb-progress-note">Indexing will begin after upload.</div>
+                        </div>
                     </div>
                 </section>
                 <section class="ftu-panel" data-step="4">
