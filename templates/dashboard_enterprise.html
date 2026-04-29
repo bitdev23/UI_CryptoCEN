@@ -21098,6 +21098,25 @@
                         </button>
                     </div>
 
+                    <!-- Onboarding Testing Controls -->
+                    <div class="hlp-card" style="margin-top:0.9rem; border:1.5px dashed var(--border-color);">
+                        <div class="hlp-card-title" style="color:var(--text-secondary);"><i class="fas fa-flask"></i> Onboarding Testing Controls</div>
+                        <p style="margin:0 0 0.7rem; color:var(--text-secondary); font-size:0.84rem;">Use these to test the onboarding wizard without deleting your account. Not visible to regular users.</p>
+                        <div style="display:flex; align-items:center; gap:0.55rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+                            <span style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">Current mode:</span>
+                            <span id="ftu-test-mode-badge" style="font-size:0.78rem; padding:0.18rem 0.6rem; border-radius:999px; font-weight:700;"></span>
+                        </div>
+                        <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
+                            <button class="btn btn-secondary" type="button" style="font-size:0.82rem;" onclick="ftuTestResetMyAccount()">
+                                <i class="fas fa-user-xmark"></i> Reset for my account
+                            </button>
+                            <button class="btn btn-secondary" type="button" style="font-size:0.82rem;" id="ftu-test-toggle-btn" onclick="ftuTestToggleForceAll()">
+                            </button>
+                        </div>
+                        <p style="margin:0.6rem 0 0; font-size:0.78rem; color:var(--text-secondary);"
+                           id="ftu-test-mode-hint"></p>
+                    </div>
+
                     <!-- AI Routing & LinkedIn Setup -->
                     <div class="hlp-section-title">
                         <div class="hlp-section-icon hlp-section-icon--violet"><i class="fas fa-key"></i></div>
@@ -21866,6 +21885,7 @@
         if (tabId === 'style-clone') { scInit(); }
         else if (tabId === 'repurpose') { rpInit(); }
         else if (tabId === 'best-time') { btLoad(); }
+        else if (tabId === 'help') { renderFtuTestControls(); }
         else if (tabId === 'knowledge-base') {
             refreshKnowledgeBaseStatus();
             refreshKnowledgeBaseFiles();
@@ -23119,7 +23139,14 @@
         localStorage.setItem(emailIdentityMapKey, normalizedUserId);
     }
 
+    function isFtuForceAllMode() {
+        return localStorage.getItem('ftu_force_all') === '1';
+    }
+
     function hasSeenFirstRunOnboarding() {
+        if (isFtuForceAllMode()) {
+            return false;  // force-all testing mode overrides the seen flag
+        }
         const key = getFirstRunOnboardingKey();
         if (!key) {
             return false;  // identity not yet loaded — treat as not seen, not as already seen
@@ -23404,6 +23431,49 @@
         }
     }
 
+    // ── Onboarding testing helpers ──────────────────────────────────────────────
+    function renderFtuTestControls() {
+        const badge = document.getElementById('ftu-test-mode-badge');
+        const toggleBtn = document.getElementById('ftu-test-toggle-btn');
+        const hint = document.getElementById('ftu-test-mode-hint');
+        if (!badge || !toggleBtn) { return; }
+        const forceAll = isFtuForceAllMode();
+        if (forceAll) {
+            badge.textContent = 'Force all users';
+            badge.style.background = '#fef3c7';
+            badge.style.color = '#92400e';
+            toggleBtn.innerHTML = '<i class="fas fa-toggle-on"></i> Switch to new users only';
+            if (hint) { hint.textContent = 'Wizard auto-shows on every login for every account. Reload the page to trigger it now.'; }
+        } else {
+            badge.textContent = 'New users only';
+            badge.style.background = '#d1fae5';
+            badge.style.color = '#065f46';
+            toggleBtn.innerHTML = '<i class="fas fa-toggle-off"></i> Enable for all users (testing)';
+            if (hint) { hint.textContent = 'Wizard only auto-shows for brand-new accounts that have never seen it and have no posts.'; }
+        }
+    }
+
+    function ftuTestToggleForceAll() {
+        if (isFtuForceAllMode()) {
+            localStorage.removeItem('ftu_force_all');
+            showToast('success', 'Onboarding reset to new users only mode.', 'fas fa-toggle-off');
+        } else {
+            localStorage.setItem('ftu_force_all', '1');
+            showToast('success', 'Onboarding force-all mode ON. Reload to trigger it.', 'fas fa-toggle-on');
+        }
+        renderFtuTestControls();
+    }
+
+    function ftuTestResetMyAccount() {
+        const key = getFirstRunOnboardingKey();
+        if (key) {
+            localStorage.removeItem(key);
+        }
+        hasAttemptedFirstTimeOnboarding = false;
+        showToast('success', 'Onboarding "seen" flag cleared for this account. Reload to trigger it automatically.', 'fas fa-user-xmark');
+    }
+    // ── /Onboarding testing helpers ─────────────────────────────────────────────
+
     function openFirstRunOnboarding() {
         const overlay = document.getElementById('ftu-onboarding-overlay');
         if (!overlay) {
@@ -23503,7 +23573,8 @@
             return;
         }
         const hasPreviousPosts = Array.isArray(postHistoryCache) && postHistoryCache.length > 0;
-        if (hasPreviousPosts || hasSeenFirstRunOnboarding()) {
+        const bypassChecks = isFtuForceAllMode();
+        if (!bypassChecks && (hasPreviousPosts || hasSeenFirstRunOnboarding())) {
             hasAttemptedFirstTimeOnboarding = true;
             return;
         }
