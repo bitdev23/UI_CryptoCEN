@@ -21098,25 +21098,6 @@
                         </button>
                     </div>
 
-                    <!-- Onboarding Testing Controls -->
-                    <div class="hlp-card" style="margin-top:0.9rem; border:1.5px dashed var(--border-color);">
-                        <div class="hlp-card-title" style="color:var(--text-secondary);"><i class="fas fa-flask"></i> Onboarding Testing Controls</div>
-                        <p style="margin:0 0 0.7rem; color:var(--text-secondary); font-size:0.84rem;">Use these to test the onboarding wizard without deleting your account. Not visible to regular users.</p>
-                        <div style="display:flex; align-items:center; gap:0.55rem; margin-bottom:0.75rem; flex-wrap:wrap;">
-                            <span style="font-size:0.82rem; font-weight:600; color:var(--text-secondary);">Current mode:</span>
-                            <span id="ftu-test-mode-badge" style="font-size:0.78rem; padding:0.18rem 0.6rem; border-radius:999px; font-weight:700;"></span>
-                        </div>
-                        <div style="display:flex; gap:0.55rem; flex-wrap:wrap;">
-                            <button class="btn btn-secondary" type="button" style="font-size:0.82rem;" onclick="ftuTestResetMyAccount()">
-                                <i class="fas fa-user-xmark"></i> Reset for my account
-                            </button>
-                            <button class="btn btn-secondary" type="button" style="font-size:0.82rem;" id="ftu-test-toggle-btn" onclick="ftuTestToggleForceAll()">
-                            </button>
-                        </div>
-                        <p style="margin:0.6rem 0 0; font-size:0.78rem; color:var(--text-secondary);"
-                           id="ftu-test-mode-hint"></p>
-                    </div>
-
                     <!-- AI Routing & LinkedIn Setup -->
                     <div class="hlp-section-title">
                         <div class="hlp-section-icon hlp-section-icon--violet"><i class="fas fa-key"></i></div>
@@ -21885,7 +21866,6 @@
         if (tabId === 'style-clone') { scInit(); }
         else if (tabId === 'repurpose') { rpInit(); }
         else if (tabId === 'best-time') { btLoad(); }
-        else if (tabId === 'help') { renderFtuTestControls(); }
         else if (tabId === 'knowledge-base') {
             refreshKnowledgeBaseStatus();
             refreshKnowledgeBaseFiles();
@@ -23281,11 +23261,14 @@
     }
 
     function getFirstRunOnboardingKey() {
-        const identity = (
+        let identity = (
             localStorage.getItem('user_id')
             || localStorage.getItem('user_email')
             || ''
         ).trim();
+        if (identity.includes('@')) {
+            identity = identity.toLowerCase();
+        }
         if (!identity) {
             return '';
         }
@@ -23313,7 +23296,8 @@
     }
 
     function isFtuForceAllMode() {
-        return localStorage.getItem('ftu_force_all') === '1';
+        const mode = String(localStorage.getItem('ftu_admin_onboarding_mode') || '').trim().toLowerCase();
+        return mode === 'all';
     }
 
     function hasSeenFirstRunOnboarding() {
@@ -23347,14 +23331,15 @@
     }
 
     function getFtuCompletionState() {
-        const audience = String(document.getElementById('ftu-target-audience')?.value || '').trim();
+        const industry = String(document.getElementById('ftu-industry')?.value || '').trim();
+        const role = String(document.getElementById('ftu-role')?.value || '').trim();
         const tone = String(document.getElementById('ftu-tone')?.value || '').trim();
         const goal = String(document.getElementById('ftu-goal-preset')?.value || '').trim();
         const timezone = String(document.getElementById('ftu-timezone')?.value || '').trim();
         const postTime = String(document.getElementById('ftu-post-time')?.value || '').trim();
 
         return {
-            profileDone: Boolean(audience && tone && goal),
+            profileDone: Boolean(industry && role && tone && goal),
             scheduleDone: Boolean(timezone && postTime),
             kbDone: Boolean(onboardingState.kbReady)
         };
@@ -23479,15 +23464,24 @@
     }
 
     function applyFirstRunOnboardingSelections() {
-        const ftuAudience = document.getElementById('ftu-target-audience')?.value || '';
+        const ftuIndustry = document.getElementById('ftu-industry')?.value || '';
+        const ftuRole = document.getElementById('ftu-role')?.value || '';
         const ftuTone = document.getElementById('ftu-tone')?.value || '';
         const ftuGoal = document.getElementById('ftu-goal-preset')?.value || '';
         const ftuTimezone = document.getElementById('ftu-timezone')?.value || '';
         const ftuPostTime = document.getElementById('ftu-post-time')?.value || '';
 
-        const targetAudienceInput = document.getElementById('target-audience');
-        if (targetAudienceInput && ftuAudience.trim()) {
-            targetAudienceInput.value = ftuAudience.trim();
+        if (ftuIndustry) {
+            setSelectValue('industry-select', ftuIndustry);
+            if (typeof onIndustryChange === 'function') {
+                onIndustryChange();
+            }
+        }
+        if (ftuRole) {
+            setSelectValue('role-select', ftuRole);
+            if (typeof onRoleChange === 'function') {
+                onRoleChange();
+            }
         }
         if (ftuTone) {
             setSelectValue('post-tone', ftuTone);
@@ -23614,49 +23608,6 @@
         }
     }
 
-    // ── Onboarding testing helpers ──────────────────────────────────────────────
-    function renderFtuTestControls() {
-        const badge = document.getElementById('ftu-test-mode-badge');
-        const toggleBtn = document.getElementById('ftu-test-toggle-btn');
-        const hint = document.getElementById('ftu-test-mode-hint');
-        if (!badge || !toggleBtn) { return; }
-        const forceAll = isFtuForceAllMode();
-        if (forceAll) {
-            badge.textContent = 'Force all users';
-            badge.style.background = '#fef3c7';
-            badge.style.color = '#92400e';
-            toggleBtn.innerHTML = '<i class="fas fa-toggle-on"></i> Switch to new users only';
-            if (hint) { hint.textContent = 'Wizard auto-shows on every login for every account. Reload the page to trigger it now.'; }
-        } else {
-            badge.textContent = 'New users only';
-            badge.style.background = '#d1fae5';
-            badge.style.color = '#065f46';
-            toggleBtn.innerHTML = '<i class="fas fa-toggle-off"></i> Enable for all users (testing)';
-            if (hint) { hint.textContent = 'Wizard only auto-shows for brand-new accounts that have never seen it and have no posts.'; }
-        }
-    }
-
-    function ftuTestToggleForceAll() {
-        if (isFtuForceAllMode()) {
-            localStorage.removeItem('ftu_force_all');
-            showToast('success', 'Onboarding reset to new users only mode.', 'fas fa-toggle-off');
-        } else {
-            localStorage.setItem('ftu_force_all', '1');
-            showToast('success', 'Onboarding force-all mode ON. Reload to trigger it.', 'fas fa-toggle-on');
-        }
-        renderFtuTestControls();
-    }
-
-    function ftuTestResetMyAccount() {
-        const key = getFirstRunOnboardingKey();
-        if (key) {
-            localStorage.removeItem(key);
-        }
-        hasAttemptedFirstTimeOnboarding = false;
-        showToast('success', 'Onboarding "seen" flag cleared for this account. Reload to trigger it automatically.', 'fas fa-user-xmark');
-    }
-    // ── /Onboarding testing helpers ─────────────────────────────────────────────
-
     function openFirstRunOnboarding() {
         const overlay = document.getElementById('ftu-onboarding-overlay');
         if (!overlay) {
@@ -23669,23 +23620,25 @@
                 ? `Welcome ${firstName} - let us launch your posting system`
                 : 'Welcome - let us launch your posting system';
         }
-        const audienceInput = document.getElementById('target-audience');
-        const ftuAudienceInput = document.getElementById('ftu-target-audience');
-        if (ftuAudienceInput) {
-            ftuAudienceInput.value = String(audienceInput?.value || '').trim();
-            ftuAudienceInput.oninput = () => updateFtuCompletionMetrics();
+        const industrySelect = document.getElementById('industry-select');
+        const ftuIndustrySelect = document.getElementById('ftu-industry');
+        if (ftuIndustrySelect && industrySelect?.value) {
+            ftuIndustrySelect.value = industrySelect.value;
+        }
+        const roleSelect = document.getElementById('role-select');
+        const ftuRoleSelect = document.getElementById('ftu-role');
+        if (ftuRoleSelect && roleSelect?.value) {
+            ftuRoleSelect.value = roleSelect.value;
         }
         const toneSelect = document.getElementById('post-tone');
         const ftuToneSelect = document.getElementById('ftu-tone');
         if (ftuToneSelect && toneSelect?.value) {
             ftuToneSelect.value = toneSelect.value;
-            ftuToneSelect.onchange = () => updateFtuCompletionMetrics();
         }
         const goalPreset = document.getElementById('goal-preset');
         const ftuGoalPreset = document.getElementById('ftu-goal-preset');
         if (ftuGoalPreset && goalPreset?.value) {
             ftuGoalPreset.value = goalPreset.value;
-            ftuGoalPreset.onchange = () => updateFtuCompletionMetrics();
         }
         const timezoneSelect = document.getElementById('timezone');
         const ftuTimezoneSelect = document.getElementById('ftu-timezone');
@@ -33566,29 +33519,57 @@
                     <p>These settings shape your positioning, messaging, and draft direction from day one.</p>
                     <div class="grid grid-2" style="margin-top:0.5rem; gap:0.7rem;">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="ftu-field-label">Target Audience <span class="ftu-tip" title="Who this post should speak to. Velank uses this to shape examples, pain points, and call-to-action language."><i class="fas fa-circle-question"></i></span></label>
-                            <input id="ftu-target-audience" type="text" placeholder="Founders, marketers, SaaS teams">
+                            <label class="ftu-field-label">Industry <span class="ftu-tip" title="Your industry context helps Velank choose relevant examples, terminology, and audience framing."><i class="fas fa-circle-question"></i></span></label>
+                            <select id="ftu-industry" onchange="updateFtuCompletionMetrics()">
+                                <option value="tech">Technology &amp; Software</option>
+                                <option value="finance">Finance &amp; Banking</option>
+                                <option value="healthcare">Healthcare &amp; Pharma</option>
+                                <option value="ecommerce">E-Commerce &amp; Retail</option>
+                                <option value="crypto">Cryptocurrency &amp; Blockchain</option>
+                                <option value="web3">Web3</option>
+                                <option value="genai">GenAI</option>
+                                <option value="saas">SaaS &amp; Startups</option>
+                                <option value="supply_chain">Supply Chain &amp; Logistics</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="ftu-field-label">Your Role <span class="ftu-tip" title="Your role aligns the post voice and credibility signals so the content reads as authentically yours."><i class="fas fa-circle-question"></i></span></label>
+                            <select id="ftu-role" onchange="updateFtuCompletionMetrics()">
+                                <option value="ceo">CEO / Founder</option>
+                                <option value="cto">CTO / VP Engineering</option>
+                                <option value="dev">Software Developer</option>
+                                <option value="pm">Product Manager</option>
+                                <option value="hr">HR / People Ops</option>
+                                <option value="finance">Finance / CFO</option>
+                                <option value="ops">Operations</option>
+                                <option value="marketing">Marketing / Growth</option>
+                                <option value="sales">Sales</option>
+                                <option value="bde">Business Development (BDE)</option>
+                            </select>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="ftu-field-label">Writing Tone <span class="ftu-tip" title="Controls voice style for generated posts. Example: Professional for authority, Conversational for relatability."><i class="fas fa-circle-question"></i></span></label>
-                            <select id="ftu-tone">
+                            <select id="ftu-tone" onchange="updateFtuCompletionMetrics()">
                                 <option value="professional">Professional</option>
                                 <option value="conversational">Conversational</option>
                                 <option value="authoritative">Authoritative</option>
-                                <option value="educational">Educational</option>
+                                <option value="contrarian">Contrarian</option>
                                 <option value="storytelling">Storytelling</option>
+                                <option value="educational">Educational</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-group" style="margin-top:0.7rem; margin-bottom:0;">
-                        <label class="ftu-field-label">Primary Goal <span class="ftu-tip" title="Tells Velank what outcome to optimize for, such as comments, profile visits, leads, or thought leadership."><i class="fas fa-circle-question"></i></span></label>
-                        <select id="ftu-goal-preset">
-                            <option value="spark-comments">Spark Comments &amp; Discussion</option>
-                            <option value="drive-visits">Drive Profile Visits</option>
-                            <option value="generate-leads">Generate Leads</option>
-                            <option value="build-authority">Build Thought Leadership</option>
-                            <option value="educate">Educate Audience</option>
-                        </select>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="ftu-field-label">Post Goal <span class="ftu-tip" title="Tells Velank what outcome to optimize for, such as comments, profile visits, leads, or thought leadership."><i class="fas fa-circle-question"></i></span></label>
+                            <select id="ftu-goal-preset" onchange="updateFtuCompletionMetrics()">
+                                <option value="spark-comments">Spark Comments &amp; Discussion</option>
+                                <option value="drive-visits">Drive Profile Visits</option>
+                                <option value="generate-leads">Generate Leads</option>
+                                <option value="build-authority">Build Thought Leadership</option>
+                                <option value="grow-network">Grow Network</option>
+                                <option value="educate">Educate Audience</option>
+                                <option value="brand-awareness">Brand Awareness</option>
+                            </select>
+                        </div>
                     </div>
                 </section>
                 <section class="ftu-panel" data-step="2">

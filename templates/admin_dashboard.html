@@ -806,6 +806,7 @@
                 <button class="pill" onclick="switchFeatureTab('errors')" style="cursor: pointer;">⚠️ Error Monitoring</button>
                 <button class="pill" onclick="switchFeatureTab('revenue')" style="cursor: pointer;">📊 Revenue Dashboard</button>
                 <button class="pill" onclick="switchFeatureTab('flags')" style="cursor: pointer;">🚩 Feature Flags</button>
+                <button class="pill" onclick="switchFeatureTab('onboarding')" style="cursor: pointer;">🧭 Onboarding</button>
             </div>
 
             <!-- NOTIFICATIONS SECTION -->
@@ -888,6 +889,39 @@
                         <button class="btn btn-ghost" onclick="loadFeatureFlags()">Refresh</button>
                     </div>
                     <div id="feature-flags-list" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+
+            <!-- ONBOARDING TESTING CONTROLS SECTION -->
+            <div id="feature-tab-onboarding" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Onboarding Controls</h3>
+                            <p class="panel-sub">Control onboarding behavior for this browser session while testing.</p>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#f8fafc; margin-top:8px;">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                            <strong style="font-size:12px; color:#334155;">Current mode:</strong>
+                            <span id="admin-ftu-mode-badge" style="font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;"></span>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                            <button class="btn btn-ghost" type="button" onclick="adminSetOnboardingMode('new')">New users only</button>
+                            <button class="btn btn-primary" type="button" onclick="adminSetOnboardingMode('all')">Force all users (testing)</button>
+                        </div>
+                        <div id="admin-ftu-mode-hint" style="font-size:12px; color:#64748b;"></div>
+                    </div>
+
+                    <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; background:#ffffff; margin-top:12px;">
+                        <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px;">Reset onboarding for one user</div>
+                        <p style="margin:0 0 8px; font-size:12px; color:#64748b;">Clears the local onboarding "seen" flag for a specific user identity in this browser.</p>
+                        <div style="display:grid; grid-template-columns:1fr auto; gap:8px;">
+                            <input id="admin-ftu-user-identity" type="text" placeholder="Enter user_id or user_email" style="border:1px solid #cbd5e1; border-radius:9px; padding:8px 10px; font-size:12px;">
+                            <button class="btn btn-ghost" type="button" onclick="adminResetOnboardingForIdentity()">Reset user</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -2305,6 +2339,57 @@
 
         // ======== FEATURE TABS & FUNCTIONS ========
 
+        function getAdminOnboardingMode() {
+            const mode = String(localStorage.getItem('ftu_admin_onboarding_mode') || 'new').toLowerCase();
+            return mode === 'all' ? 'all' : 'new';
+        }
+
+        function renderAdminOnboardingControls() {
+            const badge = document.getElementById('admin-ftu-mode-badge');
+            const hint = document.getElementById('admin-ftu-mode-hint');
+            if (!badge || !hint) {
+                return;
+            }
+            const mode = getAdminOnboardingMode();
+            if (mode === 'all') {
+                badge.textContent = 'Force all users';
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#92400e';
+                hint.textContent = 'Wizard auto-shows for any account in this browser. Switch back after testing.';
+            } else {
+                badge.textContent = 'New users only';
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#166534';
+                hint.textContent = 'Wizard auto-shows only for new users that have not completed onboarding.';
+            }
+        }
+
+        function adminSetOnboardingMode(mode) {
+            const normalized = String(mode || '').toLowerCase() === 'all' ? 'all' : 'new';
+            localStorage.setItem('ftu_admin_onboarding_mode', normalized);
+            // Remove legacy flag to avoid mixed behavior.
+            localStorage.removeItem('ftu_force_all');
+            renderAdminOnboardingControls();
+            const msg = normalized === 'all'
+                ? 'Onboarding mode set to Force all users for this browser.'
+                : 'Onboarding mode set to New users only.';
+            showToast(msg, 'success');
+        }
+
+        function adminResetOnboardingForIdentity() {
+            const input = document.getElementById('admin-ftu-user-identity');
+            const identity = String(input?.value || '').trim();
+            if (!identity) {
+                showToast('Enter a user_id or user_email first.', 'error');
+                return;
+            }
+            localStorage.removeItem(`ftu_onboarding_seen_${identity}`);
+            showToast(`Cleared onboarding seen flag for ${identity}.`, 'success');
+            if (input) {
+                input.value = '';
+            }
+        }
+
         function switchFeatureTab(tabName) {
             document.querySelectorAll('.feature-tab').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.pill').forEach(btn => btn.classList.remove('active'));
@@ -2315,6 +2400,7 @@
             if (tabName === 'errors') setTimeout(() => loadErrorLogs(), 100);
             if (tabName === 'revenue') setTimeout(() => loadRevenueMetrics(), 100);
             if (tabName === 'flags') setTimeout(() => loadFeatureFlags(), 100);
+            if (tabName === 'onboarding') setTimeout(() => renderAdminOnboardingControls(), 100);
         }
 
         // Notification Functions
@@ -2620,6 +2706,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadAll().catch(err => showToast(err.message || 'Failed to load dashboard', 'error', 5000));
+            renderAdminOnboardingControls();
 
             // Close modal on backdrop click
             const modal = document.getElementById('details-modal');
