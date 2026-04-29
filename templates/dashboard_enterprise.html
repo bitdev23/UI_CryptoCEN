@@ -20528,7 +20528,7 @@
                                         <span class="settings-v2-card-icon"><i class="fas fa-link"></i></span>
                                         <div>
                                             <div class="settings-v2-card-title">LinkedIn Account</div>
-                                            <div class="settings-v2-card-sub">Access token and Person ID for posting</div>
+                                            <div class="settings-v2-card-sub">Connect LinkedIn to publish and schedule posts</div>
                                         </div>
                                     </div>
                                     <span id="settings-li-connection-badge" class="settings-v2-chip settings-v2-chip-success">Connected</span>
@@ -20537,33 +20537,37 @@
                                     <div id="settings-li-connection-strip" class="settings-v2-strip settings-v2-strip-success">
                                         <div>
                                             <div id="settings-li-connection-title" class="settings-v2-strip-title">LinkedIn account connected</div>
-                                            <div id="settings-li-connection-sub" class="settings-v2-strip-sub">Token and Person ID are ready for publishing</div>
+                                            <div id="settings-li-connection-sub" class="settings-v2-strip-sub">Publishing is enabled for this workspace</div>
                                         </div>
-                                        <button class="btn btn-secondary btn-sm" type="button" onclick="saveLISettings()"><i class="fas fa-rotate"></i> Refresh</button>
+                                        <button class="btn btn-secondary btn-sm" type="button" onclick="openLinkedInConnectPrompt('settings')"><i class="fas fa-plug"></i> Connect</button>
                                     </div>
+                                    <p class="form-hint" style="margin-top:0.85rem;">Default for users: OAuth connect. If you need manual credentials, open Advanced below.</p>
 
-                                    <div class="form-group">
-                                        <label>Access Token</label>
-                                        <div class="settings-v2-input-wrap">
-                                            <input type="password" id="linkedin-token" placeholder="••••••••••••">
-                                            <button class="settings-v2-eye-btn" type="button" onclick="toggleInputVisibility('linkedin-token', this)"><i class="fas fa-eye"></i></button>
+                                    <details id="linkedin-advanced-panel" style="margin-top:1rem; border:1px solid rgba(15,23,42,0.08); border-radius:12px; padding:0.2rem 0.75rem 0.75rem; background:#fafcff;">
+                                        <summary style="cursor:pointer; font-weight:600; color:#334155; padding:0.55rem 0;">Advanced: Use your own Access Token + Person ID</summary>
+                                        <div class="form-group" style="margin-top:0.25rem;">
+                                            <label>Access Token</label>
+                                            <div class="settings-v2-input-wrap">
+                                                <input type="password" id="linkedin-token" placeholder="••••••••••••">
+                                                <button class="settings-v2-eye-btn" type="button" onclick="toggleInputVisibility('linkedin-token', this)"><i class="fas fa-eye"></i></button>
+                                            </div>
+                                            <p class="form-hint" id="linkedin-token-status">No LinkedIn token connected.</p>
                                         </div>
-                                        <p class="form-hint" id="linkedin-token-status">No LinkedIn token connected.</p>
-                                    </div>
 
-                                    <div class="form-group">
-                                        <label>Person ID</label>
-                                        <div class="settings-v2-input-wrap">
-                                            <input type="password" id="linkedin-person-id" placeholder="urn:li:person:XXXXXXXXX">
-                                            <button class="settings-v2-eye-btn" type="button" onclick="toggleInputVisibility('linkedin-person-id', this)"><i class="fas fa-eye"></i></button>
+                                        <div class="form-group">
+                                            <label>Person ID</label>
+                                            <div class="settings-v2-input-wrap">
+                                                <input type="password" id="linkedin-person-id" placeholder="urn:li:person:XXXXXXXXX">
+                                                <button class="settings-v2-eye-btn" type="button" onclick="toggleInputVisibility('linkedin-person-id', this)"><i class="fas fa-eye"></i></button>
+                                            </div>
+                                            <p class="form-hint" id="linkedin-person-status">No LinkedIn person ID connected.</p>
                                         </div>
-                                        <p class="form-hint" id="linkedin-person-status">No LinkedIn person ID connected.</p>
-                                    </div>
 
-                                    <div class="settings-v2-actions">
-                                        <button class="btn btn-primary" onclick="saveLISettings()"><i class="fas fa-floppy-disk"></i> Update LinkedIn Settings</button>
-                                        <button class="btn btn-danger" onclick="clearLinkedInCredentials()"><i class="fas fa-trash"></i> Clear Credentials</button>
-                                    </div>
+                                        <div class="settings-v2-actions">
+                                            <button class="btn btn-primary" onclick="saveLISettings()"><i class="fas fa-floppy-disk"></i> Save Manual Credentials</button>
+                                            <button class="btn btn-danger" onclick="clearLinkedInCredentials()"><i class="fas fa-trash"></i> Clear Credentials</button>
+                                        </div>
+                                    </details>
                                 </div>
                             </div>
 
@@ -22817,6 +22821,64 @@
         if (override !== null) {
             return override;
         }
+        const tokenMasked = String(config?.LINKEDIN_ACCESS_TOKEN || '').trim();
+        const personMasked = String(config?.LINKEDIN_PERSON_ID || '').trim();
+        return Boolean(tokenMasked && personMasked);
+    }
+
+    function openLinkedInConnectPrompt(action = 'publish') {
+        const modal = document.getElementById('li-connect-modal');
+        if (!modal) {
+            return;
+        }
+        modal.dataset.pendingAction = String(action || 'publish');
+        modal.classList.add('active');
+    }
+
+    function closeLinkedInConnectPrompt() {
+        const modal = document.getElementById('li-connect-modal');
+        if (!modal) {
+            return;
+        }
+        modal.classList.remove('active');
+    }
+
+    function openLinkedInRecommendedFlow() {
+        closeLinkedInConnectPrompt();
+        switchTab('settings');
+        setTimeout(() => {
+            const linkedinNav = Array.from(document.querySelectorAll('#settings .settings-v2-nav-item')).find(item => (item.textContent || '').toLowerCase().includes('linkedin'));
+            if (linkedinNav) {
+                showSettingsSection('linkedin', linkedinNav);
+            }
+            showToast('info', 'Use Connect to enable LinkedIn publishing. OAuth path can be added behind this button.', 'fas fa-link');
+        }, 180);
+    }
+
+    function openLinkedInAdvancedByoFlow() {
+        closeLinkedInConnectPrompt();
+        switchTab('settings');
+        setTimeout(() => {
+            const linkedinNav = Array.from(document.querySelectorAll('#settings .settings-v2-nav-item')).find(item => (item.textContent || '').toLowerCase().includes('linkedin'));
+            if (linkedinNav) {
+                showSettingsSection('linkedin', linkedinNav);
+            }
+            const advanced = document.getElementById('linkedin-advanced-panel');
+            if (advanced) {
+                advanced.open = true;
+            }
+            const tokenInput = document.getElementById('linkedin-token');
+            if (tokenInput) {
+                tokenInput.focus();
+            }
+        }, 180);
+    }
+
+    async function ensureLinkedInConnectionForAction(action = 'publish') {
+        if (isLinkedInConnectedForUi(runtimeConfig)) {
+            return true;
+        }
+        openLinkedInConnectPrompt(action);
         return false;
     }
 
@@ -22837,9 +22899,9 @@
             },
             {
                 done: !!onboardingState.linkedinConnected,
-                text: 'Configure LinkedIn token and person ID',
+                text: 'Connect LinkedIn for publish + schedule',
                 actionLabel: onboardingState.linkedinConnected ? 'Configured' : 'Open Settings',
-                action: "switchTab('settings')"
+                action: "openLinkedInRecommendedFlow()"
             },
             {
                 done: !!onboardingState.kbReady,
@@ -22969,17 +23031,20 @@
     function handleFirstRunOnboardingNext() {
         const current = Number(ftuWizardStep || 1);
         if (current >= 3) {
-            startOnboardingPostFlow(true);
+            const autoGenerate = Boolean(document.getElementById('ftu-auto-generate')?.checked);
+            startOnboardingPostFlow(autoGenerate);
             return;
         }
 
         if (current === 1) {
-            showFirstRunOnboardingFeedback('Great — setup is ready. Next, choose how to create your first draft.', 'success');
+            applyFirstRunOnboardingSelections();
+            showFirstRunOnboardingFeedback('Great — profile defaults saved. Next, set your scheduling defaults.', 'success');
             setFirstRunOnboardingStep(2);
             return;
         }
 
-        showFirstRunOnboardingFeedback('Perfect — moving to launch step…', 'success');
+        applyFirstRunOnboardingSelections();
+        showFirstRunOnboardingFeedback('Perfect — schedule defaults saved. Final step: generate your first post.', 'success');
         const nextBtn = document.getElementById('ftu-next-btn');
         const backBtn = document.getElementById('ftu-back-btn');
         if (nextBtn) nextBtn.disabled = true;
@@ -22993,6 +23058,39 @@
             if (backBtn) backBtn.disabled = false;
             ftuStepAdvanceTimer = null;
         }, 520);
+    }
+
+    function applyFirstRunOnboardingSelections() {
+        const ftuAudience = document.getElementById('ftu-target-audience')?.value || '';
+        const ftuTone = document.getElementById('ftu-tone')?.value || '';
+        const ftuGoal = document.getElementById('ftu-goal-preset')?.value || '';
+        const ftuTimezone = document.getElementById('ftu-timezone')?.value || '';
+        const ftuPostTime = document.getElementById('ftu-post-time')?.value || '';
+
+        const targetAudienceInput = document.getElementById('target-audience');
+        if (targetAudienceInput && ftuAudience.trim()) {
+            targetAudienceInput.value = ftuAudience.trim();
+        }
+        if (ftuTone) {
+            setSelectValue('post-tone', ftuTone);
+        }
+        if (ftuGoal) {
+            setSelectValue('goal-preset', ftuGoal);
+            if (typeof onGoalPresetChange === 'function') {
+                onGoalPresetChange(ftuGoal);
+            }
+        }
+
+        const timezoneSelect = document.getElementById('timezone');
+        if (timezoneSelect && ftuTimezone) {
+            timezoneSelect.value = ftuTimezone;
+        }
+        const postTimeInput = document.getElementById('post-time');
+        if (postTimeInput && ftuPostTime) {
+            postTimeInput.value = ftuPostTime;
+        }
+
+        saveCreatorDraftState();
     }
 
     function setFirstRunOnboardingStep(step) {
@@ -23053,6 +23151,36 @@
                 ? `Welcome ${firstName} — let's create your first post`
                 : "Welcome — let's create your first post";
         }
+        const audienceInput = document.getElementById('target-audience');
+        const ftuAudienceInput = document.getElementById('ftu-target-audience');
+        if (ftuAudienceInput) {
+            ftuAudienceInput.value = String(audienceInput?.value || '').trim();
+        }
+        const toneSelect = document.getElementById('post-tone');
+        const ftuToneSelect = document.getElementById('ftu-tone');
+        if (ftuToneSelect && toneSelect?.value) {
+            ftuToneSelect.value = toneSelect.value;
+        }
+        const goalPreset = document.getElementById('goal-preset');
+        const ftuGoalPreset = document.getElementById('ftu-goal-preset');
+        if (ftuGoalPreset && goalPreset?.value) {
+            ftuGoalPreset.value = goalPreset.value;
+        }
+        const timezoneSelect = document.getElementById('timezone');
+        const ftuTimezoneSelect = document.getElementById('ftu-timezone');
+        if (ftuTimezoneSelect && timezoneSelect) {
+            ftuTimezoneSelect.innerHTML = timezoneSelect.innerHTML;
+            ftuTimezoneSelect.value = timezoneSelect.value || 'Asia/Kolkata';
+        }
+        const postTimeInput = document.getElementById('post-time');
+        const ftuPostTime = document.getElementById('ftu-post-time');
+        if (ftuPostTime) {
+            ftuPostTime.value = String(postTimeInput?.value || '09:30');
+        }
+        const ftuTopic = document.getElementById('ftu-topic');
+        if (ftuTopic && !String(ftuTopic.value || '').trim()) {
+            ftuTopic.value = '3 practical lessons from this week that helped me ship faster and reduce rework';
+        }
         clearFirstRunOnboardingTransition();
         setFirstRunOnboardingStep(1);
         overlay.classList.add('is-open');
@@ -23095,6 +23223,7 @@
     }
 
     function startOnboardingPostFlow(autoGenerate = false) {
+        applyFirstRunOnboardingSelections();
         closeFirstRunOnboarding(true);
         switchTab('content-creator');
         setTimeout(() => {
@@ -23107,8 +23236,9 @@
             }
 
             const topicInput = document.getElementById('topic-input');
+            const ftuTopic = String(document.getElementById('ftu-topic')?.value || '').trim();
             if (topicInput && !String(topicInput.value || '').trim()) {
-                topicInput.value = '3 practical lessons from building AI workflows that save time without sacrificing quality';
+                topicInput.value = ftuTopic || '3 practical lessons from building AI workflows that save time without sacrificing quality';
                 if (typeof updateTopicCounter === 'function') {
                     updateTopicCounter();
                 }
@@ -25927,10 +26057,13 @@
         });
     }
 
-    function postNow() {
+    async function postNow() {
         const content = getEditablePostText();
         if (!content) {
             showToast('error', 'No generated content to post', 'fas fa-exclamation-circle');
+            return;
+        }
+        if (!(await ensureLinkedInConnectionForAction('publish'))) {
             return;
         }
         if (!validateBeforePublish(content, lastGeneratedHashtags)) {
@@ -25990,6 +26123,9 @@
         const content = getEditablePostText();
         if (!content) {
             showToast('error', 'Generate a post before scheduling', 'fas fa-exclamation-circle');
+            return;
+        }
+        if (!(await ensureLinkedInConnectionForAction('schedule'))) {
             return;
         }
 
@@ -26352,8 +26488,17 @@
             const priceValue = findPlanPrice(effectivePlan);
             const currencySymbol = getPlanCurrencySymbol();
             const priceText = priceValue > 0 ? `${currencySymbol}${formatKpiNumber(priceValue)} / cycle` : 'Free tier';
+            const scheduledPlan = String(subscription.scheduled_plan || '').trim();
+            const scheduledPlanLabel = scheduledPlan ? planDisplayName(scheduledPlan) : '';
             if (hasValidDate) {
-                planMeta.textContent = `${priceText} · Next billing ${periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+                const dateText = periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                if (scheduledPlanLabel) {
+                    planMeta.textContent = `${priceText} · Scheduled change to ${scheduledPlanLabel} on ${dateText}`;
+                } else if (subscription.cancel_at_period_end) {
+                    planMeta.textContent = `${priceText} · Cancels on ${dateText}`;
+                } else {
+                    planMeta.textContent = `${priceText} · Next billing ${dateText}`;
+                }
             } else {
                 planMeta.textContent = priceText;
             }
@@ -26463,7 +26608,9 @@
                             plan: selectedPlan,
                             order_id: response.razorpay_order_id,
                             payment_id: response.razorpay_payment_id,
-                            signature: response.razorpay_signature
+                            signature: response.razorpay_signature,
+                            currency: orderData.currency || 'INR',
+                            amount_minor: Number(orderData.amount_minor || order.amount || 0)
                         };
                         if (couponCode) verifyPayload.coupon_code = couponCode;
                         const verifyRes = await authFetch('/api/billing/verify-payment', {
@@ -27831,7 +27978,7 @@
         if (subEl) {
             subEl.textContent = connected
                 ? `Token ${tokenMasked} · Person ID ${personMasked}`
-                : 'Add token and person ID to enable posting and analytics sync';
+                : 'Connect LinkedIn to enable publishing and analytics sync';
         }
         if (badgeEl) {
             badgeEl.textContent = connected ? 'Connected' : 'Not Connected';
@@ -28556,6 +28703,10 @@
     }
 
     function openNewScheduleFlow() {
+        if (!isLinkedInConnectedForUi(runtimeConfig)) {
+            openLinkedInConnectPrompt('schedule');
+            return;
+        }
         switchTab('content-creator');
         showToast('info', 'Generate a post in LinkedIn Post tab, then click Schedule.', 'fas fa-circle-info');
     }
@@ -32555,31 +32706,61 @@
             <div id="ftu-feedback" class="ftu-feedback" aria-live="polite"></div>
             <div class="ftu-panel-wrap">
                 <section class="ftu-panel" data-step="1">
-                    <h4>Step 1: Your workspace is ready</h4>
-                    <p>We already prepared your first-run defaults so you can skip setup and move straight to creation.</p>
-                    <ul class="ftu-guided-list">
-                        <li><i class="fas fa-check-circle"></i><span>Goal preset selected for better engagement</span></li>
-                        <li><i class="fas fa-check-circle"></i><span>Topic area prefilled so the page is never blank</span></li>
-                        <li><i class="fas fa-check-circle"></i><span>Draft is fully editable before publishing</span></li>
-                    </ul>
+                    <h4>Step 1: Define your posting profile</h4>
+                    <p>These defaults are applied to your first drafts and can be changed anytime.</p>
+                    <div class="grid grid-2" style="margin-top:0.5rem; gap:0.7rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Target Audience</label>
+                            <input id="ftu-target-audience" type="text" placeholder="Founders, marketers, SaaS teams">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Writing Tone</label>
+                            <select id="ftu-tone">
+                                <option value="professional">Professional</option>
+                                <option value="conversational">Conversational</option>
+                                <option value="authoritative">Authoritative</option>
+                                <option value="educational">Educational</option>
+                                <option value="storytelling">Storytelling</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:0.7rem; margin-bottom:0;">
+                        <label>Primary Goal</label>
+                        <select id="ftu-goal-preset">
+                            <option value="spark-comments">Spark Comments &amp; Discussion</option>
+                            <option value="drive-visits">Drive Profile Visits</option>
+                            <option value="generate-leads">Generate Leads</option>
+                            <option value="build-authority">Build Thought Leadership</option>
+                            <option value="educate">Educate Audience</option>
+                        </select>
+                    </div>
                 </section>
                 <section class="ftu-panel" data-step="2">
-                    <h4>Step 2: Choose how you want to start</h4>
-                    <p>You can generate a first draft automatically or open the editor and tweak manually first.</p>
-                    <ul class="ftu-guided-list">
-                        <li><i class="fas fa-bolt"></i><span>Auto-generate gives you a draft instantly</span></li>
-                        <li><i class="fas fa-pen-fancy"></i><span>Editor-first gives you full manual control</span></li>
-                        <li><i class="fas fa-lightbulb"></i><span>Both paths keep your topic, goal, and settings</span></li>
-                    </ul>
+                    <h4>Step 2: Set your scheduling defaults</h4>
+                    <p>We use these for one-click scheduling in the editor and scheduler tabs.</p>
+                    <div class="grid grid-2" style="margin-top:0.5rem; gap:0.7rem;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Timezone</label>
+                            <select id="ftu-timezone"></select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Default Post Time</label>
+                            <input id="ftu-post-time" type="time" value="09:30">
+                        </div>
+                    </div>
+                    <p class="form-hint" style="margin-top:0.7rem;">Publishing is gated by LinkedIn connection. You can connect at publish/schedule time and continue where you left off.</p>
                 </section>
                 <section class="ftu-panel" data-step="3">
-                    <h4>Step 3: Start your guided flow</h4>
-                    <p>Click Generate to complete onboarding and jump into your first post flow immediately.</p>
-                    <ul class="ftu-guided-list">
-                        <li><i class="fas fa-check-circle"></i><span>You’ll land in LinkedIn Post tab with defaults ready</span></li>
-                        <li><i class="fas fa-check-circle"></i><span>One-click generation starts automatically</span></li>
-                        <li><i class="fas fa-check-circle"></i><span>After review, post now or schedule from Scheduler</span></li>
-                    </ul>
+                    <h4>Step 3: Generate your first post</h4>
+                    <p>Add a topic and launch your first draft now.</p>
+                    <div class="form-group" style="margin-top:0.5rem;">
+                        <label>First Post Topic</label>
+                        <textarea id="ftu-topic" rows="3" placeholder="Share 3 practical lessons from this week and invite discussion"></textarea>
+                    </div>
+                    <label style="display:flex; gap:0.45rem; align-items:center; font-size:0.86rem; color:#334155; margin-top:0.5rem;">
+                        <input type="checkbox" id="ftu-auto-generate" checked>
+                        Auto-generate immediately after onboarding
+                    </label>
                 </section>
             </div>
             <div class="ftu-footer">
@@ -32591,6 +32772,21 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div id="li-connect-modal" class="modal">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h2>Connect LinkedIn to Continue</h2>
+            <button class="modal-close" onclick="closeLinkedInConnectPrompt()">×</button>
+        </div>
+        <p style="margin:0 0 0.75rem; color:var(--text-secondary);">To publish or schedule, connect LinkedIn first. Recommended path is guided connect, with manual BYO available for advanced users.</p>
+        <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin-bottom:0.85rem;">
+            <button class="btn btn-primary" type="button" onclick="openLinkedInRecommendedFlow()"><i class="fas fa-plug"></i> Recommended: Connect LinkedIn</button>
+            <button class="btn btn-secondary" type="button" onclick="openLinkedInAdvancedByoFlow()"><i class="fas fa-user-gear"></i> Advanced: Use Access Token + Person ID</button>
+        </div>
+        <p class="form-hint" style="margin:0;">Note: attribution and posting labels are controlled by LinkedIn and may vary by token/app context.</p>
     </div>
 </div>
 

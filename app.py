@@ -328,58 +328,6 @@ def internal_error(error):
         error_message="An unexpected error occurred on our end. Our team has been notified. Please try again in a few moments."
     ), 500
 
-    @app.route('/api/billing/schedule-downgrade', methods=['POST'])
-    @require_auth
-    def billing_schedule_downgrade():
-        """
-        Schedule a plan downgrade to take effect at end of current billing period.
-        User keeps their current plan until period_end, then switches to the lower plan.
-        Request: { "new_plan": "starter" }
-        """
-        try:
-            user_id = get_current_user_id()
-            if not auth_supabase or not is_valid_uuid(user_id):
-                return jsonify({'success': False, 'message': 'Invalid session'}), 401
-
-            data = request.get_json(silent=True) or {}
-            new_plan = str(data.get('new_plan') or '').strip().lower()
-
-            if new_plan not in {'starter', 'free'}:
-                return jsonify({'success': False, 'message': 'Invalid plan for downgrade. Use starter or free.'}), 400
-
-            rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
-            sub = rows.data[0] if rows.data else None
-
-            if not sub or not _is_subscription_active(sub):
-                return jsonify({'success': False, 'message': 'No active subscription found'}), 400
-
-            current_plan = str(sub.get('plan') or 'free').lower()
-            plan_order = {'free': 0, 'starter': 1, 'creator': 2, 'pro': 3}
-
-            if plan_order.get(new_plan, 0) >= plan_order.get(current_plan, 0):
-                return jsonify({'success': False, 'message': 'That is not a downgrade from your current plan'}), 400
-
-            period_end = sub.get('current_period_end', '')
-            now = datetime.utcnow()
-
-            auth_supabase.table('subscriptions').update({
-                'scheduled_plan': new_plan,
-                'cancel_at_period_end': (new_plan == 'free'),
-                'updated_at': now.isoformat() + 'Z'
-            }).eq('user_id', user_id).execute()
-
-            return jsonify({
-                'success': True,
-                'message': f'Downgrade to {new_plan.capitalize()} scheduled.',
-                'scheduled_plan': new_plan,
-                'effective_from': period_end
-            })
-        except Exception as e:
-            logger.exception("Billing schedule downgrade failed")
-            return _safe_api_error('An unexpected error occurred', e)
-
-
-
 @app.errorhandler(403)
 def forbidden_error(error):
     if request.path.startswith('/api/'):
@@ -2008,6 +1956,106 @@ def _run_subscription_expiry_reminder_batch():
         logger.exception('Expiry reminder batch failed: %s', e)
 
 
+def _minor_to_display_amount(amount_minor: int) -> float:
+    try:
+        return round((int(amount_minor or 0) / 100.0), 2)
+    except Exception:
+        return 0.0
+
+
+def _plan_price_minor(plan: str, currency: str = 'INR') -> int:
+    normalized_currency = str(currency or 'INR').strip().upper()
+    major_amount = _plan_price_inr(plan) if normalized_currency == 'INR' else _plan_price_usd(plan)
+    return max(0, int(major_amount or 0) * 100)
+
+
+def _subscription_transition_payload(subscription: dict):
+    if not isinstance(subscription, dict):
+        return None
+
+    period_end = _parse_iso_utc(subscription.get('current_period_end'))
+    if not period_end or period_end > datetime.utcnow():
+        return None
+
+    now = datetime.utcnow()
+    scheduled_plan = str(subscription.get('scheduled_plan') or '').strip().lower()
+    cancel_at_period_end = bool(subscription.get('cancel_at_period_end'))
+    current_currency = str(subscription.get('current_plan_currency') or 'INR').strip().upper() or 'INR'
+
+    if scheduled_plan:
+        normalized = _normalize_subscription_plan(scheduled_plan)
+        if normalized and normalized[0] != 'free':
+            new_plan, months = normalized
+            next_period_end = _add_months_utc(period_end, months)
+            return {
+                'plan': new_plan,
+                'status': 'active',
+                'current_period_start': period_end.isoformat() + 'Z',
+                'current_period_end': next_period_end.isoformat() + 'Z',
+                'cancel_at_period_end': False,
+                'scheduled_plan': None,
+                'current_plan_currency': current_currency,
+                'current_plan_price_minor': _plan_price_minor(new_plan, current_currency),
+                'updated_at': now.isoformat() + 'Z',
+            }
+
+    if cancel_at_period_end:
+        return {
+            'plan': 'free',
+            'status': 'cancelled',
+            'cancel_at_period_end': False,
+            'scheduled_plan': None,
+            'current_plan_currency': current_currency,
+            'current_plan_price_minor': 0,
+            'updated_at': now.isoformat() + 'Z',
+        }
+
+    if str(subscription.get('status') or '').strip().lower() in {'active', 'trialing'}:
+        return {
+            'status': 'expired',
+            'updated_at': now.isoformat() + 'Z',
+        }
+    return None
+
+
+def _apply_subscription_transition_if_due(subscription: dict) -> dict:
+    payload = _subscription_transition_payload(subscription)
+    if not payload or not auth_supabase:
+        return subscription
+
+    user_id = str(subscription.get('user_id') or '').strip()
+    if not is_valid_uuid(user_id):
+        return subscription
+
+    try:
+        auth_supabase.table('subscriptions').update(payload).eq('user_id', user_id).execute()
+        updated = dict(subscription)
+        updated.update(payload)
+        return updated
+    except Exception as e:
+        logger.warning('Subscription transition apply failed for user %s: %s', user_id, e)
+        return subscription
+
+
+def _run_subscription_transition_batch():
+    """Apply due cancel/downgrade/expiry transitions independent of user activity."""
+    try:
+        if not auth_supabase:
+            return
+        rows = auth_supabase.table('subscriptions').select('*').limit(2000).execute().data or []
+        transitioned = 0
+        for subscription in rows:
+            payload = _subscription_transition_payload(subscription)
+            if not payload:
+                continue
+            updated = _apply_subscription_transition_if_due(subscription)
+            if updated is not subscription:
+                transitioned += 1
+        logger.info('Subscription transition batch complete: scanned=%s transitioned=%s', len(rows), transitioned)
+    except Exception as e:
+        logger.exception('Subscription transition batch failed: %s', e)
+
+
 def start_scheduler():
     """Start the background scheduler - runs even in TEST_MODE but marks posts appropriately"""
     global _SCHEDULER_THREAD, _SCHEDULER_HEARTBEAT
@@ -2026,6 +2074,7 @@ def start_scheduler():
         # Always schedule daily jobs - TEST_MODE will be respected in the job itself
         schedule.every().day.at(schedule_time).do(scheduled_post_job)
         schedule.every().day.at(reminder_batch_time).do(_run_subscription_expiry_reminder_batch)
+        schedule.every(30).minutes.do(_run_subscription_transition_batch)
         logger.info("✓ Daily scheduler started - will post daily at %s %s (TEST_MODE: %s)", schedule_time, config['TIMEZONE'], config['TEST_MODE'])
         logger.info(
             "✓ Expiry reminder batch scheduled daily at %s %s (ENV EXPIRY_REMINDER_BATCH_TIME=%s)",
@@ -2033,6 +2082,7 @@ def start_scheduler():
             config['TIMEZONE'],
             os.getenv('EXPIRY_REMINDER_BATCH_TIME', '09:15'),
         )
+        logger.info("✓ Subscription transition batch scheduled every 30 minutes")
         
         while True:
             _SCHEDULER_HEARTBEAT = time.time()
@@ -2806,7 +2856,9 @@ def _get_subscription_row(user_id: str) -> dict:
         return {'plan': 'free', 'status': 'active'}
     try:
         rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).order('updated_at', desc=True).limit(1).execute().data or []
-        return rows[0] if rows else {'plan': 'free', 'status': 'active'}
+        if not rows:
+            return {'plan': 'free', 'status': 'active'}
+        return _apply_subscription_transition_if_due(rows[0])
     except Exception as e:
         logger.warning("Subscription lookup failed for user %s: %s", user_id, e)
         return {'plan': 'free', 'status': 'active'}
@@ -3051,7 +3103,7 @@ def _check_generation_guardrail(user_id: str):
     }
 
 
-def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str = '', order_id: str = ''):
+def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str = '', order_id: str = '', amount_minor: int = None, currency: str = 'INR'):
     normalized = _normalize_subscription_plan(plan)
     if not normalized or normalized[0] == 'free':
         return None
@@ -3060,6 +3112,8 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
 
     normalized_plan, months = normalized
     now = datetime.utcnow()
+    normalized_currency = str(currency or 'INR').strip().upper() or 'INR'
+    billed_amount_minor = max(0, int(amount_minor if amount_minor is not None else _plan_price_minor(normalized_plan, normalized_currency)))
     
     # Check if this is an upgrade (user already has an active subscription)
     is_upgrade = False
@@ -3086,6 +3140,9 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
         'current_period_start': now.isoformat() + 'Z',
         'current_period_end': period_end if isinstance(period_end, str) else (period_end.isoformat() + 'Z'),
         'cancel_at_period_end': False,
+        'scheduled_plan': None,
+        'current_plan_currency': normalized_currency,
+        'current_plan_price_minor': billed_amount_minor if not is_upgrade else _plan_price_minor(normalized_plan, normalized_currency),
         'updated_at': now.isoformat() + 'Z',
         'billing_provider': 'razorpay'
     }
@@ -3115,7 +3172,9 @@ def _activate_subscription_from_payment(user_id: str, plan: str, payment_id: str
         'plan': normalized_plan,
         'current_period_start': payload['current_period_start'],
         'current_period_end': payload['current_period_end'],
-        'is_upgrade': is_upgrade
+        'is_upgrade': is_upgrade,
+        'current_plan_price_minor': payload.get('current_plan_price_minor', 0),
+        'current_plan_currency': payload.get('current_plan_currency', normalized_currency),
     }
 
 
@@ -3160,56 +3219,47 @@ def _calculate_proration(user_id: str, new_plan: str, region: str = 'ROW') -> di
     if not _is_subscription_active(current_sub):
         return {'prorated_amount': 0, 'error': 'Current subscription not active'}
     
-    # Calculate days remaining in current period
+    # Calculate remaining share of current period
     period_end = _parse_iso_utc(current_sub.get('current_period_end'))
+    period_start = _parse_iso_utc(current_sub.get('current_period_start'))
     now = datetime.utcnow()
     
     if not period_end:
         return {'prorated_amount': 0, 'error': 'Could not determine period end'}
-    
-    days_remaining = max(0, (period_end - now).days)
-    if days_remaining == 0:
-        # Less than 1 day remaining, charge full month for new plan
-        days_remaining = 1
-    
-    # Get prices for current and new plans (use current market prices for fairness)
-    is_india = region.upper() == 'IN'
-    
-    current_price = _plan_price_inr(current_plan) if is_india else _plan_price_usd(current_plan)
-    new_price = _plan_price_inr(new_plan) if is_india else _plan_price_usd(new_plan)
-    
-    # Handle free plan (no prior charge to prorate)
-    if current_price == 0:
-        # User upgrading from free: charge full month for new plan
-        prorated_amount = new_price
+    remaining_seconds = max(0.0, (period_end - now).total_seconds())
+    if period_start and period_end > period_start:
+        cycle_seconds = max(1.0, (period_end - period_start).total_seconds())
     else:
-        # Standard proration: refund unused days of old plan, charge new plan for remaining days
-        days_in_month = 30  # Simplified: treat all months as 30 days
-        
-        current_daily_rate = current_price / days_in_month
-        new_daily_rate = new_price / days_in_month
-        
-        # Amount already paid for remaining days under old plan
-        credit = current_daily_rate * days_remaining
-        # Amount owed for remaining days under new plan
-        new_charge = new_daily_rate * days_remaining
-        # Net charge (new - credit)
-        prorated_amount = new_charge - credit
-    
-    # Round to nearest paisa/cent to avoid floating point issues
-    prorated_amount = round(prorated_amount, 2)
-    # Ensure positive (if proration results in credit, user gets free upgrade)
-    prorated_amount = max(0, prorated_amount)
+        cycle_seconds = float(30 * 24 * 60 * 60)
+
+    remaining_ratio = min(1.0, remaining_seconds / cycle_seconds)
+    days_remaining = max(1, int((remaining_seconds + 86399) // 86400)) if remaining_seconds > 0 else 0
+
+    currency = str(current_sub.get('current_plan_currency') or ('INR' if region.upper() == 'IN' else 'USD')).strip().upper() or 'INR'
+    current_price_minor = int(current_sub.get('current_plan_price_minor') or 0)
+    if current_price_minor <= 0:
+        current_price_minor = _plan_price_minor(current_plan, currency)
+    new_price_minor = _plan_price_minor(new_plan, currency)
+
+    if current_price_minor <= 0:
+        prorated_minor = new_price_minor
+    else:
+        credit_minor = int(round(current_price_minor * remaining_ratio))
+        new_charge_minor = int(round(new_price_minor * remaining_ratio))
+        prorated_minor = max(0, new_charge_minor - credit_minor)
     
     return {
         'success': True,
-        'prorated_amount': prorated_amount,
+        'prorated_amount': _minor_to_display_amount(prorated_minor),
+        'prorated_amount_minor': prorated_minor,
         'current_plan': current_plan,
         'new_plan': new_plan,
         'days_remaining': days_remaining,
-        'currency': 'INR' if is_india else 'USD',
-        'price_current_plan': current_price,
-        'price_new_plan': new_price
+        'currency': currency,
+        'price_current_plan': _minor_to_display_amount(current_price_minor),
+        'price_new_plan': _minor_to_display_amount(new_price_minor),
+        'price_current_plan_minor': current_price_minor,
+        'price_new_plan_minor': new_price_minor,
     }
 
 
@@ -3223,19 +3273,25 @@ def _razorpay_webhook_secret() -> str:
     return str(os.getenv('RAZORPAY_WEBHOOK_SECRET') or '').strip()
 
 
-def _create_razorpay_order(amount_major: int, currency: str, receipt: str, user_id: str, plan: str) -> dict:
+def _create_razorpay_order(amount_major: int = None, currency: str = 'INR', receipt: str = '', user_id: str = '', plan: str = '', amount_minor: int = None, extra_notes: dict = None) -> dict:
     key_id, key_secret = _razorpay_keys()
     if not key_id or not key_secret:
         raise RuntimeError('Razorpay keys are not configured')
 
+    normalized_currency = str(currency or 'INR').upper()
+    resolved_amount_minor = int(amount_minor) if amount_minor is not None else int(max(0, int(amount_major or 0)) * 100)
+    notes = {
+        'user_id': user_id,
+        'plan': plan
+    }
+    if isinstance(extra_notes, dict):
+        notes.update({k: str(v) for k, v in extra_notes.items() if v is not None})
+
     payload = {
-        'amount': int(amount_major * 100),
-        'currency': str(currency or 'INR').upper(),
+        'amount': resolved_amount_minor,
+        'currency': normalized_currency,
         'receipt': receipt,
-        'notes': {
-            'user_id': user_id,
-            'plan': plan
-        }
+        'notes': notes
     }
     response = requests.post(
         'https://api.razorpay.com/v1/orders',
@@ -4119,7 +4175,10 @@ def billing_status():
                 'status': subscription.get('status') or 'inactive',
                 'current_period_start': subscription.get('current_period_start'),
                 'current_period_end': subscription.get('current_period_end'),
-                'cancel_at_period_end': bool(subscription.get('cancel_at_period_end'))
+                'cancel_at_period_end': bool(subscription.get('cancel_at_period_end')),
+                'scheduled_plan': subscription.get('scheduled_plan') or None,
+                'current_plan_currency': subscription.get('current_plan_currency') or None,
+                'current_plan_price_minor': int(subscription.get('current_plan_price_minor') or 0),
             },
             'limits': limits,
             'usage': {
@@ -4240,12 +4299,17 @@ def billing_create_order():
             receipt=receipt,
             user_id=user_id,
             plan=plan,
+            extra_notes={
+                'current_plan_currency': currency,
+                'current_plan_price_minor': int(amount_major * 100),
+            },
         )
         return jsonify({
             'success': True,
             'order': order,
             'plan': plan,
             'amount': amount_major,
+            'amount_minor': int(amount_major * 100),
             'currency': currency,
             'razorpay_key_id': key_id,
             'discount_pct': discount_pct,
@@ -4281,6 +4345,7 @@ def billing_cancel():
 
         auth_supabase.table('subscriptions').update({
             'cancel_at_period_end': True,
+            'scheduled_plan': 'free',
             'updated_at': now.isoformat() + 'Z'
         }).eq('user_id', user_id).execute()
 
@@ -4292,6 +4357,48 @@ def billing_cancel():
         })
     except Exception as e:
         logger.exception("Billing cancel failed")
+        return _safe_api_error('An unexpected error occurred', e)
+
+
+@app.route('/api/billing/schedule-downgrade', methods=['POST'])
+@require_auth
+def billing_schedule_downgrade_live():
+    try:
+        user_id = get_current_user_id()
+        if not auth_supabase or not is_valid_uuid(user_id):
+            return jsonify({'success': False, 'message': 'Invalid session'}), 401
+
+        data = request.get_json(silent=True) or {}
+        new_plan = str(data.get('new_plan') or '').strip().lower()
+        if new_plan not in {'starter', 'free'}:
+            return jsonify({'success': False, 'message': 'Invalid plan for downgrade. Use starter or free.'}), 400
+
+        rows = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute()
+        sub = rows.data[0] if rows.data else None
+        if not sub or not _is_subscription_active(sub):
+            return jsonify({'success': False, 'message': 'No active subscription found'}), 400
+
+        current_plan = str(sub.get('plan') or 'free').lower()
+        plan_order = {'free': 0, 'starter': 1, 'creator': 2, 'pro': 3}
+        if plan_order.get(new_plan, 0) >= plan_order.get(current_plan, 0):
+            return jsonify({'success': False, 'message': 'That is not a downgrade from your current plan'}), 400
+
+        period_end = sub.get('current_period_end', '')
+        now = datetime.utcnow()
+        auth_supabase.table('subscriptions').update({
+            'scheduled_plan': new_plan,
+            'cancel_at_period_end': (new_plan == 'free'),
+            'updated_at': now.isoformat() + 'Z'
+        }).eq('user_id', user_id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': f'Downgrade to {new_plan.capitalize()} scheduled.',
+            'scheduled_plan': new_plan,
+            'effective_from': period_end
+        })
+    except Exception as e:
+        logger.exception("Billing schedule downgrade failed")
         return _safe_api_error('An unexpected error occurred', e)
 
 
@@ -4360,6 +4467,9 @@ def billing_upgrade_plan():
                     'status': 'active',
                     'current_period_start': now.isoformat() + 'Z',
                     # Keep same end date, just update plan
+                    'scheduled_plan': None,
+                    'current_plan_currency': currency,
+                    'current_plan_price_minor': proration.get('price_new_plan_minor', 0),
                     'updated_at': now.isoformat() + 'Z',
                     'billing_provider': 'razorpay'
                 }
@@ -4394,10 +4504,10 @@ def billing_upgrade_plan():
         # amount_major is in major currency units (₹ or $).
         # _create_razorpay_order multiplies by 100 internally to get paise/cents.
         # Round to nearest integer (Razorpay requires whole paise amounts).
-        amount_major = int(round(prorated_amount))
+        amount_minor = int(proration.get('prorated_amount_minor') or 0)
 
         # If rounding brings it to zero, treat as free upgrade
-        if amount_major <= 0:
+        if amount_minor <= 0:
             return jsonify({
                 'success': True,
                 'prorated_amount': 0,
@@ -4408,16 +4518,22 @@ def billing_upgrade_plan():
         
         receipt = f"upg_{new_plan}_{user_id[:8]}_{int(time.time())}"
         order = _create_razorpay_order(
-            amount_major=amount_major,
+            amount_minor=amount_minor,
             currency=currency,
             receipt=receipt,
             user_id=user_id,
             plan=new_plan,
+            extra_notes={
+                'current_plan_currency': currency,
+                'current_plan_price_minor': proration.get('price_new_plan_minor', 0),
+                'prorated_amount_minor': amount_minor,
+            },
         )
         
         return jsonify({
             'success': True,
             'prorated_amount': prorated_amount,
+            'prorated_amount_minor': amount_minor,
             'currency': currency,
             'upgrade_type': 'prorated_charge',
             'order': order,
@@ -4440,6 +4556,8 @@ def billing_verify_payment():
         payment_id = str(data.get('payment_id') or data.get('razorpay_payment_id') or '').strip()
         signature = str(data.get('signature') or data.get('razorpay_signature') or '').strip()
         plan = str(data.get('plan') or '').strip()
+        currency = str(data.get('currency') or 'INR').strip().upper() or 'INR'
+        amount_minor = int(data.get('amount_minor') or 0)
         coupon_code = str(data.get('coupon_code') or '').strip().upper() or None
 
         if not order_id or not payment_id or not signature or not plan:
@@ -4452,7 +4570,14 @@ def billing_verify_payment():
         if not _verify_razorpay_payment_signature(order_id, payment_id, signature):
             return jsonify({'success': False, 'message': 'Invalid Razorpay payment signature'}), 400
 
-        activated = _activate_subscription_from_payment(user_id, normalized[0], payment_id=payment_id, order_id=order_id)
+        activated = _activate_subscription_from_payment(
+            user_id,
+            normalized[0],
+            payment_id=payment_id,
+            order_id=order_id,
+            amount_minor=amount_minor if amount_minor > 0 else None,
+            currency=currency,
+        )
         if not activated:
             return jsonify({'success': False, 'message': 'Failed to activate subscription'}), 500
 
@@ -4489,6 +4614,8 @@ def billing_webhook():
         plan = str(notes.get('plan') or '').strip()
         payment_id = str(payment_entity.get('id') or '').strip()
         order_id = str(payment_entity.get('order_id') or order_entity.get('id') or '').strip()
+        currency = str(payment_entity.get('currency') or order_entity.get('currency') or 'INR').strip().upper() or 'INR'
+        amount_minor = int(payment_entity.get('amount') or order_entity.get('amount') or 0)
 
         if event in {'payment.captured', 'order.paid'} and is_valid_uuid(user_id):
             # ── Idempotency check: skip if this (payment_id, event) was already processed
@@ -4503,7 +4630,14 @@ def billing_webhook():
                 except Exception as dup_err:
                     logger.debug('Billing idempotency check failed (proceeding): %s', dup_err)
 
-            _activate_subscription_from_payment(user_id, plan, payment_id=payment_id, order_id=order_id)
+            _activate_subscription_from_payment(
+                user_id,
+                plan,
+                payment_id=payment_id,
+                order_id=order_id,
+                amount_minor=amount_minor if amount_minor > 0 else None,
+                currency=currency,
+            )
 
             # ── Record billing event for idempotency
             if payment_id and auth_supabase:
