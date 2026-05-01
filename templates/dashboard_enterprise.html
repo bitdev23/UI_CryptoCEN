@@ -2815,6 +2815,141 @@
             gap: 1rem;
             justify-content: flex-end;
         }
+        .li-connect-modal .modal-content {
+            max-width: 640px;
+            border-radius: 18px;
+            border: 1px solid rgba(14, 116, 144, 0.16);
+            box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+            overflow: hidden;
+        }
+        .li-connect-modal .modal-header {
+            padding: 1.15rem 1.25rem 1rem;
+            border-bottom: 1px solid rgba(14, 116, 144, 0.12);
+            background: linear-gradient(135deg, #ecfeff 0%, #f0f9ff 60%, #f8fafc 100%);
+            align-items: flex-start;
+            gap: 0.8rem;
+        }
+        .li-connect-modal-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.7rem;
+            min-width: 0;
+        }
+        .li-connect-modal-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            border: 1px solid rgba(14, 116, 144, 0.22);
+            background: rgba(255, 255, 255, 0.9);
+            color: #0369a1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex: 0 0 auto;
+        }
+        .li-connect-modal-title-wrap h2 {
+            margin: 0;
+            font-size: 1.03rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.3;
+        }
+        .li-connect-modal-title-wrap p {
+            margin: 0.24rem 0 0;
+            font-size: 0.84rem;
+            line-height: 1.5;
+            color: #334155;
+        }
+        .li-connect-modal .modal-body {
+            padding: 1rem 1.25rem 1.1rem;
+        }
+        .li-connect-next-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            border: 1px solid rgba(14, 116, 144, 0.28);
+            background: rgba(236, 253, 245, 0.92);
+            color: #065f46;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 0.27rem 0.58rem;
+            margin-bottom: 0.7rem;
+        }
+        .li-connect-options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.6rem;
+            margin-top: 0.2rem;
+        }
+        .li-connect-option {
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 0.65rem;
+        }
+        .li-connect-option h4 {
+            margin: 0;
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .li-connect-option p {
+            margin: 0.28rem 0 0;
+            font-size: 0.78rem;
+            color: #475569;
+            line-height: 1.45;
+        }
+        .li-connect-option .btn {
+            margin-top: 0.55rem;
+            width: 100%;
+            justify-content: center;
+        }
+        .li-connect-note {
+            margin-top: 0.65rem;
+            font-size: 0.74rem;
+            color: #64748b;
+            line-height: 1.45;
+            border-top: 1px dashed rgba(148, 163, 184, 0.38);
+            padding-top: 0.58rem;
+        }
+        body.dark-mode .li-connect-modal .modal-content {
+            border-color: #25465e;
+            background: #101f31;
+            box-shadow: 0 24px 64px rgba(2, 6, 23, 0.65);
+        }
+        body.dark-mode .li-connect-modal .modal-header {
+            background: linear-gradient(135deg, #0f3040 0%, #10253a 62%, #0f172a 100%);
+            border-bottom-color: #24435b;
+        }
+        body.dark-mode .li-connect-modal-title-wrap h2 {
+            color: #e2e8f0;
+        }
+        body.dark-mode .li-connect-modal-title-wrap p {
+            color: #bfdbfe;
+        }
+        body.dark-mode .li-connect-modal-icon {
+            border-color: #2f6585;
+            background: rgba(15, 23, 42, 0.82);
+            color: #7dd3fc;
+        }
+        body.dark-mode .li-connect-next-chip {
+            border-color: rgba(74, 222, 128, 0.45);
+            background: rgba(20, 83, 45, 0.72);
+            color: #bbf7d0;
+        }
+        body.dark-mode .li-connect-option {
+            border-color: #2a4156;
+            background: #10263a;
+        }
+        body.dark-mode .li-connect-option h4 {
+            color: #e2e8f0;
+        }
+        body.dark-mode .li-connect-option p,
+        body.dark-mode .li-connect-note {
+            color: #cbd5e1;
+        }
         /* STATUS INDICATOR */
         .status-badge {
             display: inline-block;
@@ -22833,12 +22968,74 @@
         return Boolean(tokenMasked && personMasked);
     }
 
+    function setLinkedInPendingAction(action = '') {
+        const normalized = String(action || '').trim().toLowerCase();
+        if (normalized && ['publish', 'schedule', 'settings'].includes(normalized)) {
+            localStorage.setItem('linkedin_pending_action', normalized);
+            return;
+        }
+        localStorage.removeItem('linkedin_pending_action');
+    }
+
+    function getLinkedInPendingAction() {
+        const modal = document.getElementById('li-connect-modal');
+        const fromModal = String(modal?.dataset.pendingAction || '').trim().toLowerCase();
+        if (fromModal && ['publish', 'schedule', 'settings'].includes(fromModal)) {
+            return fromModal;
+        }
+        const fromStorage = String(localStorage.getItem('linkedin_pending_action') || '').trim().toLowerCase();
+        if (fromStorage && ['publish', 'schedule', 'settings'].includes(fromStorage)) {
+            return fromStorage;
+        }
+        return '';
+    }
+
+    async function refreshRuntimeConfigForConnections() {
+        const response = await authFetch('/api/config', { headers: getAuthHeaders() });
+        const config = await parseJsonResponse(response);
+        runtimeConfig = config || {};
+        updateOnboardingState({ linkedinConnected: isLinkedInConnectedForUi(runtimeConfig) });
+        updateLinkedInSettingsUI();
+        return runtimeConfig;
+    }
+
+    function updateLinkedInConnectPromptCopy(action = 'publish') {
+        const normalized = String(action || '').trim().toLowerCase();
+        const title = document.getElementById('li-connect-title');
+        const sub = document.getElementById('li-connect-sub');
+        const chip = document.getElementById('li-connect-next-chip');
+        const mapping = {
+            publish: {
+                title: 'Connect LinkedIn to Publish',
+                sub: 'Before posting this draft live, connect your LinkedIn account once.',
+                chip: 'Next: connect LinkedIn and publish this post'
+            },
+            schedule: {
+                title: 'Connect LinkedIn to Schedule',
+                sub: 'To queue this post to your LinkedIn profile, complete a quick connect first.',
+                chip: 'Next: connect LinkedIn and continue scheduling'
+            },
+            settings: {
+                title: 'Connect Your LinkedIn Account',
+                sub: 'Link your profile now so posting and scheduling are ready everywhere in the app.',
+                chip: 'Next: connect LinkedIn for posting and scheduling'
+            }
+        };
+        const copy = mapping[normalized] || mapping.publish;
+        if (title) title.textContent = copy.title;
+        if (sub) sub.textContent = copy.sub;
+        if (chip) chip.innerHTML = `<i class="fas fa-arrow-right"></i> ${escapeHtml(copy.chip)}`;
+    }
+
     function openLinkedInConnectPrompt(action = 'publish') {
         const modal = document.getElementById('li-connect-modal');
         if (!modal) {
             return;
         }
-        modal.dataset.pendingAction = String(action || 'publish');
+        const normalized = String(action || 'publish').trim().toLowerCase();
+        modal.dataset.pendingAction = normalized;
+        setLinkedInPendingAction(normalized);
+        updateLinkedInConnectPromptCopy(normalized);
         modal.classList.add('active');
     }
 
@@ -22850,16 +23047,80 @@
         modal.classList.remove('active');
     }
 
-    function openLinkedInRecommendedFlow() {
-        closeLinkedInConnectPrompt();
-        switchTab('settings');
-        setTimeout(() => {
-            const linkedinNav = Array.from(document.querySelectorAll('#settings .settings-v2-nav-item')).find(item => (item.textContent || '').toLowerCase().includes('linkedin'));
-            if (linkedinNav) {
-                showSettingsSection('linkedin', linkedinNav);
+    async function openLinkedInRecommendedFlow() {
+        const action = getLinkedInPendingAction() || 'publish';
+        try {
+            const connectBtn = document.getElementById('li-connect-oauth-btn');
+            if (connectBtn) {
+                connectBtn.disabled = true;
+                connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting to LinkedIn...';
             }
-            showToast('info', 'Use Connect to enable LinkedIn publishing. OAuth path can be added behind this button.', 'fas fa-link');
-        }, 180);
+            setLinkedInPendingAction(action);
+            const response = await authFetch('/api/linkedin/oauth/start', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ action })
+            });
+            const data = await parseJsonResponse(response);
+            if (!data.success || !data.auth_url) {
+                throw new Error(data.message || 'Could not start LinkedIn connect flow.');
+            }
+            window.location.href = data.auth_url;
+        } catch (error) {
+            showToast('error', error.message || 'LinkedIn connect failed to start.', 'fas fa-exclamation-circle');
+            const connectBtn = document.getElementById('li-connect-oauth-btn');
+            if (connectBtn) {
+                connectBtn.disabled = false;
+                connectBtn.innerHTML = '<i class="fas fa-link"></i> Connect with LinkedIn';
+            }
+        }
+    }
+
+    async function handleLinkedInConnectReturnFromQuery() {
+        const url = new URL(window.location.href);
+        const connectedFlag = String(url.searchParams.get('li_connected') || '').trim();
+        if (!connectedFlag) {
+            return;
+        }
+
+        const actionFromQuery = String(url.searchParams.get('li_action') || '').trim().toLowerCase();
+        const pendingAction = actionFromQuery || getLinkedInPendingAction();
+        const isConnected = connectedFlag === '1';
+        const errorRaw = String(url.searchParams.get('li_error') || '').trim();
+
+        ['li_connected', 'li_action', 'li_error'].forEach(key => url.searchParams.delete(key));
+        window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+
+        if (!isConnected) {
+            setConnectionOverride('linkedin', false);
+            setLinkedInPendingAction('');
+            const msg = errorRaw ? `LinkedIn connect failed: ${errorRaw}` : 'LinkedIn connect failed. Please try again.';
+            showToast('error', msg, 'fas fa-exclamation-circle');
+            openLinkedInConnectPrompt(pendingAction || 'publish');
+            return;
+        }
+
+        try {
+            setConnectionOverride('linkedin', true);
+            await refreshRuntimeConfigForConnections();
+            closeLinkedInConnectPrompt();
+            showToast('success', 'LinkedIn connected successfully.', 'fas fa-check');
+        } catch (error) {
+            showToast('warning', 'LinkedIn connected, but settings refresh is delayed. You can continue.', 'fas fa-circle-info');
+        }
+
+        setLinkedInPendingAction('');
+        if (!pendingAction || pendingAction === 'settings') {
+            return;
+        }
+
+        setTimeout(() => {
+            if (pendingAction === 'publish') {
+                postNow();
+            } else if (pendingAction === 'schedule') {
+                openScheduleModal();
+            }
+        }, 320);
     }
 
     function openLinkedInAdvancedByoFlow() {
@@ -22885,6 +23146,7 @@
         if (isLinkedInConnectedForUi(runtimeConfig)) {
             return true;
         }
+        setLinkedInPendingAction(action);
         openLinkedInConnectPrompt(action);
         return false;
     }
@@ -31981,6 +32243,7 @@
         renderCreatorStyleSuggestion();
         refreshCvStepperState();
         updateQuickQualityMeter();
+        await handleLinkedInConnectReturnFromQuery();
 
         const postTextEl = document.getElementById('post-text');
         if (postTextEl) {
@@ -33909,18 +34172,36 @@
     </div>
 </div>
 
-<div id="li-connect-modal" class="modal">
-    <div class="modal-content" style="max-width:560px;">
+<div id="li-connect-modal" class="modal li-connect-modal">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="li-connect-title">
         <div class="modal-header">
-            <h2>Connect LinkedIn to Continue</h2>
-            <button class="modal-close" onclick="closeLinkedInConnectPrompt()">×</button>
+            <div class="li-connect-modal-head">
+                <div class="li-connect-modal-icon"><i class="fab fa-linkedin"></i></div>
+                <div class="li-connect-modal-title-wrap">
+                    <h2 id="li-connect-title">Connect LinkedIn to Continue</h2>
+                    <p id="li-connect-sub">Connect your LinkedIn account to enable publish and schedule actions directly from Velank.</p>
+                </div>
+            </div>
+            <button class="modal-close" type="button" aria-label="Close" onclick="closeLinkedInConnectPrompt()">×</button>
         </div>
-        <p style="margin:0 0 0.75rem; color:var(--text-secondary);">To publish or schedule, connect LinkedIn first. Recommended path is guided connect, with manual BYO available for advanced users.</p>
-        <div style="display:grid; grid-template-columns:1fr; gap:0.75rem; margin-bottom:0.85rem;">
-            <button class="btn btn-primary" type="button" onclick="openLinkedInRecommendedFlow()"><i class="fas fa-plug"></i> Recommended: Connect LinkedIn</button>
-            <button class="btn btn-secondary" type="button" onclick="openLinkedInAdvancedByoFlow()"><i class="fas fa-user-gear"></i> Advanced: Use Access Token + Person ID</button>
+        <div class="modal-body">
+            <div id="li-connect-next-chip" class="li-connect-next-chip"><i class="fas fa-arrow-right"></i> Next: connect LinkedIn and continue</div>
+            <div class="li-connect-options">
+                <div class="li-connect-option">
+                    <h4><i class="fas fa-plug"></i> Recommended: One-click OAuth Connect</h4>
+                    <p>Securely authorize LinkedIn once, then Velank resumes your pending action automatically.</p>
+                    <button id="li-connect-oauth-btn" class="btn btn-primary" type="button" onclick="openLinkedInRecommendedFlow()"><i class="fas fa-link"></i> Connect with LinkedIn</button>
+                </div>
+                <div class="li-connect-option">
+                    <h4><i class="fas fa-user-gear"></i> Advanced: Use Access Token + Person ID</h4>
+                    <p>Prefer manual setup? Open Settings and paste your own LinkedIn token and member ID.</p>
+                    <button class="btn btn-secondary" type="button" onclick="openLinkedInAdvancedByoFlow()"><i class="fas fa-sliders"></i> Open Advanced Setup</button>
+                </div>
+            </div>
+            <div class="li-connect-note">
+                LinkedIn controls final attribution labels and API permissions by app scope. Velank only posts when you explicitly publish or schedule.
+            </div>
         </div>
-        <p class="form-hint" style="margin:0;">Note: attribution and posting labels are controlled by LinkedIn and may vary by token/app context.</p>
     </div>
 </div>
 

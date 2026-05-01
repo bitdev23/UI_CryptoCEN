@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, g
 from typing import Optional
 import os
 import json
+import base64
 import logging
 import threading
 import time
@@ -3487,6 +3488,202 @@ def auth_google_start():
     except Exception as e:
         logger.exception("Failed to start Google OAuth")
         return _safe_api_error('Failed to start Google sign-in', e)
+
+
+def _linkedin_oauth_scopes() -> str:
+    # w_member_social is required for posting; openid/profile/email enables stable user identity fetch.
+    return 'openid profile email w_member_social r_liteprofile'
+
+
+def _linkedin_state_sign(raw_payload: dict) -> str:
+    payload = dict(raw_payload or {})
+    payload['ts'] = int(time.time())
+    blob = json.dumps(payload, separators=(',', ':'), sort_keys=True).encode('utf-8')
+    blob_b64 = base64.urlsafe_b64encode(blob).decode('ascii').rstrip('=')
+    signature = hmac.new(app.secret_key.encode('utf-8'), blob_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+    return f"{blob_b64}.{signature}"
+
+
+def _linkedin_state_verify(token: str, max_age_seconds: int = 900) -> dict:
+    raw = str(token or '').strip()
+    if '.' not in raw:
+        raise ValueError('Missing state signature')
+    blob_b64, signature = raw.rsplit('.', 1)
+    expected = hmac.new(app.secret_key.encode('utf-8'), blob_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise ValueError('Invalid state signature')
+
+    padded = blob_b64 + '=' * ((4 - len(blob_b64) % 4) % 4)
+    decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+    payload = json.loads(decoded)
+
+    ts = int(payload.get('ts') or 0)
+    if ts <= 0 or (int(time.time()) - ts) > max_age_seconds:
+        raise ValueError('State expired')
+    return payload
+
+
+def _linkedin_exchange_code_for_token(code: str, redirect_uri: str, client_id: str, client_secret: str) -> dict:
+    response = requests.post(
+        'https://www.linkedin.com/oauth/v2/accessToken',
+        data={
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': redirect_uri,
+            'client_id': client_id,
+            'client_secret': client_secret,
+        },
+        timeout=25,
+    )
+    if response.status_code >= 400:
+        body_preview = (response.text or '')[:250]
+        raise RuntimeError(f'LinkedIn token exchange failed ({response.status_code}): {body_preview}')
+    data = response.json() if response.content else {}
+    access_token = str(data.get('access_token') or '').strip()
+    if not access_token:
+        raise RuntimeError('LinkedIn token exchange succeeded but access_token is missing')
+    return data
+
+
+def _linkedin_fetch_person_id(access_token: str) -> str:
+    headers = {'Authorization': f'Bearer {access_token}'}
+
+    # OpenID userinfo provides a stable subject id for the member.
+    try:
+        r = requests.get('https://api.linkedin.com/v2/userinfo', headers=headers, timeout=20)
+        if r.status_code < 400:
+            data = r.json() if r.content else {}
+            subject_id = str(data.get('sub') or '').strip()
+            if subject_id:
+                return subject_id
+    except Exception:
+        pass
+
+    # Fallback to classic v2/me endpoint.
+    try:
+        r = requests.get('https://api.linkedin.com/v2/me', headers=headers, timeout=20)
+        if r.status_code < 400:
+            data = r.json() if r.content else {}
+            member_id = str(data.get('id') or '').strip()
+            if member_id:
+                return member_id
+    except Exception:
+        pass
+
+    raise RuntimeError('Connected to LinkedIn but could not resolve member id')
+
+
+def _linkedin_callback_redirect(success: bool, action: str = '', error_msg: str = '') -> str:
+    normalized_action = str(action or '').strip().lower()
+    if normalized_action not in {'publish', 'schedule'}:
+        normalized_action = ''
+
+    params = {'li_connected': '1' if success else '0'}
+    if normalized_action:
+        params['li_action'] = normalized_action
+    if error_msg and not success:
+        params['li_error'] = str(error_msg)[:220]
+
+    return f"/?{urlencode(params)}"
+
+
+@app.route('/api/linkedin/oauth/start', methods=['POST'])
+@require_auth
+def linkedin_oauth_start():
+    """Start LinkedIn OAuth connect flow for publish/schedule actions."""
+    try:
+        user_id = get_current_user_id()
+        if not is_valid_uuid(user_id):
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+        payload = request.get_json(silent=True) or {}
+        pending_action = str(payload.get('action') or '').strip().lower()
+        if pending_action not in {'publish', 'schedule', 'settings'}:
+            pending_action = 'publish'
+
+        user_cfg = load_config(user_id)
+        client_id = str(user_cfg.get('LINKEDIN_CLIENT_ID') or os.getenv('LINKEDIN_CLIENT_ID') or '').strip()
+        client_secret = str(user_cfg.get('LINKEDIN_CLIENT_SECRET') or os.getenv('LINKEDIN_CLIENT_SECRET') or '').strip()
+        if not client_id or not client_secret:
+            return jsonify({
+                'success': False,
+                'message': 'LinkedIn OAuth is not configured on server (missing LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET).'
+            }), 400
+
+        base_url = (os.getenv('APP_BASE_URL') or request.host_url or '').strip().rstrip('/')
+        if not base_url:
+            base_url = request.host_url.rstrip('/')
+        redirect_uri = f"{base_url}/api/linkedin/oauth/callback"
+
+        state = _linkedin_state_sign({'uid': user_id, 'action': pending_action})
+        auth_url = 'https://www.linkedin.com/oauth/v2/authorization?' + urlencode({
+            'response_type': 'code',
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'state': state,
+            'scope': _linkedin_oauth_scopes(),
+        })
+        return jsonify({'success': True, 'auth_url': auth_url})
+    except Exception as exc:
+        logger.exception('Failed to start LinkedIn OAuth')
+        return _safe_api_error('Could not start LinkedIn connect flow', exc)
+
+
+@app.route('/api/linkedin/oauth/callback', methods=['GET'])
+def linkedin_oauth_callback():
+    """Handle LinkedIn OAuth callback and persist token/member id for posting."""
+    code = str(request.args.get('code') or '').strip()
+    state = str(request.args.get('state') or '').strip()
+    oauth_error = str(request.args.get('error') or '').strip()
+    oauth_error_desc = str(request.args.get('error_description') or '').strip()
+
+    action = ''
+    if state:
+        try:
+            verified_state = _linkedin_state_verify(state)
+            action = str(verified_state.get('action') or '').strip().lower()
+        except Exception:
+            pass
+
+    if oauth_error:
+        msg = oauth_error_desc or oauth_error
+        return redirect(_linkedin_callback_redirect(False, action=action, error_msg=msg))
+
+    if not code or not state:
+        return redirect(_linkedin_callback_redirect(False, action=action, error_msg='Missing OAuth code/state'))
+
+    try:
+        verified_state = _linkedin_state_verify(state)
+        user_id = str(verified_state.get('uid') or '').strip()
+        action = str(verified_state.get('action') or '').strip().lower()
+        if not is_valid_uuid(user_id):
+            return redirect(_linkedin_callback_redirect(False, action=action, error_msg='Invalid OAuth state user'))
+
+        user_cfg = load_config(user_id)
+        client_id = str(user_cfg.get('LINKEDIN_CLIENT_ID') or os.getenv('LINKEDIN_CLIENT_ID') or '').strip()
+        client_secret = str(user_cfg.get('LINKEDIN_CLIENT_SECRET') or os.getenv('LINKEDIN_CLIENT_SECRET') or '').strip()
+        if not client_id or not client_secret:
+            return redirect(_linkedin_callback_redirect(False, action=action, error_msg='LinkedIn OAuth server keys missing'))
+
+        base_url = (os.getenv('APP_BASE_URL') or request.host_url or '').strip().rstrip('/')
+        if not base_url:
+            base_url = request.host_url.rstrip('/')
+        redirect_uri = f"{base_url}/api/linkedin/oauth/callback"
+
+        token_data = _linkedin_exchange_code_for_token(code, redirect_uri, client_id, client_secret)
+        access_token = str(token_data.get('access_token') or '').strip()
+        member_id = _linkedin_fetch_person_id(access_token)
+
+        updated_cfg = load_config(user_id)
+        updated_cfg['LINKEDIN_ACCESS_TOKEN'] = access_token
+        updated_cfg['LINKEDIN_PERSON_ID'] = member_id
+        save_config(updated_cfg, user_id=user_id)
+
+        logger.info('LinkedIn connected for user=%s (action=%s)', user_id, action or '-')
+        return redirect(_linkedin_callback_redirect(True, action=action))
+    except Exception as exc:
+        logger.exception('LinkedIn OAuth callback failed')
+        return redirect(_linkedin_callback_redirect(False, action=action, error_msg=str(exc)))
 
 
 @app.route('/api/auth/logout', methods=['POST'])
