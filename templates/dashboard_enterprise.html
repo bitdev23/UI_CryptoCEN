@@ -23053,7 +23053,7 @@
         const completion = Math.min(95, Math.max(8, Math.round((elapsed / total) * 100)));
         fill.style.width = `${completion}%`;
         eta.textContent = `ETA ${formatFtuEta(etaSeconds)}`;
-        noteEl.textContent = note || 'Knowledge Base is indexing now. You can keep this open and click Refresh KB Status when ETA is near zero.';
+        noteEl.textContent = note || 'Knowledge Base is indexing now. Keep this step open; status updates automatically.';
     }
 
     function stopFtuKbTrainingProgress(markReady = false) {
@@ -23081,8 +23081,8 @@
                 const elapsed = Math.max(0, Math.floor((Date.now() - ftuKbTrainingStartTs) / 1000));
                 const remaining = Math.max(0, ftuKbTrainingEtaSeconds - elapsed);
                 const note = remaining > 0
-                    ? 'Training in progress. Keep this step open, then click Refresh KB Status to confirm readiness.'
-                    : 'Almost done. Indexing can take a bit longer for larger documents. Click Refresh KB Status now.';
+                    ? 'Training in progress. Keep this step open; we will auto-check readiness.'
+                    : 'Almost done. Final indexing may take a bit longer for larger files; we are auto-checking.';
                 renderFtuKbProgress({ active: true, etaSeconds: remaining, note });
             }, 1000);
         }
@@ -23091,7 +23091,7 @@
         renderFtuKbProgress({
             active: true,
             etaSeconds: initialRemaining,
-            note: 'Training in progress. Keep this step open, then click Refresh KB Status to confirm readiness.'
+            note: 'Training in progress. Keep this step open; we will auto-check readiness.'
         });
     }
 
@@ -23140,7 +23140,7 @@
             } finally {
                 ftuKbAutoPollInFlight = false;
             }
-        }, 12000);
+        }, 7000);
     }
 
     function maybeAutoAdvanceFromKbReady() {
@@ -23168,7 +23168,7 @@
     async function ftuUploadKnowledgeBaseFiles() {
         const fileInput = document.getElementById('ftu-kb-file');
         const statusEl = document.getElementById('ftu-kb-upload-status');
-        const uploadBtn = document.getElementById('ftu-kb-upload-btn');
+        const nextBtn = document.getElementById('ftu-next-btn');
         const files = fileInput?.files ? Array.from(fileInput.files) : [];
 
         if (!files.length) {
@@ -23181,10 +23181,10 @@
         const formData = new FormData();
         files.forEach(file => formData.append('files', file));
 
-        const original = uploadBtn ? uploadBtn.innerHTML : '';
-        if (uploadBtn) {
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        const original = nextBtn ? nextBtn.innerHTML : '';
+        if (nextBtn && Number(ftuWizardStep || 1) === 3) {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading files...';
         }
         if (statusEl) {
             statusEl.textContent = 'Uploading and starting indexing...';
@@ -23213,16 +23213,16 @@
             }
             handleFtuKbFileSelect(fileInput);
             refreshKnowledgeBaseFiles();
-            await ftuRefreshKbReadiness();
+            await ftuRefreshKbReadiness(true);
         } catch (error) {
             if (statusEl) {
                 statusEl.textContent = error.message || 'Upload failed';
             }
             showToast('error', error.message || 'Upload failed', 'fas fa-exclamation-circle');
         } finally {
-            if (uploadBtn) {
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = original || '<i class="fas fa-upload"></i> Upload &amp; Index';
+            if (nextBtn && Number(ftuWizardStep || 1) === 3) {
+                nextBtn.disabled = false;
+                nextBtn.innerHTML = original || '<i class="fas fa-upload"></i> Upload &amp; Continue';
             }
         }
     }
@@ -23249,12 +23249,12 @@
                     ? 'Knowledge Base is ready for grounded generation.'
                     : (isAutoPoll
                         ? 'Auto-checking KB training... we will move forward as soon as it is ready.'
-                        : 'Files uploaded. Indexing may still be in progress; refresh again shortly.');
+                        : 'Training still in progress. We are auto-checking and will continue as soon as it completes.');
             }
         } catch (_) {
             if (statusEl) {
                 statusEl.textContent = isAutoPoll
-                    ? 'Auto-check paused due to a temporary issue. You can click Refresh KB Status.'
+                    ? 'Auto-check paused due to a temporary issue. Use Check Now to retry immediately.'
                     : 'Could not refresh KB status right now. Please try again.';
             }
         }
@@ -23330,9 +23330,142 @@
         feedback.classList.toggle('is-visible', Boolean(message));
     }
 
+    function syncFtuManagedSelectOptions() {
+        const sourceIndustry = document.getElementById('industry-select');
+        const sourceRole = document.getElementById('role-select');
+        const ftuIndustry = document.getElementById('ftu-industry');
+        const ftuRole = document.getElementById('ftu-role');
+
+        if (sourceIndustry && ftuIndustry) {
+            const selected = String(ftuIndustry.value || '').trim();
+            ftuIndustry.innerHTML = sourceIndustry.innerHTML;
+            if (selected && Array.from(ftuIndustry.options).some(option => option.value === selected)) {
+                ftuIndustry.value = selected;
+            }
+        }
+
+        if (sourceRole && ftuRole) {
+            const selected = String(ftuRole.value || '').trim();
+            ftuRole.innerHTML = sourceRole.innerHTML;
+            if (selected && Array.from(ftuRole.options).some(option => option.value === selected)) {
+                ftuRole.value = selected;
+            }
+        }
+    }
+
+    function getFtuIndustryValue() {
+        const selected = String(document.getElementById('ftu-industry')?.value || '').trim();
+        if (selected === 'custom') {
+            return String(document.getElementById('ftu-industry-custom')?.value || '').trim();
+        }
+        return selected;
+    }
+
+    function getFtuRoleValue() {
+        const selected = String(document.getElementById('ftu-role')?.value || '').trim();
+        if (selected === 'custom') {
+            return String(document.getElementById('ftu-role-custom')?.value || '').trim();
+        }
+        return selected;
+    }
+
+    function updateFtuCustomFieldVisibility(kind) {
+        const isIndustry = kind === 'industry';
+        const select = document.getElementById(isIndustry ? 'ftu-industry' : 'ftu-role');
+        const customWrap = document.getElementById(isIndustry ? 'ftu-industry-custom-wrap' : 'ftu-role-custom-wrap');
+        if (!select || !customWrap) {
+            return;
+        }
+        const shouldShow = String(select.value || '').trim() === 'custom';
+        customWrap.style.display = shouldShow ? 'grid' : 'none';
+    }
+
+    function onFtuIndustryChange() {
+        updateFtuCustomFieldVisibility('industry');
+        updateFtuCompletionMetrics();
+    }
+
+    function onFtuRoleChange() {
+        updateFtuCustomFieldVisibility('role');
+        updateFtuCompletionMetrics();
+    }
+
+    function applyFtuCustomSelection(kind) {
+        const isIndustry = kind === 'industry';
+        const customInput = document.getElementById(isIndustry ? 'ftu-industry-custom' : 'ftu-role-custom');
+        const customValue = String(customInput?.value || '').trim();
+        if (!customValue) {
+            showFirstRunOnboardingFeedback(`Enter a custom ${isIndustry ? 'industry' : 'role'} before applying.`, 'info');
+            return;
+        }
+
+        const sourceSelect = document.getElementById(isIndustry ? 'industry-select' : 'role-select');
+        const sourceCustomInput = document.getElementById(isIndustry ? 'industry-custom' : 'role-custom');
+        if (!sourceSelect || !sourceCustomInput) {
+            return;
+        }
+
+        sourceSelect.value = 'custom';
+        sourceCustomInput.value = customValue;
+        if (isIndustry) {
+            if (typeof creatorSelectIndustry === 'function') {
+                creatorSelectIndustry('custom', true);
+            }
+        } else if (typeof creatorSelectRole === 'function') {
+            creatorSelectRole('custom', true);
+        }
+
+        syncFtuManagedSelectOptions();
+        const ftuSelect = document.getElementById(isIndustry ? 'ftu-industry' : 'ftu-role');
+        if (ftuSelect) {
+            if (Array.from(ftuSelect.options).some(option => option.value === customValue)) {
+                ftuSelect.value = customValue;
+            } else {
+                ftuSelect.value = 'custom';
+            }
+        }
+        updateFtuCustomFieldVisibility(kind);
+        updateFtuCompletionMetrics();
+        showFirstRunOnboardingFeedback(`Custom ${isIndustry ? 'industry' : 'role'} saved and selected.`, 'success');
+    }
+
+    function getFtuMaxUnlockedStep() {
+        const completion = getFtuCompletionState();
+        if (completion.kbDone) {
+            return 4;
+        }
+        if (completion.scheduleDone) {
+            return 3;
+        }
+        if (completion.profileDone) {
+            return 2;
+        }
+        return 1;
+    }
+
+    function updateFtuStepCaption(step) {
+        const caption = document.getElementById('ftu-step-caption');
+        if (!caption) {
+            return;
+        }
+        const completion = getFtuCompletionState();
+        const s = Number(step || ftuWizardStep || 1);
+        if (s === 1) {
+            caption.textContent = 'Step 1 of 4: Set Industry, Role, Tone, and Post Goal. Use Custom if your exact profile is not listed.';
+        } else if (s === 2) {
+            caption.textContent = 'Step 2 of 4: Set timezone and default posting time so scheduling stays consistent.';
+        } else if (s === 3) {
+            caption.textContent = completion.kbDone
+                ? 'Step 3 of 4 complete: Knowledge Base is ready. We will continue automatically.'
+                : 'Step 3 of 4: Upload files once. Training status auto-updates and this flow advances automatically when ready.';
+        } else {
+            caption.textContent = 'Step 4 of 4: Pick a topic and generate your first grounded post.';
+        }
+    }
+
     function getFtuCompletionState() {
-        const industry = String(document.getElementById('ftu-industry')?.value || '').trim();
-        const role = String(document.getElementById('ftu-role')?.value || '').trim();
+        const industry = getFtuIndustryValue();
+        const role = getFtuRoleValue();
         const tone = String(document.getElementById('ftu-tone')?.value || '').trim();
         const goal = String(document.getElementById('ftu-goal-preset')?.value || '').trim();
         const timezone = String(document.getElementById('ftu-timezone')?.value || '').trim();
@@ -23369,6 +23502,7 @@
         applyState(profileEl, profileDone);
         applyState(scheduleEl, scheduleDone);
         applyState(kbEl, kbDone);
+        updateFtuStepCaption(ftuWizardStep || 1);
 
         return completion;
     }
@@ -23464,20 +23598,42 @@
     }
 
     function applyFirstRunOnboardingSelections() {
-        const ftuIndustry = document.getElementById('ftu-industry')?.value || '';
-        const ftuRole = document.getElementById('ftu-role')?.value || '';
+        const ftuIndustrySelect = document.getElementById('ftu-industry')?.value || '';
+        const ftuRoleSelect = document.getElementById('ftu-role')?.value || '';
+        const ftuIndustry = getFtuIndustryValue();
+        const ftuRole = getFtuRoleValue();
         const ftuTone = document.getElementById('ftu-tone')?.value || '';
         const ftuGoal = document.getElementById('ftu-goal-preset')?.value || '';
         const ftuTimezone = document.getElementById('ftu-timezone')?.value || '';
         const ftuPostTime = document.getElementById('ftu-post-time')?.value || '';
 
-        if (ftuIndustry) {
+        if (ftuIndustrySelect === 'custom' && ftuIndustry) {
+            const mainIndustrySelect = document.getElementById('industry-select');
+            const mainIndustryCustom = document.getElementById('industry-custom');
+            if (mainIndustrySelect && mainIndustryCustom) {
+                mainIndustrySelect.value = 'custom';
+                mainIndustryCustom.value = ftuIndustry;
+            }
+            if (typeof creatorSelectIndustry === 'function') {
+                creatorSelectIndustry('custom', true);
+            }
+        } else if (ftuIndustry) {
             setSelectValue('industry-select', ftuIndustry);
             if (typeof onIndustryChange === 'function') {
                 onIndustryChange();
             }
         }
-        if (ftuRole) {
+        if (ftuRoleSelect === 'custom' && ftuRole) {
+            const mainRoleSelect = document.getElementById('role-select');
+            const mainRoleCustom = document.getElementById('role-custom');
+            if (mainRoleSelect && mainRoleCustom) {
+                mainRoleSelect.value = 'custom';
+                mainRoleCustom.value = ftuRole;
+            }
+            if (typeof creatorSelectRole === 'function') {
+                creatorSelectRole('custom', true);
+            }
+        } else if (ftuRole) {
             setSelectValue('role-select', ftuRole);
             if (typeof onRoleChange === 'function') {
                 onRoleChange();
@@ -23510,6 +23666,8 @@
         ftuWizardStep = normalized;
         updateFtuTimeLeft(normalized);
         updateFtuCompletionMetrics();
+        updateFtuStepCaption(normalized);
+        const maxUnlockedStep = getFtuMaxUnlockedStep();
 
         document.querySelectorAll('.ftu-panel').forEach(panel => {
             const panelStep = Number(panel.dataset.step || '1');
@@ -23520,6 +23678,16 @@
             const stepNumber = Number(stepEl.dataset.step || '1');
             stepEl.classList.toggle('is-active', stepNumber === normalized);
             stepEl.classList.toggle('is-done', stepNumber < normalized);
+            stepEl.classList.toggle('is-next', stepNumber === Math.min(4, normalized + 1));
+            stepEl.classList.toggle('is-clickable', stepNumber <= maxUnlockedStep);
+            if (stepNumber <= maxUnlockedStep) {
+                stepEl.onclick = () => setFirstRunOnboardingStep(stepNumber);
+                stepEl.tabIndex = 0;
+            } else {
+                stepEl.onclick = null;
+                stepEl.tabIndex = -1;
+            }
+            stepEl.setAttribute('aria-current', stepNumber === normalized ? 'step' : 'false');
         });
 
         const backBtn = document.getElementById('ftu-back-btn');
@@ -23549,9 +23717,10 @@
                 } else {
                     const hasUploadedFiles = Number(onboardingState.kbFiles || 0) > 0;
                     if (hasUploadedFiles) {
-                        nextBtn.innerHTML = '<i class="fas fa-hourglass-half"></i> KB indexing in progress – refresh status';
-                        nextBtn.disabled = false;
-                        nextBtn.onclick = () => ftuRefreshKbReadiness();
+                        nextBtn.innerHTML = '<i class="fas fa-arrows-rotate fa-spin"></i> Training in progress - auto-continuing';
+                        nextBtn.disabled = true;
+                        nextBtn.onclick = null;
+                        startFtuKbAutoPolling();
                     } else {
                         const picker = document.getElementById('ftu-kb-file');
                         const hasSelectedFiles = picker && picker.files && picker.files.length > 0;
@@ -23591,7 +23760,7 @@
         } else if (normalized === 3) {
             renderFtuKbStatus();
             syncFtuKbTrainingProgress();
-            if (!onboardingState.kbReady && Number(onboardingState.kbFiles || 0) > 0) {
+            if (!onboardingState.kbReady) {
                 startFtuKbAutoPolling();
             } else {
                 stopFtuKbAutoPolling();
@@ -23620,15 +23789,40 @@
                 ? `Welcome ${firstName} - let us launch your posting system`
                 : 'Welcome - let us launch your posting system';
         }
+        syncFtuManagedSelectOptions();
         const industrySelect = document.getElementById('industry-select');
         const ftuIndustrySelect = document.getElementById('ftu-industry');
+        const ftuIndustryCustom = document.getElementById('ftu-industry-custom');
+        const industryCustom = document.getElementById('industry-custom');
         if (ftuIndustrySelect && industrySelect?.value) {
-            ftuIndustrySelect.value = industrySelect.value;
+            if (industrySelect.value === 'custom') {
+                ftuIndustrySelect.value = 'custom';
+                if (ftuIndustryCustom) {
+                    ftuIndustryCustom.value = String(industryCustom?.value || '').trim();
+                }
+            } else {
+                ftuIndustrySelect.value = industrySelect.value;
+                if (ftuIndustryCustom) {
+                    ftuIndustryCustom.value = '';
+                }
+            }
         }
         const roleSelect = document.getElementById('role-select');
         const ftuRoleSelect = document.getElementById('ftu-role');
+        const ftuRoleCustom = document.getElementById('ftu-role-custom');
+        const roleCustom = document.getElementById('role-custom');
         if (ftuRoleSelect && roleSelect?.value) {
-            ftuRoleSelect.value = roleSelect.value;
+            if (roleSelect.value === 'custom') {
+                ftuRoleSelect.value = 'custom';
+                if (ftuRoleCustom) {
+                    ftuRoleCustom.value = String(roleCustom?.value || '').trim();
+                }
+            } else {
+                ftuRoleSelect.value = roleSelect.value;
+                if (ftuRoleCustom) {
+                    ftuRoleCustom.value = '';
+                }
+            }
         }
         const toneSelect = document.getElementById('post-tone');
         const ftuToneSelect = document.getElementById('ftu-tone');
@@ -23640,6 +23834,8 @@
         if (ftuGoalPreset && goalPreset?.value) {
             ftuGoalPreset.value = goalPreset.value;
         }
+        updateFtuCustomFieldVisibility('industry');
+        updateFtuCustomFieldVisibility('role');
         const timezoneSelect = document.getElementById('timezone');
         const ftuTimezoneSelect = document.getElementById('ftu-timezone');
         if (ftuTimezoneSelect && timezoneSelect) {
@@ -32918,6 +33114,17 @@
         position: relative;
         z-index: 1;
     }
+    .ftu-step-caption {
+        margin-bottom: 0.6rem;
+        border: 1px solid rgba(14, 116, 144, 0.22);
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(236, 253, 245, 0.95) 0%, rgba(239, 246, 255, 0.95) 100%);
+        color: #0f172a;
+        font-size: 0.79rem;
+        font-weight: 700;
+        line-height: 1.38;
+        padding: 0.45rem 0.62rem;
+    }
     .ftu-progress {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -32932,27 +33139,47 @@
         border-radius: 11px;
         padding: 0.52rem 0.58rem;
         background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+        position: relative;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .ftu-progress-step.is-clickable {
+        cursor: pointer;
+    }
+    .ftu-progress-step.is-clickable:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(14, 116, 144, 0.12);
+        border-color: rgba(14, 116, 144, 0.36);
     }
     .ftu-progress-step.is-active {
-        border-color: #b9c3f5;
-        background: #f3f6ff;
+        border-color: #22c55e;
+        background: linear-gradient(135deg, #effcf4 0%, #f0f9ff 100%);
+        box-shadow: 0 10px 24px rgba(34, 197, 94, 0.18);
+        transform: translateY(-1px);
     }
     .ftu-progress-step.is-done {
-        border-color: #c8eed7;
+        border-color: #86efac;
         background: #f1fcf5;
+    }
+    .ftu-progress-step.is-next {
+        border-color: rgba(14, 116, 144, 0.28);
+        background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
     }
     .ftu-progress-index {
         width: 22px;
         height: 22px;
         border-radius: 999px;
-        background: #e9edff;
-        color: #4756cb;
+        background: #ecfeff;
+        color: #0e7490;
         font-weight: 800;
         font-size: 0.74rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
+    }
+    .ftu-progress-step.is-active .ftu-progress-index {
+        background: #dcfce7;
+        color: #166534;
     }
     .ftu-progress-step.is-done .ftu-progress-index {
         background: #dcfce7;
@@ -33106,6 +33333,19 @@
         gap: 0.45rem;
         flex-wrap: wrap;
         margin-top: 0.45rem;
+    }
+    .ftu-custom-inline {
+        margin-top: 0.35rem;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.35rem;
+        align-items: center;
+    }
+    .ftu-custom-inline input {
+        margin: 0;
+    }
+    .ftu-custom-inline .btn {
+        white-space: nowrap;
     }
     .ftu-kb-progress {
         margin-top: 0.55rem;
@@ -33300,12 +33540,17 @@
         border-color: #30306b;
     }
     body.dark-mode .ftu-progress-step.is-active {
-        border-color: #4a4a8f;
-        background: #23235d;
+        border-color: #2c8d5e;
+        background: #183b2a;
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
     }
     body.dark-mode .ftu-progress-step.is-done {
         border-color: #2b6a4d;
         background: #183427;
+    }
+    body.dark-mode .ftu-progress-step.is-next {
+        border-color: #256b8e;
+        background: #1a2f43;
     }
     body.dark-mode .ftu-progress-index {
         background: #2a2a63;
@@ -33405,6 +33650,11 @@
         color: #c7d2fe;
         background: rgba(99, 102, 241, 0.18);
         border-color: rgba(129, 140, 248, 0.4);
+    }
+    body.dark-mode .ftu-step-caption {
+        color: #dbeafe;
+        border-color: rgba(56, 189, 248, 0.35);
+        background: linear-gradient(135deg, rgba(15, 60, 47, 0.95) 0%, rgba(16, 38, 68, 0.95) 100%);
     }
     body.dark-mode .ftu-skip:hover {
         color: #f8fafc;
@@ -33510,6 +33760,7 @@
                     <span class="ftu-progress-label">First Post</span>
                 </div>
             </div>
+            <div id="ftu-step-caption" class="ftu-step-caption" aria-live="polite">Step 1: Set your strategic profile defaults.</div>
             <div id="ftu-feedback" class="ftu-feedback" aria-live="polite"></div>
             <div id="ftu-time-left" class="ftu-timeleft"><i class="fas fa-stopwatch"></i> About 90 seconds left</div>
             <div class="ftu-panel-wrap">
@@ -33520,7 +33771,7 @@
                     <div class="grid grid-2" style="margin-top:0.5rem; gap:0.7rem;">
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="ftu-field-label">Industry <span class="ftu-tip" title="Your industry context helps Velank choose relevant examples, terminology, and audience framing."><i class="fas fa-circle-question"></i></span></label>
-                            <select id="ftu-industry" onchange="updateFtuCompletionMetrics()">
+                            <select id="ftu-industry" onchange="onFtuIndustryChange()">
                                 <option value="tech">Technology &amp; Software</option>
                                 <option value="finance">Finance &amp; Banking</option>
                                 <option value="healthcare">Healthcare &amp; Pharma</option>
@@ -33528,13 +33779,19 @@
                                 <option value="crypto">Cryptocurrency &amp; Blockchain</option>
                                 <option value="web3">Web3</option>
                                 <option value="genai">GenAI</option>
+                                <option value="virtual_assistant">Virtual Assistant</option>
                                 <option value="saas">SaaS &amp; Startups</option>
                                 <option value="supply_chain">Supply Chain &amp; Logistics</option>
+                                <option value="custom">Custom...</option>
                             </select>
+                            <div id="ftu-industry-custom-wrap" class="ftu-custom-inline" style="display:none;">
+                                <input id="ftu-industry-custom" type="text" placeholder="Enter custom industry" oninput="updateFtuCompletionMetrics()">
+                                <button type="button" class="btn btn-secondary" onclick="applyFtuCustomSelection('industry')">Apply</button>
+                            </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="ftu-field-label">Your Role <span class="ftu-tip" title="Your role aligns the post voice and credibility signals so the content reads as authentically yours."><i class="fas fa-circle-question"></i></span></label>
-                            <select id="ftu-role" onchange="updateFtuCompletionMetrics()">
+                            <select id="ftu-role" onchange="onFtuRoleChange()">
                                 <option value="ceo">CEO / Founder</option>
                                 <option value="cto">CTO / VP Engineering</option>
                                 <option value="dev">Software Developer</option>
@@ -33545,7 +33802,12 @@
                                 <option value="marketing">Marketing / Growth</option>
                                 <option value="sales">Sales</option>
                                 <option value="bde">Business Development (BDE)</option>
+                                <option value="custom">Custom...</option>
                             </select>
+                            <div id="ftu-role-custom-wrap" class="ftu-custom-inline" style="display:none;">
+                                <input id="ftu-role-custom" type="text" placeholder="Enter custom role" oninput="updateFtuCompletionMetrics()">
+                                <button type="button" class="btn btn-secondary" onclick="applyFtuCustomSelection('role')">Apply</button>
+                            </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="ftu-field-label">Writing Tone <span class="ftu-tip" title="Controls voice style for generated posts. Example: Professional for authority, Conversational for relatability."><i class="fas fa-circle-question"></i></span></label>
@@ -33600,7 +33862,7 @@
                         <input id="ftu-kb-file" type="file" multiple accept=".pdf,.docx,.txt,.md,.csv,.pptx" style="display:none;" onchange="handleFtuKbFileSelect(this)">
                         <div id="ftu-kb-file-meta" class="form-hint" style="margin-top:0.35rem;">No files selected yet.</div>
                         <div class="ftu-kb-upload-actions">
-                            <button class="btn btn-secondary" type="button" onclick="ftuRefreshKbReadiness()"><i class="fas fa-rotate"></i> Refresh KB Status</button>
+                            <button class="btn btn-secondary" type="button" onclick="ftuRefreshKbReadiness(true)"><i class="fas fa-rotate"></i> Check Now</button>
                         </div>
                         <div id="ftu-kb-upload-status" class="form-hint" style="margin-top:0.45rem;"></div>
                         <div id="ftu-kb-training-progress" class="ftu-kb-progress" hidden>
