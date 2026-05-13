@@ -5433,11 +5433,13 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
 # ── Production Grounding System ───────────────────────────────────────────────
 
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
-    """Generate 3-4 diverse search queries from user inputs to improve KB recall.
+    """Generate 4-6 diverse search queries from user inputs to improve KB recall.
 
     Instead of searching with just the topic string, we create semantically
     varied queries so that relevant KB chunks are found even when the user's
     topic wording doesn't exactly match the stored text.
+    
+    IMPROVED: Added more query variations to catch content that uses different terminology.
     """
     queries = []
     topic = (topic or '').strip()
@@ -5455,11 +5457,22 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     # Q3 — topic contextualised with role perspective
     if topic and role:
         queries.append(f"{topic} from {role} perspective")
-
-    # Q4 — broader industry + role + goal combo (catch-all)
+    
+    # Q4 — just the main industry/role keywords (broader catch-all for any content in that domain)
+    if industry or role:
+        broad_parts = [p for p in [industry, role] if p]
+        if broad_parts:
+            queries.append(' '.join(broad_parts))
+    
+    # Q5 — goal + topic combination (often KB is organized by use case)
+    goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
+    if topic and goal_label:
+        queries.append(f"{topic} for {goal_label}")
+    
+    # Q6 — broader industry + role + goal combo (catch-all)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
     broad_parts = [p for p in [industry, role, goal_label, topic] if p]
-    if broad_parts:
+    if broad_parts and ' '.join(broad_parts) not in [q for q in queries]:
         queries.append(' '.join(broad_parts))
 
     # Deduplicate while preserving order
@@ -5516,6 +5529,11 @@ def _classify_grounding_level(kb_hits: list, kb_used: bool, kb_mode: str) -> str
     """Classify how well the generation is grounded in KB evidence.
 
     Returns one of: 'grounded', 'partial', 'ungrounded'.
+    
+    IMPROVED: Lowered thresholds to be more permissive and capture more KB-grounded content.
+    - FULL: avg_sim >= 0.70 AND 2+ high-confidence hits (was 0.77/0.78)
+    - PARTIAL: avg_sim >= 0.55 (was 0.68)
+    - NONE: default fallback
     """
     if kb_mode == 'no_kb' or not kb_used or not kb_hits:
         return _GROUNDING_NONE
@@ -5525,11 +5543,14 @@ def _classify_grounding_level(kb_hits: list, kb_used: bool, kb_mode: str) -> str
         return _GROUNDING_NONE
 
     avg_sim = sum(similarities) / len(similarities)
-    high_conf_count = sum(1 for s in similarities if s >= 0.78)
+    # High confidence = 0.70+ (lowered from 0.78 for more permissive matching)
+    high_conf_count = sum(1 for s in similarities if s >= 0.70)
 
-    if high_conf_count >= 2 and avg_sim >= 0.77:
+    # FULL grounding: strong average + multiple high-confidence hits
+    if high_conf_count >= 2 and avg_sim >= 0.70:
         return _GROUNDING_FULL
-    elif len(similarities) >= 1 and avg_sim >= 0.68:
+    # PARTIAL grounding: decent average match even if not perfect
+    elif len(similarities) >= 1 and avg_sim >= 0.55:
         return _GROUNDING_PARTIAL
     else:
         return _GROUNDING_NONE
@@ -5554,13 +5575,15 @@ GROUNDING RULES (STRICT — GROUNDED MODE):
 - NEVER invent statistics, percentages, research studies, company names, or quotes."""
 
     elif grounding_level == _GROUNDING_PARTIAL:
-        return f"""KNOWLEDGE BASE EXCERPTS (partial match — use with care):
+        return f"""KNOWLEDGE BASE EXCERPTS (partial match — use these as your primary source):
 {kb_context}
 
-GROUNDING RULES (PARTIAL-CONFIDENCE MODE):
-- You have SOME relevant KB excerpts but coverage is incomplete.
-- For points covered by excerpts: make specific claims grounded in the excerpt content.
-- For points NOT covered by excerpts: use INSIGHT-ONLY framing — patterns, trade-offs, principles, and rhetorical questions. Do NOT present them as facts.
+GROUNDING RULES (PARTIAL-CONFIDENCE MODE — IMPROVED):
+- The KB excerpts above are your primary source for this topic. USE THEM ACTIVELY — reference specific points, mechanisms, patterns from the excerpts.
+- For points covered by excerpts: make specific, concrete claims grounded in the excerpt content.
+- For points NOT covered by excerpts: use INSIGHT-ONLY framing — patterns, trade-offs, principles, rhetorical questions. Do NOT present them as facts.
+- Actively weave KB concepts into the post. Example: if an excerpt mentions "AMMs use constant product formula", use that specific mechanism in your post.
+- Use phrases like: "As shown in [excerpt topic]", "The pattern here is", "This mechanism works because..." — ground where you can.
 - Use hedging language for unsupported claims: "in my experience", "a common pattern", "many teams find that".
 - NEVER invent statistics, percentages, research studies, company names, product names, or quotes.
 - If an excerpt is off-domain (not about {user_industry}), IGNORE it completely."""
@@ -6284,14 +6307,16 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         )
 
                         # Phase 1: hybrid search (vector + keyword) per query
+                        # IMPROVED: Lowered threshold from 0.68 to 0.50 to capture more relevant KB content
+                        # Higher k=6 ensures we have enough candidates for filtering later
                         all_hybrid_hits = {}
                         for rq in retrieval_queries:
                             hits = rag.hybrid_search(
-                                rq, k=4,
-                                match_threshold=0.68,
+                                rq, k=6,
+                                match_threshold=0.50,
                                 file_ids=file_id_arg,
-                                vector_weight=0.7,
-                                keyword_weight=0.3,
+                                vector_weight=0.75,
+                                keyword_weight=0.25,
                             )
                             for hit in hits:
                                 cid = hit.get('id') or hit.get('document', '')[:80]
@@ -6300,6 +6325,14 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                     all_hybrid_hits[cid] = hit
                         kb_hits = sorted(all_hybrid_hits.values(),
                                          key=lambda h: float(h.get('similarity', 0)), reverse=True)
+                        
+                        # LOG: Show KB retrieval details for debugging
+                        logger.info('KB retrieval: searched %d queries, found %d hybrid hits before filtering',
+                                    len(retrieval_queries), len(kb_hits))
+                        if kb_hits:
+                            sims = [float(h.get('similarity', 0)) for h in kb_hits[:5]]
+                            logger.info('KB hit similarities (top 5): %s', 
+                                       [f'{s:.4f}' for s in sims])
 
                         # Phase 2: chunk quality filter
                         kb_hits = _filter_low_quality_chunks(kb_hits, min_quality=0.35)
@@ -6309,18 +6342,26 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                             kb_hits, theme or topic_hint,
                             vector_weight=0.75, keyword_weight=0.25
                         )
+                        
+                        # LOG: Show final KB state
+                        if kb_hits:
+                            final_sims = [float(h.get('similarity', 0)) for h in kb_hits[:5]]
+                            logger.info('KB final state: %d chunks after filtering, final similarities: %s',
+                                       len(kb_hits), [f'{s:.4f}' for s in final_sims])
 
                         if kb_hits:
                             kb_used = True
                             kb_state = 'ok'
                             snippets = []
-                            for idx, hit in enumerate(kb_hits[:3], start=1):
+                            # IMPROVED: Include up to 5 KB hits (was 3) with more context (1200 chars instead of 900)
+                            # This ensures richer context for complex topics like crypto/AMM mechanics
+                            for idx, hit in enumerate(kb_hits[:5], start=1):
                                 src = os.path.basename((hit.get('metadata') or {}).get('source', 'knowledge_base'))
                                 kb_sources.append(src)
                                 doc_text = (hit.get('document') or '').strip()
                                 sim = hit.get('similarity', 0.0)
                                 if doc_text:
-                                    snippets.append(f"[{idx}] Source: {src} (relevance: {sim:.2f})\n{doc_text[:900]}")
+                                    snippets.append(f"[{idx}] Source: {src} (relevance: {sim:.2f})\n{doc_text[:1200]}")
                             kb_context = "\n\n".join(snippets)
                         else:
                             kb_state = 'no_match'
@@ -6340,8 +6381,14 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
 
         # ── Grounding level classification ────────────────────────────────────
         grounding_level = _classify_grounding_level(kb_hits, kb_used, kb_mode)
-        logger.info('Grounding level: %s (avg_sim=%.3f, hits=%d, kb_mode=%s)',
-                     grounding_level, kb_avg_similarity, len(kb_hits), kb_mode)
+        logger.info('Grounding level: %s (avg_sim=%.3f, hits=%d, kb_mode=%s, kb_used=%s)',
+                     grounding_level, kb_avg_similarity, len(kb_hits), kb_mode, kb_used)
+        
+        # LOG: Show grounding decision details
+        if kb_hits:
+            sims = [float(h.get('similarity', 0)) for h in kb_hits]
+            logger.debug('KB hits details for grounding: %s hits with avg_sim=%.4f, min=%.4f, max=%.4f',
+                        len(sims), kb_avg_similarity, min(sims) if sims else 0, max(sims) if sims else 0)
 
         # ── Strict grounding gate ─────────────────────────────────────────────
         if strict_grounding and kb_mode != 'no_kb' and grounding_level == _GROUNDING_NONE:

@@ -2,6 +2,8 @@
 anthropic==0.83.0
 openai==2.21.0
 google-generativeai==0.8.3
+grpcio==1.71.2
+grpcio-status==1.71.2
 
 # Supabase (Database + Auth + Storage)
 supabase==2.3.4
