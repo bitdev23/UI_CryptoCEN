@@ -22472,6 +22472,8 @@
     }
 
     const CREATOR_DRAFT_STORAGE_KEY = 'creator_draft_v1';
+    const APP_UPDATE_SEEN_BOOT_KEY = 'velank_seen_update_boot_id';
+    const APP_UPDATE_RECENT_WINDOW_MS = 10 * 60 * 1000;
 
     function getEditablePostText() {
         const postText = document.getElementById('post-text');
@@ -22513,12 +22515,16 @@
             industry: getIndustryValue(),
             role: getRoleValue(),
             tone: document.getElementById('post-tone')?.value || 'professional',
+            length: document.getElementById('cv-length-select')?.value || 'medium',
+            audiencePreset: document.getElementById('audience-preset')?.value || 'general',
             styleCloneMode: document.getElementById('style-clone-mode')?.value || 'hybrid',
             hashtags: document.getElementById('hashtag-count')?.value || '3',
             emoji: document.getElementById('emoji-level')?.value || 'moderate',
             targetAudience: document.getElementById('target-audience')?.value || '',
             goalPreset: document.getElementById('goal-preset')?.value || '',
             postGoal: document.getElementById('post-goal')?.value || '',
+            kbMode: document.getElementById('kb-mode')?.value || 'use_kb',
+            workspaceId: document.getElementById('kb-workspace-select-post')?.value || '',
             postText: getEditablePostText(),
             strictGrounding: document.getElementById('strict-grounding-toggle')?.checked || false,
             timestamp: Date.now()
@@ -22546,11 +22552,15 @@
         const targetAudience = document.getElementById('target-audience');
         const postGoal = document.getElementById('post-goal');
         const hashtag = document.getElementById('hashtag-count');
+        const workspaceSelect = document.getElementById('kb-workspace-select-post');
+        const inlineKbSelect = document.getElementById('cv-kb-inline-select');
 
         if (topic && !topic.value) topic.value = state.topic || '';
         if (targetAudience && !targetAudience.value) targetAudience.value = state.targetAudience || '';
         if (hashtag && state.hashtags) hashtag.value = String(state.hashtags);
         if (state.tone) setSelectValue('post-tone', state.tone);
+        if (state.length) setSelectValue('cv-length-select', state.length);
+        if (state.audiencePreset) setSelectValue('audience-preset', state.audiencePreset);
         if (state.styleCloneMode) setSelectValue('style-clone-mode', state.styleCloneMode);
         if (state.emoji) setSelectValue('emoji-level', state.emoji);
 
@@ -22568,6 +22578,20 @@
         if (state.industry) creatorSelectIndustry(state.industry);
         if (state.role) creatorSelectRole(state.role);
 
+        if (state.kbMode === 'no_kb') {
+            creatorSelectKbMode('no_kb');
+            if (inlineKbSelect) inlineKbSelect.value = 'no_kb';
+        } else if (state.kbMode === 'specific_files' && state.workspaceId && workspaceSelect) {
+            const hasWorkspace = Array.from(workspaceSelect.options).some(option => String(option.value) === String(state.workspaceId));
+            if (hasWorkspace) {
+                creatorSelectKbTemplate(String(state.workspaceId));
+                if (inlineKbSelect) inlineKbSelect.value = `tpl:${state.workspaceId}`;
+            }
+        } else {
+            creatorSelectKbTemplate(KB_DEFAULT_TEMPLATE_ID);
+            if (inlineKbSelect) inlineKbSelect.value = 'use_kb';
+        }
+
         // Restore strict grounding toggle
         const sgToggle = document.getElementById('strict-grounding-toggle');
         if (sgToggle && state.strictGrounding) {
@@ -22582,6 +22606,8 @@
 
         updateHashtagPreview();
         updateTopicCounter();
+        onLengthDropdownChange(document.getElementById('cv-length-select')?.value || 'medium');
+        onAudiencePresetChange(document.getElementById('audience-preset')?.value || 'general');
         syncCreatorReplicaControls();
     }
 
@@ -25313,6 +25339,7 @@
     function creatorSelectKbTemplate(workspaceId) {
         const mode = document.getElementById('kb-mode');
         const postSelect = document.getElementById('kb-workspace-select-post');
+        const inlineSelect = document.getElementById('cv-kb-inline-select');
         if (!mode || !postSelect) {
             return;
         }
@@ -25320,9 +25347,11 @@
         if (!workspaceId || workspaceId === 'default' || workspaceId === KB_DEFAULT_TEMPLATE_ID) {
             mode.value = 'use_kb';
             postSelect.value = KB_DEFAULT_TEMPLATE_ID;
+            if (inlineSelect) inlineSelect.value = 'use_kb';
             updateKbModeGuidance();
             updateCreatorKbCardSelection();
             syncCreatorReplicaControls();
+            saveCreatorDraftState();
             return;
         }
 
@@ -25334,10 +25363,12 @@
 
         postSelect.value = String(workspaceId);
         mode.value = 'specific_files';
+        if (inlineSelect) inlineSelect.value = `tpl:${workspaceId}`;
         applyWorkspaceToPostSelection(false);
         updateKbModeGuidance();
         updateCreatorKbCardSelection();
         syncCreatorReplicaControls();
+        saveCreatorDraftState();
     }
 
     function updateCreatorKbCardSelection() {
@@ -28695,8 +28726,12 @@
 
     function creatorSelectKbMode(value) {
         const mode = document.getElementById('kb-mode');
+        const inlineSelect = document.getElementById('cv-kb-inline-select');
         if (!mode) return;
         mode.value = value;
+        if (inlineSelect) {
+            inlineSelect.value = value === 'no_kb' ? 'no_kb' : 'use_kb';
+        }
         toggleKbSourceMode();
         syncCreatorReplicaControls();
         saveCreatorDraftState();
@@ -31897,14 +31932,29 @@
 
     let appVersionProbe = {
         bootId: '',
+        startedAtUnix: 0,
         intervalId: null,
         bannerVisible: false,
     };
+
+    function shouldEnableAppUpdateProbe(startedAtUnix) {
+        const startedAtMs = Number(startedAtUnix || 0) * 1000;
+        if (!startedAtMs) {
+            return false;
+        }
+        return (Date.now() - startedAtMs) <= APP_UPDATE_RECENT_WINDOW_MS;
+    }
 
     function showAppUpdateBanner(versionLabel) {
         if (appVersionProbe.bannerVisible) {
             return;
         }
+        try {
+            const seenBootId = String(localStorage.getItem(APP_UPDATE_SEEN_BOOT_KEY) || '').trim();
+            if (seenBootId && seenBootId === String(appVersionProbe.bootId || '')) {
+                return;
+            }
+        } catch (_) {}
         appVersionProbe.bannerVisible = true;
 
         const existing = document.getElementById('app-update-banner');
@@ -31939,11 +31989,13 @@
         const dismissBtn = document.getElementById('app-update-dismiss-btn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', function () {
+                try { localStorage.setItem(APP_UPDATE_SEEN_BOOT_KEY, String(appVersionProbe.bootId || '')); } catch (_) {}
                 window.location.reload();
             });
         }
         if (dismissBtn) {
             dismissBtn.addEventListener('click', function () {
+                try { localStorage.setItem(APP_UPDATE_SEEN_BOOT_KEY, String(appVersionProbe.bootId || '')); } catch (_) {}
                 banner.remove();
                 appVersionProbe.bannerVisible = false;
             });
@@ -31972,16 +32024,25 @@
         if (document.hidden) {
             return;
         }
+        if (!shouldEnableAppUpdateProbe(appVersionProbe.startedAtUnix)) {
+            return;
+        }
         try {
             const info = await fetchAppVersionInfo();
             if (!info || !info.boot_id) {
                 return;
             }
+            if (!shouldEnableAppUpdateProbe(info.started_at_unix)) {
+                return;
+            }
             if (!appVersionProbe.bootId) {
                 appVersionProbe.bootId = String(info.boot_id);
+                appVersionProbe.startedAtUnix = Number(info.started_at_unix || 0);
                 return;
             }
             if (appVersionProbe.bootId !== String(info.boot_id)) {
+                appVersionProbe.bootId = String(info.boot_id);
+                appVersionProbe.startedAtUnix = Number(info.started_at_unix || 0);
                 showAppUpdateBanner(String(info.version || 'new build'));
             }
         } catch (_) {
@@ -31994,8 +32055,13 @@
             const info = await fetchAppVersionInfo();
             if (info && info.boot_id) {
                 appVersionProbe.bootId = String(info.boot_id);
+                appVersionProbe.startedAtUnix = Number(info.started_at_unix || 0);
             }
         } catch (_) {}
+
+        if (!shouldEnableAppUpdateProbe(appVersionProbe.startedAtUnix)) {
+            return;
+        }
 
         if (appVersionProbe.intervalId) {
             clearInterval(appVersionProbe.intervalId);
@@ -32161,7 +32227,7 @@
 
         initializeCreatorManagedOptions();
 
-        authFetch('/api/config', { headers: getAuthHeaders() })
+        const configLoadPromise = authFetch('/api/config', { headers: getAuthHeaders() })
         .then(r => parseJsonResponse(r))
         .then(config => {
             runtimeConfig = config || {};
@@ -32230,8 +32296,8 @@
             syncSettingsPanelsFromConfig();
         });
 
-        refreshKbFileOptions();
-        refreshKbWorkspaces();
+        const kbFileOptionsPromise = refreshKbFileOptions();
+        const kbWorkspacesPromise = refreshKbWorkspaces();
         refreshGenerationPresets();
         // refreshPersonaProfiles();  // Persona UI hidden — skip API call; re-enable with persona UI
         toggleGenerationMode();
@@ -32239,6 +32305,8 @@
         syncCreatorReplicaControls();
         syncCreatorPreviewState();
         updateCreatorDatePill();
+        restoreCreatorDraftState();
+        await Promise.allSettled([configLoadPromise, kbFileOptionsPromise, kbWorkspacesPromise]);
         restoreCreatorDraftState();
         renderCreatorStyleSuggestion();
         refreshCvStepperState();
