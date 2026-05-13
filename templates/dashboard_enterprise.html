@@ -22474,6 +22474,7 @@
     const CREATOR_DRAFT_STORAGE_KEY = 'creator_draft_v1';
     const APP_UPDATE_SEEN_BOOT_KEY = 'velank_seen_update_boot_id';
     const APP_UPDATE_RECENT_WINDOW_MS = 10 * 60 * 1000;
+    let creatorDraftHydrated = false;
 
     function getEditablePostText() {
         const postText = document.getElementById('post-text');
@@ -22532,6 +22533,9 @@
     }
 
     function saveCreatorDraftState() {
+        if (!creatorDraftHydrated) {
+            return;
+        }
         try {
             localStorage.setItem(CREATOR_DRAFT_STORAGE_KEY, JSON.stringify(buildCreatorDraftState()));
         } catch (_) {}
@@ -26220,7 +26224,7 @@
         initProgressTracking();
         // Initialize audience & goal preset defaults
         onAudiencePresetChange(document.getElementById('audience-preset')?.value || 'general');
-        onGoalPresetChange(document.getElementById('goal-preset')?.value || 'spark-comments');
+        onGoalPresetChange(document.getElementById('goal-preset')?.value || '');
         updateCfgRowPills();
         initCvFloatGen();
         initStickyTopicObserver();
@@ -32308,6 +32312,8 @@
         restoreCreatorDraftState();
         await Promise.allSettled([configLoadPromise, kbFileOptionsPromise, kbWorkspacesPromise]);
         restoreCreatorDraftState();
+        creatorDraftHydrated = true;
+        saveCreatorDraftState();
         renderCreatorStyleSuggestion();
         refreshCvStepperState();
         updateQuickQualityMeter();
