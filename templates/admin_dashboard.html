@@ -220,7 +220,7 @@
         .admin-sidebar-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 0.65rem;
             margin-bottom: 0.9rem;
             padding: 0 0.5rem;
@@ -230,10 +230,17 @@
 
         .admin-sidebar-brand img {
             height: 34px;
-            max-width: 100%;
+            max-width: 34px;
             width: auto;
             object-fit: contain;
-            filter: brightness(0) invert(1);
+        }
+
+        .admin-sidebar-brand-text {
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 0.01em;
         }
 
         .admin-side-nav {
@@ -572,6 +579,12 @@
             padding: 1rem 0.5rem;
         }
 
+        .admin-shell.sidebar-collapsed .admin-sidebar-brand {
+            justify-content: center;
+            padding: 0;
+            margin-bottom: 0.6rem;
+        }
+
         .admin-shell.sidebar-collapsed .admin-side-btn {
             justify-content: center;
             padding: 0.5rem;
@@ -580,6 +593,7 @@
         }
 
         .admin-shell.sidebar-collapsed .admin-side-btn .nav-label,
+        .admin-shell.sidebar-collapsed .admin-sidebar-brand-text,
         .admin-shell.sidebar-collapsed .admin-sidebar-user-meta,
         .admin-shell.sidebar-collapsed .sidebar-footer,
         .admin-shell.sidebar-collapsed .admin-sidebar-toggle .toggle-label {
@@ -1165,14 +1179,15 @@
     <main class="admin-shell">
         <aside class="admin-sidebar" aria-label="Admin sidebar">
             <div class="admin-sidebar-brand">
-                <img src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank" />
+                <img src="{{ url_for('static', filename='branding/velank-icon.svg') }}" alt="Velank" />
+                <span class="admin-sidebar-brand-text">Velank AI</span>
             </div>
             <nav class="admin-side-nav">
-                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="maintenance" onclick="switchAdminPanel('maintenance', this)"><span class="nav-icon">🔧</span><span class="nav-label">Maintenance</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
+                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)" title="Overview metrics and activity insights"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)" title="Operational tools, diagnostics, and platform settings"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="maintenance" onclick="switchAdminPanel('maintenance', this)" title="Maintenance controls and user communication"><span class="nav-icon">🔧</span><span class="nav-label">Maintenance</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)" title="User account and subscription management"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)" title="Admin action history and audit trail"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
             </nav>
             <div class="admin-sidebar-user-card">
                 <div class="admin-sidebar-avatar">A</div>
@@ -1281,33 +1296,33 @@
                 <div class="feature-group">
                     <div class="feature-group-title">Operations</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)">🧯 Incident Controls</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)">🧵 Queue Monitor</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)" title="Enable kill switches and emergency controls">🧯 Incident Controls</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)" title="Track worker health, failed jobs, and stuck jobs">🧵 Queue Monitor</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Monitoring</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)">⚠️ Error Monitoring</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" title="Inspect unresolved errors by severity and timeframe">⚠️ Error Monitoring</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Content & Diagnostics</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)">📚 KB Diagnostics</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)">🚩 Feature Flags</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)">🕵️ Read-only Impersonation</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)" title="Run ingestion and retrieval diagnostics per user">📚 KB Diagnostics</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" title="Control rollout percentages and feature availability">🚩 Feature Flags</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)" title="View user context in safe read-only mode">🕵️ Read-only Impersonation</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Settings</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)">🔔 Notifications</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)">📊 Revenue Dashboard</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)">🧭 Onboarding</button>
+                        <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)" title="Broadcast notifications to selected users">🔔 Notifications</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" title="View MRR, churn, and subscription metrics">📊 Revenue Dashboard</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" title="Configure and test onboarding behavior">🧭 Onboarding</button>
                     </div>
                 </div>
             </div>
@@ -1405,11 +1420,11 @@
                         <button class="btn btn-ghost" onclick="loadIncidentControls()">Refresh</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px;">
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-maintenance"> Maintenance mode</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-generate"> Kill generate-preview</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-scheduler"> Kill scheduling writes</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-kb"> Kill KB training writes</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-linkedin"> Kill LinkedIn posting</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-maintenance" title="Block user access and show maintenance page"> Maintenance mode</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-generate" title="Temporarily disable preview generation endpoint"> Kill generate-preview</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-scheduler" title="Disable scheduling writes while incidents are active"> Kill scheduling writes</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-kb" title="Pause KB ingestion and training write operations"> Kill KB training writes</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-linkedin" title="Pause all LinkedIn posting jobs"> Kill LinkedIn posting</label>
                     </div>
                     <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <input id="maintenance-banner-message" type="text" placeholder="Maintenance banner message" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
