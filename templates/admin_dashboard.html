@@ -1337,6 +1337,10 @@
                         <input id="maintenance-banner-message" type="text" placeholder="Maintenance banner message" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
                         <button class="btn btn-primary" onclick="saveIncidentControls()">Save Incident Controls</button>
                     </div>
+                    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <input id="ctl-maintenance-ends-at" type="text" placeholder="Expected end time (optional)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <input id="ctl-retry-after-seconds" type="number" min="30" step="30" placeholder="Retry after seconds (default 300)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                    </div>
                 </div>
             </div>
 
@@ -1441,6 +1445,7 @@
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
                         <div style="font-size:12px;color:#92400e;"><strong>Maintenance mode:</strong> <span id="maint-status-mode">Inactive</span></div>
                         <div style="font-size:12px;color:#92400e;"><strong>Kill switches:</strong> <span id="maint-status-kills">All active</span></div>
+                        <div style="font-size:12px;color:#92400e;"><strong>Expected end:</strong> <span id="maint-status-ends-at">Not announced</span></div>
                     </div>
                 </div>
                 <div style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:14px;">
@@ -2457,6 +2462,7 @@
             const panels = {
                 overview: 'panel-overview',
                 features: 'panel-features',
+                maintenance: 'panel-maintenance',
                 users: 'panel-users',
                 audit: 'panel-audit'
             };
@@ -2483,6 +2489,9 @@
                         if (userChart) userChart.resize();
                     } catch (_) {}
                 }, 80);
+            }
+            if (panelName === 'maintenance') {
+                setTimeout(() => loadIncidentControls(), 80);
             }
         }
 
@@ -3057,12 +3066,35 @@
             try {
                 const data = await api('/api/admin/incident-controls');
                 const c = data.controls || {};
+                const maintenanceConfig = c.maintenance_mode?.config || {};
                 document.getElementById('ctl-maintenance').checked = !!c.maintenance_mode?.enabled;
                 document.getElementById('ctl-kill-generate').checked = !!c.kill_generate_preview?.enabled;
                 document.getElementById('ctl-kill-scheduler').checked = !!c.kill_scheduler?.enabled;
                 document.getElementById('ctl-kill-kb').checked = !!c.kill_kb_training?.enabled;
                 document.getElementById('ctl-kill-linkedin').checked = !!c.kill_linkedin_posting?.enabled;
-                document.getElementById('maintenance-banner-message').value = String(c.maintenance_mode?.config?.banner_message || '');
+                document.getElementById('maintenance-banner-message').value = String(maintenanceConfig.banner_message || '');
+                document.getElementById('ctl-maintenance-ends-at').value = String(maintenanceConfig.ends_at || '');
+                document.getElementById('ctl-retry-after-seconds').value = String(maintenanceConfig.retry_after_seconds || '');
+
+                const killSwitches = [
+                    ['generate preview', !!c.kill_generate_preview?.enabled],
+                    ['scheduler', !!c.kill_scheduler?.enabled],
+                    ['KB training', !!c.kill_kb_training?.enabled],
+                    ['LinkedIn posting', !!c.kill_linkedin_posting?.enabled]
+                ];
+                const enabledKills = killSwitches.filter(item => item[1]).map(item => item[0]);
+                const modeEl = document.getElementById('maint-status-mode');
+                const killsEl = document.getElementById('maint-status-kills');
+                const endsAtEl = document.getElementById('maint-status-ends-at');
+                if (modeEl) {
+                    modeEl.textContent = c.maintenance_mode?.enabled ? 'Active' : 'Inactive';
+                }
+                if (killsEl) {
+                    killsEl.textContent = enabledKills.length ? enabledKills.join(', ') : 'All active';
+                }
+                if (endsAtEl) {
+                    endsAtEl.textContent = String(maintenanceConfig.ends_at || 'Not announced');
+                }
             } catch (err) {
                 showToast(err.message || 'Failed to load incident controls', 'error');
             }
@@ -3076,7 +3108,9 @@
                         maintenance_mode: {
                             enabled: document.getElementById('ctl-maintenance').checked,
                             config: {
-                                banner_message: (document.getElementById('maintenance-banner-message').value || '').trim()
+                                banner_message: (document.getElementById('maintenance-banner-message').value || '').trim(),
+                                ends_at: (document.getElementById('ctl-maintenance-ends-at').value || '').trim(),
+                                retry_after_seconds: Number(document.getElementById('ctl-retry-after-seconds').value || 300)
                             }
                         },
                         kill_generate_preview: { enabled: document.getElementById('ctl-kill-generate').checked },

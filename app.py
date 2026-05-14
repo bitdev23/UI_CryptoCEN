@@ -443,6 +443,8 @@ def _enforce_incident_controls():
         return None
     if path.startswith('/static/') or path.startswith('/assets/'):
         return None
+    if path == '/maintenance':
+        return None
     if path in {'/health', '/api/health'}:
         return None
     if path.startswith('/auth') or path.startswith('/login') or path.startswith('/signup'):
@@ -450,17 +452,38 @@ def _enforce_incident_controls():
 
     controls = _get_incident_state_cached()
     maintenance = controls.get('maintenance_mode', {})
+    maintenance_config = (maintenance.get('config', {}) or {})
     maintenance_enabled = bool(maintenance.get('enabled', False))
-    maintenance_msg = str((maintenance.get('config', {}) or {}).get('banner_message') or 'Scheduled maintenance is currently active. Please check back shortly.')
+    maintenance_msg = str(maintenance_config.get('banner_message') or 'Scheduled maintenance is currently active. Please check back shortly.')
+    maintenance_ends_at = str(maintenance_config.get('ends_at') or '').strip()
+    try:
+        retry_after_seconds = int(maintenance_config.get('retry_after_seconds') or 300)
+    except Exception:
+        retry_after_seconds = 300
+    retry_after_seconds = max(30, min(retry_after_seconds, 86400))
+    maintenance_headers = {
+        'Retry-After': str(retry_after_seconds),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    }
 
     if maintenance_enabled:
         if path.startswith('/api/'):
-            return jsonify({'success': False, 'maintenance': True, 'message': maintenance_msg}), 503
+            return jsonify({
+                'success': False,
+                'maintenance': True,
+                'message': maintenance_msg,
+                'ends_at': maintenance_ends_at,
+                'retry_after_seconds': retry_after_seconds,
+            }), 503, maintenance_headers
         return (
-            f"<html><head><title>Maintenance</title></head><body style='font-family:Arial,sans-serif;margin:40px;'>"
-            f"<h2>CryptoCEN is under maintenance</h2><p>{maintenance_msg}</p></body></html>",
+            render_template(
+                'maintenance.html',
+                maintenance_message=maintenance_msg,
+                maintenance_ends_at=maintenance_ends_at,
+                retry_after_seconds=retry_after_seconds,
+            ),
             503,
-            {'Content-Type': 'text/html; charset=utf-8'},
+            maintenance_headers,
         )
 
     if controls.get('kill_generate_preview', {}).get('enabled') and path == '/api/generate-preview':
@@ -472,6 +495,37 @@ def _enforce_incident_controls():
     ):
         return jsonify({'success': False, 'message': 'Knowledge base operations are temporarily disabled by incident control.'}), 503
     return None
+
+
+@app.route('/maintenance')
+def maintenance_page():
+    controls = _get_incident_state_cached()
+    maintenance = controls.get('maintenance_mode', {})
+    maintenance_config = (maintenance.get('config', {}) or {})
+    if not bool(maintenance.get('enabled', False)):
+        return redirect('/')
+
+    message = str(maintenance_config.get('banner_message') or 'Scheduled maintenance is currently active. Please check back shortly.')
+    ends_at = str(maintenance_config.get('ends_at') or '').strip()
+    try:
+        retry_after_seconds = int(maintenance_config.get('retry_after_seconds') or 300)
+    except Exception:
+        retry_after_seconds = 300
+    retry_after_seconds = max(30, min(retry_after_seconds, 86400))
+    headers = {
+        'Retry-After': str(retry_after_seconds),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    }
+    return (
+        render_template(
+            'maintenance.html',
+            maintenance_message=message,
+            maintenance_ends_at=ends_at,
+            retry_after_seconds=retry_after_seconds,
+        ),
+        503,
+        headers,
+    )
 
 # Make csrf_token available in all templates
 app.jinja_env.globals['csrf_token'] = get_csrf_token
