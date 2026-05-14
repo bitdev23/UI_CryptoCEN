@@ -4487,6 +4487,12 @@
         .creator-v4 .cv-workspace .cv-insights-col {
             transition: all 0.34s cubic-bezier(0.22, 1, 0.36, 1);
         }
+        .creator-v4 .cv-workspace.cv-pane-switching .cv-preview-col,
+        .creator-v4 .cv-workspace.cv-pane-switching .cv-insights-col {
+            transform: translateY(1px);
+            opacity: 0.96;
+            filter: saturate(0.95);
+        }
         .creator-v4 .cv-pane-toggle {
             display: inline-flex;
             align-items: center;
@@ -7372,6 +7378,20 @@
         .creator-v4 .cv-pv-actions {
             display: flex; gap: 4px;
             margin-left: auto;
+            align-items: center;
+        }
+        .creator-v4 .cv-focus-toggle {
+            width: auto;
+            min-width: 64px;
+            padding: 0 8px;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .creator-v4 .cv-focus-toggle.is-on {
+            background: linear-gradient(135deg, rgba(79,70,229,0.16), rgba(99,102,241,0.22));
+            color: #312e81;
+            border-color: rgba(79,70,229,0.42);
         }
         .creator-v4 .cv-pv-action-btn {
             width: clamp(22px, 1.7vw, 26px); height: clamp(22px, 1.7vw, 26px);
@@ -7449,7 +7469,9 @@
         .creator-v4 .li-mockup-headline { font-size: clamp(10px, 0.7vw + 2px, 11.5px); color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
         .creator-v4 .li-mockup-time { font-size: 11px; color: #999; margin-top: 1px }
         .creator-v4 .li-mockup-body {
-            padding: clamp(10px, 0.9vw, 14px) clamp(10px, 1vw, 16px); min-height: 80px; position: relative;
+            padding: clamp(6px, 0.6vw, 10px) clamp(10px, 1vw, 16px) clamp(10px, 0.9vw, 14px);
+            min-height: 62px;
+            position: relative;
         }
         .creator-v4 .li-mockup-body #post-text {
             font-size: clamp(12px, 0.85vw + 2px, 13.5px); line-height: 1.65;
@@ -7458,8 +7480,7 @@
             margin: 0;
         }
         .creator-v4 .li-mockup-body .li-empty-state {
-            text-align: center; padding: 14px 16px 10px; color: #aaa;
-            animation: fadeIn 0.5s ease both;
+            display: none;
         }
         .creator-v4 .li-empty-icon {
             font-size: 18px;
@@ -7539,6 +7560,36 @@
             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             gap: 6px;
         }
+        .creator-v4 .cv-generation-status {
+            margin: 6px 12px 0;
+            padding: 6px 9px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #475569;
+            transition: all 0.2s ease;
+        }
+        .creator-v4 .cv-generation-status i { font-size: 0.7rem; }
+        .creator-v4 .cv-generation-status.state-generating {
+            border-color: rgba(99,102,241,0.34);
+            background: rgba(224,231,255,0.7);
+            color: #3730a3;
+        }
+        .creator-v4 .cv-generation-status.state-ready {
+            border-color: rgba(16,185,129,0.34);
+            background: rgba(209,250,229,0.7);
+            color: #065f46;
+            animation: cvReadyPulse 0.9s ease;
+        }
+        @keyframes cvReadyPulse {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
         .creator-v4 .cv-mini-toolbar {
             position: sticky;
             top: 6px;
@@ -7556,6 +7607,75 @@
             font-weight: 700;
             padding: 7px 8px;
         }
+        .creator-v4 .cv-readability-controls {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 2px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(148,163,184,0.2);
+        }
+        .creator-v4 .cv-readability-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .creator-v4 .cv-readability-group label {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .creator-v4 .cv-readability-group button {
+            min-width: 26px;
+            padding: 5px 7px;
+            font-size: 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #475569;
+        }
+        .creator-v4 .cv-readability-group button.is-active {
+            color: #fff;
+            background: linear-gradient(135deg, #5b67f4, #4f46e5);
+            border-color: #4f46e5;
+            box-shadow: 0 3px 10px rgba(79,70,229,0.35);
+        }
+        .creator-v4 .li-mockup-body.cv-read-size-s #post-text { font-size: 12px; }
+        .creator-v4 .li-mockup-body.cv-read-size-m #post-text { font-size: clamp(12px, 0.85vw + 2px, 13.5px); }
+        .creator-v4 .li-mockup-body.cv-read-size-l #post-text { font-size: clamp(13.5px, 1vw + 2px, 16px); }
+        .creator-v4 .li-mockup-body.cv-read-lh-tight #post-text { line-height: 1.45; }
+        .creator-v4 .li-mockup-body.cv-read-lh-normal #post-text { line-height: 1.65; }
+        .creator-v4 .li-mockup-body.cv-read-lh-relaxed #post-text { line-height: 1.85; }
+        .creator-v4.cv-reading-focus .cv-pv-char-row,
+        .creator-v4.cv-reading-focus .cv-pv-reactions,
+        .creator-v4.cv-reading-focus .cv-pv-footer,
+        .creator-v4.cv-reading-focus #creator-quick-actions,
+        .creator-v4.cv-reading-focus .li-mockup-reactions,
+        .creator-v4.cv-reading-focus .li-mockup-actions {
+            display: none !important;
+        }
+        .creator-v4.cv-reading-focus .cv-pv-body {
+            padding-top: 4px;
+        }
+        .creator-v4.cv-reading-focus .li-mockup {
+            border-radius: 14px;
+        }
+        .creator-v4.cv-reading-focus .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
+            width: clamp(420px, 46vw, 760px) !important;
+            max-width: 760px !important;
+        }
+        .creator-v4 .cv-preview-col.cv-just-generated {
+            animation: cvPreviewReadyFlash 0.65s ease;
+        }
+        @keyframes cvPreviewReadyFlash {
+            0% { box-shadow: 0 0 0 rgba(79,70,229,0); }
+            45% { box-shadow: 0 0 0 3px rgba(79,70,229,0.14), 0 0 28px rgba(99,102,241,0.22); }
+            100% { box-shadow: none; }
+        }
 
         .creator-v4 .cv-insight-score-card {
             border: 1px solid rgba(129,140,248,0.18);
@@ -7563,6 +7683,14 @@
             background: linear-gradient(145deg, rgba(99,102,241,0.12), rgba(15,23,42,0.08));
             padding: 10px 11px;
             margin-bottom: 10px;
+        }
+        .creator-v4 .cv-insight-score-card.cv-score-bump {
+            animation: cvScoreBump 0.38s ease;
+        }
+        @keyframes cvScoreBump {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+            100% { transform: scale(1); }
         }
         .creator-v4 .cv-insight-score-head {
             display: flex;
@@ -17071,6 +17199,11 @@
             border-color: rgba(255,255,255,0.07) !important;
             color: var(--text-2) !important;
         }
+        body.dark-mode .creator-v4 .cv-focus-toggle.is-on {
+            background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(79,70,229,0.42)) !important;
+            color: #ffffff !important;
+            border-color: rgba(129,140,248,0.52) !important;
+        }
         body.dark-mode .creator-v4 .cv-pane-toggle {
             background: rgba(15,23,42,0.6) !important;
             border-color: rgba(99,102,241,0.45) !important;
@@ -17086,6 +17219,32 @@
         body.dark-mode .creator-v4 .cv-mini-toolbar {
             background: rgba(15,23,42,0.82) !important;
             border-color: rgba(129,140,248,0.28) !important;
+        }
+        body.dark-mode .creator-v4 .cv-generation-status {
+            background: rgba(15,23,42,0.72) !important;
+            border-color: rgba(148,163,184,0.2) !important;
+            color: rgba(203,213,225,0.9) !important;
+        }
+        body.dark-mode .creator-v4 .cv-generation-status.state-generating {
+            background: rgba(55,48,163,0.25) !important;
+            border-color: rgba(129,140,248,0.45) !important;
+            color: rgba(199,210,254,0.96) !important;
+        }
+        body.dark-mode .creator-v4 .cv-generation-status.state-ready {
+            background: rgba(6,95,70,0.35) !important;
+            border-color: rgba(16,185,129,0.45) !important;
+            color: rgba(167,243,208,0.98) !important;
+        }
+        body.dark-mode .creator-v4 .cv-readability-controls {
+            border-top-color: rgba(148,163,184,0.2) !important;
+        }
+        body.dark-mode .creator-v4 .cv-readability-group label {
+            color: rgba(148,163,184,0.95) !important;
+        }
+        body.dark-mode .creator-v4 .cv-readability-group button {
+            background: rgba(15,23,42,0.9) !important;
+            border-color: rgba(148,163,184,0.28) !important;
+            color: rgba(226,232,240,0.86) !important;
         }
         body.dark-mode .creator-v4 .creator-quick-actions button:hover {
             background: var(--surface-2) !important;
@@ -20322,8 +20481,14 @@
                     <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="preview" aria-pressed="true" onclick="setCreatorSidePane('preview')">Preview</button>
                     <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="insights" aria-pressed="false" onclick="setCreatorSidePane('insights')">Insights</button>
                 </div>
+        <button id="cv-focus-mode-btn" class="cv-pv-action-btn cv-focus-toggle" type="button" onclick="toggleCreatorFocusMode()" title="Focus mode"><i class="fas fa-expand"></i> Focus</button>
         <button class="cv-pv-action-btn" onclick="copyPost()" title="Copy"><i class="far fa-copy"></i></button>
       </div>
+    </div>
+
+    <div id="cv-generation-status" class="cv-generation-status state-idle" aria-live="polite">
+      <i class="fas fa-circle-dot"></i>
+      <span id="cv-generation-status-text">Idle</span>
     </div>
 
     <div class="cv-pv-body" id="pvBody">
@@ -20332,6 +20497,20 @@
                 <button type="button" onclick="regeneratePost()"><i class="fas fa-arrows-rotate"></i> Regenerate</button>
                 <button type="button" onclick="openScheduleModal()"><i class="fas fa-calendar"></i> Schedule</button>
                 <button type="button" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Publish</button>
+                <div class="cv-readability-controls">
+                    <div class="cv-readability-group">
+                        <label>Size</label>
+                        <button type="button" data-read-size="s" aria-pressed="false" onclick="setCreatorReadability('size','s')">S</button>
+                        <button type="button" data-read-size="m" aria-pressed="true" class="is-active" onclick="setCreatorReadability('size','m')">M</button>
+                        <button type="button" data-read-size="l" aria-pressed="false" onclick="setCreatorReadability('size','l')">L</button>
+                    </div>
+                    <div class="cv-readability-group">
+                        <label>Spacing</label>
+                        <button type="button" data-read-line="tight" aria-pressed="false" onclick="setCreatorReadability('line','tight')">T</button>
+                        <button type="button" data-read-line="normal" aria-pressed="true" class="is-active" onclick="setCreatorReadability('line','normal')">N</button>
+                        <button type="button" data-read-line="relaxed" aria-pressed="false" onclick="setCreatorReadability('line','relaxed')">R</button>
+                    </div>
+                </div>
             </div>
       <div id="post-preview">
 
@@ -20351,9 +20530,7 @@
           </div>
                     <input id="profile-avatar-file-input" type="file" accept="image/*" style="display:none;" onchange="handleProfileAvatarUpload(event)">
           <div class="li-mockup-body" id="li-mockup-body">
-            <div class="li-empty-state" id="li-empty-state">
-              <div class="li-empty-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
-            </div>
+                        <div class="li-empty-state" id="li-empty-state"></div>
             <div class="creator-preview-loading" id="li-loading-state">
               <div class="cv-skeleton-lines">
                 <div class="cv-skeleton-line"></div>
@@ -26289,6 +26466,9 @@
     let cvGenerateInFlight = false;
     let cvHasGeneratedResult = false;
     let cvActiveSidePane = 'preview';
+    let cvFocusMode = false;
+    let cvReadSize = 'm';
+    let cvReadLine = 'normal';
 
     function syncCreatorSidePaneToggle() {
         document.querySelectorAll('#content-creator [data-side-pane-btn]').forEach(btn => {
@@ -26301,7 +26481,92 @@
 
     function setCreatorSidePane(mode = 'preview') {
         cvActiveSidePane = mode === 'insights' ? 'insights' : 'preview';
+        const workspace = document.getElementById('cv-workspace');
+        if (workspace) {
+            workspace.classList.add('cv-pane-switching');
+            window.setTimeout(() => workspace.classList.remove('cv-pane-switching'), 180);
+        }
         syncCreatorWorkspaceLayout();
+    }
+
+    function setCreatorGenerationStatus(state = 'idle') {
+        const banner = document.getElementById('cv-generation-status');
+        const text = document.getElementById('cv-generation-status-text');
+        if (!banner || !text) return;
+
+        const safe = state === 'generating' || state === 'ready' ? state : 'idle';
+        banner.classList.remove('state-idle', 'state-generating', 'state-ready');
+        banner.classList.add(`state-${safe}`);
+
+        const icon = banner.querySelector('i');
+        if (safe === 'generating') {
+            text.textContent = 'Generating';
+            if (icon) icon.className = 'fas fa-spinner fa-spin';
+        } else if (safe === 'ready') {
+            text.textContent = 'Ready to review';
+            if (icon) icon.className = 'fas fa-circle-check';
+        } else {
+            text.textContent = 'Idle';
+            if (icon) icon.className = 'fas fa-circle-dot';
+        }
+    }
+
+    function syncCreatorFocusMode() {
+        const creator = document.getElementById('content-creator');
+        const btn = document.getElementById('cv-focus-mode-btn');
+        if (creator) {
+            creator.classList.toggle('cv-reading-focus', cvFocusMode);
+        }
+        if (btn) {
+            btn.classList.toggle('is-on', cvFocusMode);
+            btn.innerHTML = cvFocusMode
+                ? '<i class="fas fa-compress"></i> Exit Focus'
+                : '<i class="fas fa-expand"></i> Focus';
+            btn.setAttribute('aria-pressed', String(cvFocusMode));
+            btn.title = cvFocusMode ? 'Exit focus mode' : 'Focus mode';
+        }
+    }
+
+    function toggleCreatorFocusMode(force = null) {
+        cvFocusMode = force === null ? !cvFocusMode : Boolean(force);
+        if (cvFocusMode) {
+            setCreatorSidePane('preview');
+        }
+        syncCreatorFocusMode();
+    }
+
+    function syncCreatorReadabilityControls() {
+        document.querySelectorAll('#content-creator [data-read-size]').forEach(btn => {
+            const active = String(btn.dataset.readSize || '') === cvReadSize;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-pressed', String(active));
+        });
+        document.querySelectorAll('#content-creator [data-read-line]').forEach(btn => {
+            const active = String(btn.dataset.readLine || '') === cvReadLine;
+            btn.classList.toggle('is-active', active);
+            btn.setAttribute('aria-pressed', String(active));
+        });
+    }
+
+    function applyCreatorReadability() {
+        const body = document.getElementById('li-mockup-body');
+        if (!body) return;
+        body.classList.remove(
+            'cv-read-size-s', 'cv-read-size-m', 'cv-read-size-l',
+            'cv-read-lh-tight', 'cv-read-lh-normal', 'cv-read-lh-relaxed'
+        );
+        body.classList.add(`cv-read-size-${cvReadSize}`);
+        body.classList.add(`cv-read-lh-${cvReadLine}`);
+        syncCreatorReadabilityControls();
+    }
+
+    function setCreatorReadability(kind, value) {
+        if (kind === 'size') {
+            cvReadSize = (value === 's' || value === 'l') ? value : 'm';
+        } else if (kind === 'line') {
+            cvReadLine = (value === 'tight' || value === 'relaxed') ? value : 'normal';
+        }
+        applyCreatorReadability();
     }
 
     function syncCreatorWorkspaceLayout() {
@@ -26405,6 +26670,12 @@
         if (fill) fill.style.width = '100%';
         if (pct) pct.textContent = '100%';
         setCreatorGenerateProgressStep('done');
+        setCreatorGenerationStatus('ready');
+        const previewCol = document.querySelector('#content-creator .cv-preview-col');
+        if (previewCol) {
+            previewCol.classList.add('cv-just-generated');
+            window.setTimeout(() => previewCol.classList.remove('cv-just-generated'), 700);
+        }
         setTimeout(() => {
             if (wrap) wrap.style.display = 'none';
         }, 900);
@@ -26435,6 +26706,7 @@
             futureSuggestions.style.display = 'none';
             futureSuggestions.innerHTML = '';
         }
+        setCreatorGenerationStatus('generating');
         syncCreatorWorkspaceLayout();
     }
     function showMockupResult(content) {
@@ -26449,6 +26721,7 @@
         if (reactions) reactions.style.display = 'flex';
         if (insightsPlaceholder) insightsPlaceholder.style.display = 'none';
         cvHasGeneratedResult = true;
+        setCreatorGenerationStatus('ready');
         syncCreatorWorkspaceLayout();
     }
     function showMockupEmpty() {
@@ -26458,7 +26731,7 @@
         const reactions = document.getElementById('li-mockup-reactions');
         const insightsPlaceholder = document.querySelector('.cv-insights-placeholder');
         const futureSuggestions = document.getElementById('future-suggestions');
-        if (emptyState) emptyState.style.display = 'block';
+        if (emptyState) emptyState.style.display = 'none';
         if (loadingState) loadingState.style.display = 'none';
         if (postText) postText.style.display = 'none';
         if (reactions) reactions.style.display = 'none';
@@ -26468,6 +26741,7 @@
             futureSuggestions.innerHTML = '';
         }
         cvHasGeneratedResult = false;
+        setCreatorGenerationStatus('idle');
         syncCreatorWorkspaceLayout();
     }
     let cvProgressHint = 'what';
@@ -26601,6 +26875,9 @@
         setConfigUxMode('quick');
         renderCreatorStyleSuggestion();
         updateQuickQualityMeter();
+        applyCreatorReadability();
+        syncCreatorFocusMode();
+        setCreatorGenerationStatus('idle');
         refreshPreviewIdentity();
     });
 
@@ -26911,6 +27188,7 @@
     function updateQuickQualityMeter(text = null) {
         const meter = document.getElementById('cv-quality-meter');
         const scoreEl = document.getElementById('cv-qm-score');
+        const insightScoreCard = document.querySelector('#generation-insights .cv-insight-score-card');
         const content = String(text == null ? (document.getElementById('post-text')?.innerText || '') : text).trim();
         if (!meter) return;
         if (!content) {
@@ -26938,6 +27216,12 @@
         const a = setQualityMetric('cta', ctaScore);
         const total = Math.round((h + c + r + a) / 4);
         if (scoreEl) scoreEl.textContent = `${total}/100`;
+        if (insightScoreCard) {
+            insightScoreCard.classList.remove('cv-score-bump');
+            void insightScoreCard.offsetWidth;
+            insightScoreCard.classList.add('cv-score-bump');
+            window.setTimeout(() => insightScoreCard.classList.remove('cv-score-bump'), 420);
+        }
     }
 
     const CREATOR_STYLE_PROFILE_STORAGE_KEY = 'creator_style_profile_v1';
@@ -28922,6 +29206,7 @@
             updateQuickQualityMeter(postText.textContent || '');
             refreshCvStepperState();
             if (previewState) previewState.textContent = 'Generated';
+            setCreatorGenerationStatus('ready');
             syncCreatorWorkspaceLayout();
             return;
         }
@@ -28938,6 +29223,7 @@
         updateQuickQualityMeter('');
         refreshCvStepperState();
         if (previewState) previewState.textContent = 'Not generated yet';
+        setCreatorGenerationStatus('idle');
         syncCreatorWorkspaceLayout();
     }
 
