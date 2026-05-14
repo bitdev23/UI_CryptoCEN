@@ -3294,6 +3294,12 @@
             font-size: 0.78rem;
             color: #64748b;
         }
+        .settings-v2-profile-actions {
+            margin-top: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
         .settings-v2-avatar {
             width: 48px;
             height: 48px;
@@ -7224,6 +7230,16 @@
             color: #fff;
             box-shadow: 0 0 12px rgba(79,144,255,0.2);
         }
+        .creator-v4 .cv-pv-avatar.has-photo,
+        .creator-v4 .li-mockup-avatar.has-photo,
+        .settings-v2-avatar.has-photo,
+        .sidebar-user-avatar.has-photo {
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            color: transparent !important;
+            text-shadow: none !important;
+        }
         .creator-v4 .cv-pv-name {
             font-size: 13px; font-weight: 600;
             font-family: 'Syne', sans-serif;
@@ -7284,7 +7300,34 @@
             color: #fff; font-weight: 700; font-size: clamp(13px, 1vw, 16px);
         }
         .creator-v4 .li-mockup-meta { flex: 1; min-width: 0 }
-        .creator-v4 .li-mockup-name { font-size: clamp(11.5px, 0.85vw + 2px, 13.5px); font-weight: 700; color: #1a1a1a }
+        .creator-v4 .li-mockup-name {
+            font-size: clamp(11.5px, 0.85vw + 2px, 13.5px);
+            font-weight: 700;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .creator-v4 .li-avatar-upload-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            border: 1px solid #dbe4f0;
+            background: #f8fafc;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 140ms ease;
+            padding: 0;
+        }
+        .creator-v4 .li-avatar-upload-btn:hover {
+            background: #eef2ff;
+            color: #334155;
+            border-color: #c7d2fe;
+        }
         .creator-v4 .li-mockup-badge { font-size: 12px; font-weight: 400; color: #999; margin-left: 4px }
         .creator-v4 .li-mockup-headline { font-size: clamp(10px, 0.7vw + 2px, 11.5px); color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
         .creator-v4 .li-mockup-time { font-size: 11px; color: #999; margin-top: 1px }
@@ -19782,7 +19825,7 @@
 
             <!-- ── Industry ── -->
             <div class="cv-cfg-block cb-blue" id="cfg-industry" role="group" aria-labelledby="cfg-industry-label">
-              <div class="cv-cb-title" id="cfg-industry-label"><span class="cv-cb-dot dot-blue"></span> Industry</div>
+              <div class="cv-cb-title" id="cfg-industry-label"><span class="cv-cb-dot dot-blue"></span> Industry <i class="fas fa-circle-info help-tip" data-tooltip="Choose the market context for your post so examples, terminology, and references match your audience."></i></div>
               <select id="industry-select" class="cv-cfg-select" aria-label="Select your industry" onchange="onIndustryChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('industry');">
                 <option value="tech">Technology &amp; Software</option>
                 <option value="finance">Finance &amp; Banking</option>
@@ -19810,7 +19853,7 @@
 
             <!-- ── Role ── -->
             <div class="cv-cfg-block cb-violet" id="cfg-role" role="group" aria-labelledby="cfg-role-label">
-              <div class="cv-cb-title" id="cfg-role-label"><span class="cv-cb-dot dot-violet"></span> Your Role</div>
+              <div class="cv-cb-title" id="cfg-role-label"><span class="cv-cb-dot dot-violet"></span> Your Role <i class="fas fa-circle-info help-tip" data-tooltip="Set your professional perspective. This role is used in generation prompts and shown in the preview headline."></i></div>
               <select id="role-select" class="cv-cfg-select" aria-label="Select your role" onchange="onRoleChange();syncCreatorReplicaControls();saveCreatorDraftState();toggleCfgCustomInput('role');">
                 <option value="ceo">CEO / Founder</option>
                 <option value="cto">CTO / VP Engineering</option>
@@ -19838,7 +19881,7 @@
 
             <!-- ── Tone ── -->
             <div class="cv-cfg-block cb-teal" id="cfg-tone" role="group" aria-labelledby="cfg-tone-label">
-              <div class="cv-cb-title" id="cfg-tone-label"><span class="cv-cb-dot dot-teal"></span> Tone</div>
+              <div class="cv-cb-title" id="cfg-tone-label"><span class="cv-cb-dot dot-teal"></span> Tone <i class="fas fa-circle-info help-tip" data-tooltip="Controls how the post sounds: professional, conversational, authoritative, educational, and more."></i></div>
               <select id="post-tone" class="cv-cfg-select" aria-label="Select writing tone" onchange="syncCreatorReplicaControls();saveCreatorDraftState();">
                 <option value="professional" selected>Professional</option>
                 <option value="conversational">Conversational</option>
@@ -19853,7 +19896,7 @@
 
             <!-- ── Post Length ── -->
             <div class="cv-cfg-block cb-teal" id="cfg-length" role="group" aria-labelledby="cfg-length-label">
-              <div class="cv-cb-title" id="cfg-length-label"><span class="cv-cb-dot dot-teal"></span> Post Length</div>
+              <div class="cv-cb-title" id="cfg-length-label"><span class="cv-cb-dot dot-teal"></span> Post Length <i class="fas fa-circle-info help-tip" data-tooltip="Choose short, medium, long, or a custom range to control expected post size."></i></div>
               <select id="cv-length-select" class="cv-cfg-select" aria-label="Select post length" onchange="onLengthDropdownChange(this.value)">
                 <option value="short">Short (60–120 words)</option>
                 <option value="medium" selected>Medium (120–220 words)</option>
@@ -19893,7 +19936,7 @@
 
             <!-- ── Post Goal (always visible — Quick mode) ── -->
             <div class="cv-cfg-block cb-amber" id="cfg-goal" role="group" aria-labelledby="cfg-goal-label">
-              <div class="cv-cb-title" id="cfg-goal-label"><span class="cv-cb-dot dot-amber"></span> Post Goal <span style="color:#ff6b6b;font-size:0.8em;">*</span></div>
+              <div class="cv-cb-title" id="cfg-goal-label"><span class="cv-cb-dot dot-amber"></span> Post Goal <i class="fas fa-circle-info help-tip" data-tooltip="Define the outcome you want from this post, like comments, profile visits, leads, authority, or awareness."></i> <span style="color:#ff6b6b;font-size:0.8em;">*</span></div>
               <select id="goal-preset" class="cv-cfg-select" aria-label="Select a goal for this post" aria-required="true" onchange="onGoalPresetChange(this.value)">
                 <option value="" disabled selected>Select a goal for this post…</option>
                 <option value="spark-comments">Spark Comments &amp; Discussion</option>
@@ -19913,7 +19956,7 @@
 
             <!-- ── Content Focus (Advanced only) ── -->
             <div class="cv-cfg-block cb-amber cv-sec-config-advanced" id="cfg-options" role="group" aria-labelledby="cfg-options-label">
-              <div class="cv-cb-title" id="cfg-options-label"><span class="cv-cb-dot dot-amber"></span> Content Focus <span class="cv-cb-count" id="cv-optCount">0 on</span></div>
+              <div class="cv-cb-title" id="cfg-options-label"><span class="cv-cb-dot dot-amber"></span> Content Focus <i class="fas fa-circle-info help-tip" data-tooltip="Choose content angles to weave into your post (e.g. include case study evidence, recent trends). This is different from Tone — which controls how you write. Content Focus is what you write about."></i> <span class="cv-cb-count" id="cv-optCount">0 on</span></div>
               <div class="creator-section">
                 <div class="creator-mini-label">Content Focus <span style="font-size:0.85em;color:#999;">(optional)</span></div>
                 <div class="checkbox-group" id="content-topics-group" style="grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.2rem;">
@@ -19924,7 +19967,7 @@
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-personal" value="personal"><label for="topic-personal">Personal</label></div>
                   <div class="checkbox-wrapper"><input type="checkbox" id="topic-product" value="product"><label for="topic-product">Product</label></div>
                 </div>
-                <p class="form-hint" style="margin-top:0.45rem;"><strong>What's this?</strong> Choose content angles to weave into your post (e.g. include case study evidence, recent trends). This is <u>different from Tone</u> — which controls how you <em>write</em>. Content Focus is <em>what</em> you write about.</p>
+                
               </div>
             </div>
 
@@ -20027,12 +20070,14 @@
             <div class="li-mockup-meta">
               <div class="li-mockup-name">
                 <span id="li-mockup-name">Your Name</span>
+                                <button type="button" class="li-avatar-upload-btn" onclick="openProfileAvatarPicker()" title="Upload profile image"><i class="fas fa-image"></i></button>
                 <span class="li-mockup-badge">· 1st</span>
               </div>
-              <div class="li-mockup-headline" id="li-mockup-headline">LinkedIn Creator</div>
+                            <div class="li-mockup-headline" id="li-mockup-headline">Your Role</div>
               <div class="li-mockup-time"><i class="fas fa-globe-americas"></i> Just now</div>
             </div>
           </div>
+                    <input id="profile-avatar-file-input" type="file" accept="image/*" style="display:none;" onchange="handleProfileAvatarUpload(event)">
           <div class="li-mockup-body" id="li-mockup-body">
             <div class="li-empty-state" id="li-empty-state">
               <div class="li-empty-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
@@ -20830,6 +20875,10 @@
                                     <div>
                                         <h3 id="settings-profile-name">User</h3>
                                         <p id="settings-profile-subtitle">user@example.com · Pro Plan</p>
+                                        <div class="settings-v2-profile-actions">
+                                            <button class="btn btn-secondary btn-sm" type="button" onclick="openProfileAvatarPicker()"><i class="fas fa-image"></i> Upload Profile Image</button>
+                                            <button class="btn btn-secondary btn-sm" type="button" onclick="removeProfileAvatar()"><i class="fas fa-trash-alt"></i> Remove Photo</button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="settings-v2-card-body">
@@ -26233,22 +26282,7 @@
         setConfigUxMode('quick');
         renderCreatorStyleSuggestion();
         updateQuickQualityMeter();
-        // Populate mockup with user info if available
-        try {
-            const nameEl = document.getElementById('li-mockup-name');
-            const headlineEl = document.getElementById('li-mockup-headline');
-            const avatarEl = document.getElementById('li-mockup-avatar');
-            const pvNameEl = document.getElementById('cv-pv-name');
-            const pvAvatarEl = document.getElementById('cv-pv-avatar');
-            const userNameFull = (typeof currentUser !== 'undefined' && currentUser && currentUser.name)
-                ? currentUser.name
-                : (document.querySelector('.user-name')?.textContent || 'Your Name');
-            if (nameEl) nameEl.textContent = userNameFull;
-            if (headlineEl) headlineEl.textContent = 'LinkedIn Creator';
-            if (avatarEl) avatarEl.textContent = userNameFull.charAt(0).toUpperCase();
-            if (pvNameEl) pvNameEl.textContent = userNameFull;
-            if (pvAvatarEl) pvAvatarEl.textContent = userNameFull.charAt(0).toUpperCase();
-        } catch(e) {}
+        refreshPreviewIdentity();
     });
 
     /* ═══ New CV Layout JS Functions ═══ */
@@ -27359,6 +27393,118 @@
         return !!el?.classList.contains('on');
     }
 
+    const USER_PROFILE_AVATAR_STORAGE_KEY = 'user_profile_avatar_data_url';
+
+    function getStoredDisplayName() {
+        const first = (localStorage.getItem('first_name') || '').trim();
+        const last = (localStorage.getItem('last_name') || '').trim();
+        const email = (localStorage.getItem('user_email') || '').trim();
+        return `${first} ${last}`.trim() || (email ? email.split('@')[0] : 'User');
+    }
+
+    function getSelectedRoleLabel() {
+        const roleSelect = document.getElementById('role-select');
+        const roleCustom = document.getElementById('role-custom');
+        if (!roleSelect) return 'Your Role';
+        if (roleSelect.value === 'custom') {
+            const customValue = String(roleCustom?.value || '').trim();
+            return customValue || 'Your Role';
+        }
+        const option = roleSelect.options[roleSelect.selectedIndex];
+        return String(option?.text || '').trim() || 'Your Role';
+    }
+
+    function setAvatarElementVisual(el, fallbackText) {
+        if (!el) return;
+        const avatarData = String(localStorage.getItem(USER_PROFILE_AVATAR_STORAGE_KEY) || '').trim();
+        if (avatarData.startsWith('data:image/')) {
+            el.style.backgroundImage = `url("${avatarData}")`;
+            el.classList.add('has-photo');
+            el.textContent = '';
+            return;
+        }
+        el.style.backgroundImage = '';
+        el.classList.remove('has-photo');
+        el.textContent = String(fallbackText || 'U').charAt(0).toUpperCase();
+    }
+
+    function refreshPreviewIdentity() {
+        const name = getStoredDisplayName();
+        const role = getSelectedRoleLabel();
+        const initial = (name[0] || 'U').toUpperCase();
+
+        const pvNameEl = document.getElementById('cv-pv-name');
+        const pvAvatarEl = document.getElementById('cv-pv-avatar');
+        const mockNameEl = document.getElementById('li-mockup-name');
+        const mockHeadlineEl = document.getElementById('li-mockup-headline');
+        const mockAvatarEl = document.getElementById('li-mockup-avatar');
+
+        if (pvNameEl) pvNameEl.textContent = name;
+        if (mockNameEl) mockNameEl.textContent = name;
+        if (mockHeadlineEl) mockHeadlineEl.textContent = role;
+
+        setAvatarElementVisual(pvAvatarEl, initial);
+        setAvatarElementVisual(mockAvatarEl, initial);
+    }
+
+    function openProfileAvatarPicker() {
+        const input = document.getElementById('profile-avatar-file-input');
+        if (input) input.click();
+    }
+
+    function removeProfileAvatar() {
+        const hasStoredAvatar = String(localStorage.getItem(USER_PROFILE_AVATAR_STORAGE_KEY) || '').trim().startsWith('data:image/');
+        if (!hasStoredAvatar) {
+            showToast('info', 'No profile image to remove', 'fas fa-info-circle');
+            return;
+        }
+
+        localStorage.removeItem(USER_PROFILE_AVATAR_STORAGE_KEY);
+        syncSidebarUserCard();
+        syncSettingsProfileSummary();
+        refreshPreviewIdentity();
+        showToast('success', 'Profile image removed', 'fas fa-check');
+    }
+
+    function handleProfileAvatarUpload(event) {
+        const input = event?.target;
+        const file = input?.files?.[0];
+        if (!file) return;
+
+        if (!String(file.type || '').startsWith('image/')) {
+            showToast('error', 'Please select a valid image file', 'fas fa-exclamation-circle');
+            if (input) input.value = '';
+            return;
+        }
+
+        const maxBytes = 3 * 1024 * 1024;
+        if (file.size > maxBytes) {
+            showToast('error', 'Image too large. Please upload up to 3MB.', 'fas fa-exclamation-circle');
+            if (input) input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = String(reader.result || '').trim();
+            if (!dataUrl.startsWith('data:image/')) {
+                showToast('error', 'Invalid image format', 'fas fa-exclamation-circle');
+                return;
+            }
+            localStorage.setItem(USER_PROFILE_AVATAR_STORAGE_KEY, dataUrl);
+            syncSidebarUserCard();
+            syncSettingsProfileSummary();
+            refreshPreviewIdentity();
+            showToast('success', 'Profile image updated', 'fas fa-check');
+            if (input) input.value = '';
+        };
+        reader.onerror = () => {
+            showToast('error', 'Unable to read image file', 'fas fa-exclamation-circle');
+            if (input) input.value = '';
+        };
+        reader.readAsDataURL(file);
+    }
+
     function syncSettingsProfileSummary() {
         const first = (localStorage.getItem('first_name') || '').trim();
         const last = (localStorage.getItem('last_name') || '').trim();
@@ -27383,7 +27529,7 @@
             subtitleEl.textContent = parts.join(' · ');
         }
         if (avatarEl) {
-            avatarEl.textContent = (fullName[0] || 'U').toUpperCase();
+            setAvatarElementVisual(avatarEl, fullName[0] || 'U');
         }
         if (notificationEmailEl) {
             notificationEmailEl.textContent = `Sent to ${email || 'your account email'}`;
@@ -27405,7 +27551,7 @@
         const cardEl = document.getElementById('sidebar-user-card');
 
         if (nameEl) nameEl.textContent = name;
-        if (avatarEl) avatarEl.textContent = (name[0] || 'U').toUpperCase();
+        if (avatarEl) setAvatarElementVisual(avatarEl, name[0] || 'U');
         if (cardEl) cardEl.title = `${name} · ${plan}`;
 
         // Show remaining post count for free plan
@@ -27419,6 +27565,8 @@
                 planEl.textContent = plan;
             }
         }
+
+        refreshPreviewIdentity();
     }
 
     function planDisplayName(plan) {
@@ -28294,6 +28442,7 @@
             if (emailEl) emailEl.textContent = email;
             syncSettingsProfileSummary();
             updateDashboardGreeting(`${first_name} ${last_name}`.trim());
+            refreshPreviewIdentity();
 
             showToast('success', 'Account updated successfully', 'fas fa-check');
         })
@@ -28796,6 +28945,7 @@
         updateHashtagPreview();
         updateTopicCounter();
         updateCfgRowPills();
+        refreshPreviewIdentity();
     }
 
     /* ═══ Update config accordion row pill badges ═══ */
@@ -31726,6 +31876,7 @@
             if (accountCountry) accountCountry.value = localStorage.getItem('country') || '';
             if (accountEmail) accountEmail.value = savedEmail;
             syncSettingsProfileSummary();
+            refreshPreviewIdentity();
         }
 
         try {
@@ -31769,6 +31920,7 @@
                 localStorage.setItem('country', data.user.country || '');
             }
             syncSettingsProfileSummary();
+            refreshPreviewIdentity();
         } catch (error) {
             // ignore UI-only profile hydration errors
         } finally {
