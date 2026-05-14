@@ -12454,14 +12454,35 @@
         }
         .ph2-hero-title { font-size: 1.3rem; font-weight: 750; color: #fff; letter-spacing: -0.012em; }
         .ph2-hero-desc { font-size: 0.84rem; color: rgba(255,255,255,0.64); margin-top: 0.24rem; }
-        .ph2-hero-actions { position: relative; z-index: 1; }
+        .ph2-hero-actions {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
         .ph2-export-btn {
             padding: 0.58rem 1.12rem; border-radius: 11px; font-size: 0.82rem; font-weight: 700;
             background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24);
             color: rgba(255,255,255,0.94); cursor: pointer; font-family: inherit;
             display: flex; align-items: center; gap: 0.45rem; transition: all 0.18s;
+            min-width: 164px;
+            justify-content: center;
+            white-space: nowrap;
         }
         .ph2-export-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        @media (max-width: 900px) {
+            .ph2-hero-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .ph2-export-btn {
+                flex: 1 1 180px;
+            }
+        }
 
         /* ═══ LINKEDIN POST TAB ═════════════════════════════════════ */
         .lip-hero {
@@ -21171,7 +21192,7 @@
                     </div>
                     <div class="ph2-hero-actions">
                         <button class="ph2-export-btn" onclick="exportPostHistoryCsv()"><i class="fas fa-download"></i> Export CSV</button>
-                        <button class="ph2-export-btn" onclick="exportPostHistoryPdf()" style="margin-left:8px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                        <button class="ph2-export-btn" onclick="exportPostHistoryPdf()"><i class="fas fa-file-pdf"></i> Export PDF</button>
                     </div>
                 </div>
 
