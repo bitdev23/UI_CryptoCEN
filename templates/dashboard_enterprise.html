@@ -4482,6 +4482,34 @@
             z-index: 1;
             overflow: visible;
         }
+        .creator-v4 .cv-workspace .cv-form-scroll,
+        .creator-v4 .cv-workspace .cv-preview-col,
+        .creator-v4 .cv-workspace .cv-insights-col {
+            transition: all 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .creator-v4 .cv-workspace.cv-workspace-focus .cv-form-scroll {
+            flex: 1 1 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+        .creator-v4 .cv-workspace.cv-workspace-focus .cv-preview-col,
+        .creator-v4 .cv-workspace.cv-workspace-focus .cv-insights-col {
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            overflow: hidden;
+            border-width: 0;
+            margin: 0;
+        }
+        .creator-v4 .cv-workspace.cv-workspace-generated .cv-preview-col,
+        .creator-v4 .cv-workspace.cv-workspace-generated .cv-insights-col {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
 
         /* ---------- Topbar ---------- */
         .creator-v4 .cv-topbar {
@@ -8520,6 +8548,10 @@
                 flex-direction: column;
                 gap: 16px;
                 padding: 0 16px 20px;
+            }
+            .creator-v4 .cv-workspace.cv-workspace-focus .cv-preview-col,
+            .creator-v4 .cv-workspace.cv-workspace-focus .cv-insights-col {
+                display: none !important;
             }
             .creator-v4 .cv-hero {
                 margin: 12px 16px;
@@ -19699,7 +19731,7 @@
 </div>
 
 <!-- Workspace -->
-<div class="cv-workspace">
+<div class="cv-workspace cv-workspace-focus" id="cv-workspace">
 
   <!-- Form scroll area -->
   <div class="cv-form-scroll" id="cv-form-scroll">
@@ -26049,6 +26081,18 @@
     /* ─── LinkedIn Mockup + Progress Bar helpers ─── */
     let cvGenerateProgressTimer = null;
     let cvGenerateInFlight = false;
+    let cvHasGeneratedResult = false;
+
+    function syncCreatorWorkspaceLayout() {
+        const workspace = document.getElementById('cv-workspace');
+        if (!workspace) {
+            return;
+        }
+        const hasGeneratedContent = Boolean((document.getElementById('post-text')?.textContent || '').trim());
+        const revealAuxColumns = cvGenerateInFlight || cvHasGeneratedResult || hasGeneratedContent;
+        workspace.classList.toggle('cv-workspace-focus', !revealAuxColumns);
+        workspace.classList.toggle('cv-workspace-generated', revealAuxColumns);
+    }
 
     function setCreatorGenerateButtonsLoading(isLoading) {
         document.querySelectorAll('#content-creator button.cv-btn-gen[onclick*="generatePost"]').forEach(btn => {
@@ -26167,6 +26211,7 @@
             futureSuggestions.style.display = 'none';
             futureSuggestions.innerHTML = '';
         }
+        syncCreatorWorkspaceLayout();
     }
     function showMockupResult(content) {
         const emptyState = document.getElementById('li-empty-state');
@@ -26179,6 +26224,8 @@
         if (postText) { postText.style.display = 'block'; }
         if (reactions) reactions.style.display = 'flex';
         if (insightsPlaceholder) insightsPlaceholder.style.display = 'none';
+        cvHasGeneratedResult = true;
+        syncCreatorWorkspaceLayout();
     }
     function showMockupEmpty() {
         const emptyState = document.getElementById('li-empty-state');
@@ -26196,6 +26243,8 @@
             futureSuggestions.style.display = 'none';
             futureSuggestions.innerHTML = '';
         }
+        cvHasGeneratedResult = false;
+        syncCreatorWorkspaceLayout();
     }
     let cvProgressHint = 'what';
     let cvConfigInteracted = false;
@@ -28636,6 +28685,7 @@
         preview.style.display = 'block';
 
         if (hasGeneratedContent) {
+            cvHasGeneratedResult = true;
             preview.classList.add('has-generated');
             postText.style.display = 'block';
             postText.classList.remove('skeleton');
@@ -28647,10 +28697,12 @@
             updateQuickQualityMeter(postText.textContent || '');
             refreshCvStepperState();
             if (previewState) previewState.textContent = 'Generated';
+            syncCreatorWorkspaceLayout();
             return;
         }
 
         preview.classList.remove('has-generated');
+        cvHasGeneratedResult = false;
         postText.textContent = '';
         postText.style.display = 'none';
         postText.classList.remove('skeleton');
@@ -28661,6 +28713,7 @@
         updateQuickQualityMeter('');
         refreshCvStepperState();
         if (previewState) previewState.textContent = 'Not generated yet';
+        syncCreatorWorkspaceLayout();
     }
 
     function setCreatorChipActive(groupSelector, activeValue) {
