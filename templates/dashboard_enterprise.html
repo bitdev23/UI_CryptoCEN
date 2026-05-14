@@ -8656,6 +8656,11 @@
             cursor: help;
             opacity: 0.9;
             position: relative;
+            z-index: 120;
+        }
+        .help-tip[data-tooltip]:hover,
+        .help-tip[data-tooltip]:focus-visible {
+            z-index: 160;
         }
         .help-tip[data-tooltip]:hover::after {
             content: attr(data-tooltip);
@@ -8677,9 +8682,23 @@
             text-transform: none;
             letter-spacing: 0;
             text-align: left;
-            z-index: 40;
+            z-index: 1200;
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
             white-space: normal;
+        }
+        .creator-v4 .cv-section:not(.collapsed) .cv-sec-body {
+            overflow: visible;
+        }
+        .creator-v4 .cv-cfg-block {
+            overflow: visible;
+            z-index: 1;
+        }
+        .creator-v4 .cv-cfg-block:hover,
+        .creator-v4 .cv-cfg-block:focus-within {
+            z-index: 24;
+        }
+        .creator-v4 .cv-cb-title {
+            z-index: 32;
         }
         #kb-workspace-count-badge {
             margin-left: 0.5rem;

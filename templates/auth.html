@@ -1341,6 +1341,47 @@
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
             }
 
+            function clearInlineAuthErrors(panelSelector) {
+                const panel = document.querySelector(panelSelector);
+                if (!panel) return;
+                panel.querySelectorAll('.message.error').forEach(node => node.remove());
+            }
+
+            function showInlineAuthError(panelSelector, insertBeforeSelector, message) {
+                clearInlineAuthErrors(panelSelector);
+                const panel = document.querySelector(panelSelector);
+                const anchor = panel ? panel.querySelector(insertBeforeSelector) : null;
+                if (!panel || !anchor) return;
+
+                const msgEl = document.createElement('div');
+                msgEl.className = 'message error';
+                msgEl.textContent = '✗ ' + message;
+                msgEl.style.marginBottom = '16px';
+                msgEl.style.padding = '12px';
+                msgEl.style.background = '#fee2e2';
+                msgEl.style.color = '#dc2626';
+                msgEl.style.borderRadius = '8px';
+                msgEl.style.fontSize = '13px';
+                panel.insertBefore(msgEl, anchor);
+            }
+
+            function isMaintenanceResponse(response, data) {
+                return !!(response && response.status === 503 && data && data.maintenance);
+            }
+
+            function redirectToMaintenanceFromAuth(data) {
+                try {
+                    const payload = {
+                        message: data?.message || '',
+                        ends_at: data?.ends_at || '',
+                        retry_after_seconds: data?.retry_after_seconds || 300,
+                        ts: Date.now(),
+                    };
+                    sessionStorage.setItem('maintenance_context', JSON.stringify(payload));
+                } catch (_) {}
+                window.location.href = '/maintenance';
+            }
+
             function validateSignin() {
                 let ok = true;
                 if (!validateEmail(document.getElementById('si-email').value.trim()))
@@ -1390,6 +1431,7 @@
                 const password = document.getElementById('si-pw').value;
 
                 showScreen(3); // show loading screen immediately
+                clearInlineAuthErrors('#p0-si');
 
                 try {
                     const controller = new AbortController();
@@ -1408,6 +1450,11 @@
                     clearTimeout(timeoutId);
 
                     const data = await response.json();
+
+                    if (isMaintenanceResponse(response, data)) {
+                        redirectToMaintenanceFromAuth(data);
+                        return;
+                    }
 
                     if (data.success && data.access_token) {
                         // Store tokens
@@ -1444,33 +1491,19 @@
                         
                         setError('si-email-fld', true);
                         setError('si-pw-fld', true);
-                        const msgEl = document.createElement('div');
-                        msgEl.className = 'message error';
-                        msgEl.textContent = '✗ ' + displayMsg;
-                        msgEl.style.marginBottom = '16px';
-                        msgEl.style.padding = '12px';
-                        msgEl.style.background = '#fee2e2';
-                        msgEl.style.color = '#dc2626';
-                        msgEl.style.borderRadius = '8px';
-                        msgEl.style.fontSize = '13px';
-                        document.querySelector('#p0-si').insertBefore(msgEl, document.querySelector('.fld'));
+                        showInlineAuthError('#p0-si', '.fld', displayMsg);
                     }
                 } catch (err) {
                     console.error('Sign in error:', err);
                     showScreen(0);
-                    const msgEl = document.createElement('div');
-                    msgEl.className = 'message error';
                     const isTimeout = err && (err.name === 'AbortError' || String(err.message || '').toLowerCase().includes('abort'));
-                    msgEl.textContent = isTimeout
-                        ? '✗ Login request timed out. Please try again in a few seconds.'
-                        : '✗ ' + (err.message || 'Network error during login');
-                    msgEl.style.marginBottom = '16px';
-                    msgEl.style.padding = '12px';
-                    msgEl.style.background = '#fee2e2';
-                    msgEl.style.color = '#dc2626';
-                    msgEl.style.borderRadius = '8px';
-                    msgEl.style.fontSize = '13px';
-                    document.querySelector('#p0-si').insertBefore(msgEl, document.querySelector('.fld'));
+                    showInlineAuthError(
+                        '#p0-si',
+                        '.fld',
+                        isTimeout
+                            ? 'Login request timed out. Please try again in a few seconds.'
+                            : (err.message || 'Network error during login')
+                    );
                 }
             }
 
@@ -1486,6 +1519,7 @@
                 const industry  = document.getElementById('su-industry').value;
 
                 showScreen(3);
+                clearInlineAuthErrors('#p0-su');
 
                 try {
                     // Make actual API call to backend
@@ -1509,6 +1543,11 @@
                     });
 
                     const data = await response.json();
+
+                    if (isMaintenanceResponse(response, data)) {
+                        redirectToMaintenanceFromAuth(data);
+                        return;
+                    }
 
                     if (data.success) {
                         // Check if email verification is required
@@ -1549,30 +1588,12 @@
                     } else {
                         // Signup failed
                         showScreen(0);
-                        const msgEl = document.createElement('div');
-                        msgEl.className = 'message error';
-                        msgEl.textContent = '✗ ' + (data.message || 'Signup failed');
-                        msgEl.style.marginBottom = '16px';
-                        msgEl.style.padding = '12px';
-                        msgEl.style.background = '#fee2e2';
-                        msgEl.style.color = '#dc2626';
-                        msgEl.style.borderRadius = '8px';
-                        msgEl.style.fontSize = '13px';
-                        document.querySelector('#p0-su').insertBefore(msgEl, document.querySelector('.row2'));
+                        showInlineAuthError('#p0-su', '.row2', data.message || 'Signup failed');
                     }
                 } catch (err) {
                     console.error('Sign up error:', err);
                     showScreen(0);
-                    const msgEl = document.createElement('div');
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '✗ ' + (err.message || 'Network error during signup');
-                    msgEl.style.marginBottom = '16px';
-                    msgEl.style.padding = '12px';
-                    msgEl.style.background = '#fee2e2';
-                    msgEl.style.color = '#dc2626';
-                    msgEl.style.borderRadius = '8px';
-                    msgEl.style.fontSize = '13px';
-                    document.querySelector('#p0-su').insertBefore(msgEl, document.querySelector('.row2'));
+                    showInlineAuthError('#p0-su', '.row2', err.message || 'Network error during signup');
                 }
             }
 
@@ -1943,6 +1964,7 @@
 
             async function completeGoogleOAuth() {
                 showScreen(3); // Show loading animation
+                clearInlineAuthErrors('#p0-si');
 
                 try {
                     // Get the OAuth authorization URL from backend
@@ -1956,6 +1978,11 @@
 
                     const data = await response.json();
 
+                    if (isMaintenanceResponse(response, data)) {
+                        redirectToMaintenanceFromAuth(data);
+                        return;
+                    }
+
                     if (data.success && data.auth_url) {
                         // Redirect to Google's authorization page
                         // The /auth/callback page will handle the OAuth response and redirect to dashboard
@@ -1963,30 +1990,12 @@
                     } else {
                         console.error('Failed to get OAuth URL:', data);
                         showScreen(0);
-                        const msgEl = document.createElement('div');
-                        msgEl.className = 'message error';
-                        msgEl.textContent = '✗ ' + (data.message || 'Google sign-in setup failed');
-                        msgEl.style.marginBottom = '16px';
-                        msgEl.style.padding = '12px';
-                        msgEl.style.background = '#fee2e2';
-                        msgEl.style.color = '#dc2626';
-                        msgEl.style.borderRadius = '8px';
-                        msgEl.style.fontSize = '13px';
-                        document.querySelector('#p0-si').insertBefore(msgEl, document.querySelector('.fld'));
+                        showInlineAuthError('#p0-si', '.fld', data.message || 'Google sign-in setup failed');
                     }
                 } catch (err) {
                     console.error('OAuth error:', err);
                     showScreen(0);
-                    const msgEl = document.createElement('div');
-                    msgEl.className = 'message error';
-                    msgEl.textContent = '✗ Google sign-in failed: ' + err.message;
-                    msgEl.style.marginBottom = '16px';
-                    msgEl.style.padding = '12px';
-                    msgEl.style.background = '#fee2e2';
-                    msgEl.style.color = '#dc2626';
-                    msgEl.style.borderRadius = '8px';
-                    msgEl.style.fontSize = '13px';
-                    document.querySelector('#p0-si').insertBefore(msgEl, document.querySelector('.fld'));
+                    showInlineAuthError('#p0-si', '.fld', 'Google sign-in failed: ' + err.message);
                 }
             }
             </script>
