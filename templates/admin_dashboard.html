@@ -134,11 +134,12 @@
             position: sticky;
             top: 86px;
             height: fit-content;
-            background: var(--surface);
-            border: 1px solid var(--border);
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border: 1px solid rgba(255,255,255,0.24);
             border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            box-shadow: 0 16px 34px rgba(90, 70, 150, 0.28);
             padding: 12px;
+            color: #fff;
         }
 
         .admin-sidebar-title {
@@ -146,8 +147,31 @@
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: var(--muted);
+            color: rgba(255,255,255,0.72);
             font-weight: 800;
+        }
+
+        .admin-sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 6px 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+        }
+
+        .admin-sidebar-brand img {
+            height: 20px;
+            width: auto;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .admin-sidebar-brand small {
+            display: block;
+            font-size: 11px;
+            color: rgba(255,255,255,0.78);
+            margin-top: 2px;
         }
 
         .admin-side-nav {
@@ -156,9 +180,9 @@
         }
 
         .admin-side-btn {
-            border: 1px solid #dbe4f0;
-            background: #f8fafc;
-            color: #334155;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.88);
             border-radius: 10px;
             text-align: left;
             padding: 10px 12px;
@@ -169,15 +193,15 @@
         }
 
         .admin-side-btn:hover {
-            border-color: #bfdbfe;
-            background: #eff6ff;
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.14);
         }
 
         .admin-side-btn.active {
-            border-color: #2563eb;
-            background: #2563eb;
+            border-color: rgba(255,255,255,0.55);
+            background: rgba(255,255,255,0.24);
             color: #fff;
-            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+            box-shadow: 0 10px 20px rgba(10, 14, 30, 0.22);
         }
 
         .admin-main {
@@ -319,6 +343,21 @@
         .chart-wrap canvas {
             width: 100% !important;
             height: 100% !important;
+        }
+
+        .chart-empty-msg {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(180deg, rgba(248,250,252,0.85), rgba(248,250,252,0.95));
+            border-radius: 12px;
+            padding: 12px;
         }
 
         .distribution-row { margin-bottom: 14px; }
@@ -810,6 +849,13 @@
 
     <main class="admin-shell">
         <aside class="admin-sidebar" aria-label="Admin sidebar">
+            <div class="admin-sidebar-brand">
+                <img src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank" />
+                <div>
+                    <div style="font-weight:800;font-size:13px;line-height:1.1;">Admin Console</div>
+                    <small>Platform operations</small>
+                </div>
+            </div>
             <h3 class="admin-sidebar-title">Admin Panels</h3>
             <nav class="admin-side-nav">
                 <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)">Overview</button>
@@ -869,7 +915,10 @@
                         <button class="pill" data-range="90d" onclick="setChartRange('90d')">90d</button>
                     </div>
                 </div>
-                <div class="chart-wrap"><canvas id="postsChart"></canvas></div>
+                <div class="chart-wrap">
+                    <canvas id="postsChart"></canvas>
+                    <div class="chart-empty-msg" id="postsChartEmpty">Chart unavailable. Reload or check data source.</div>
+                </div>
             </div>
             <div class="panel">
                 <div class="panel-header" style="margin-bottom: 14px;">
@@ -890,7 +939,10 @@
                     <div class="distribution-head"><span>Active Users</span><span id="dist-active">0</span></div>
                     <div class="distribution-bar"><div class="distribution-fill fill-emerald" id="dist-active-fill" style="width:0%"></div></div>
                 </div>
-                <div class="chart-wrap" style="height: 175px; max-height: 175px;"><canvas id="userChart"></canvas></div>
+                <div class="chart-wrap" style="height: 175px; max-height: 175px;">
+                    <canvas id="userChart"></canvas>
+                    <div class="chart-empty-msg" id="userChartEmpty">Chart unavailable. Reload or check data source.</div>
+                </div>
             </div>
         </section>
         </section>
@@ -1644,6 +1696,13 @@
         function renderCharts(charts) {
             const postsCtx = document.getElementById('postsChart');
             const userCtx = document.getElementById('userChart');
+            const postsEmpty = document.getElementById('postsChartEmpty');
+            const userEmpty = document.getElementById('userChartEmpty');
+
+            const setChartEmpty = (show) => {
+                if (postsEmpty) postsEmpty.style.display = show ? 'flex' : 'none';
+                if (userEmpty) userEmpty.style.display = show ? 'flex' : 'none';
+            };
 
             if (!postsCtx || !userCtx) {
                 return;
@@ -1651,11 +1710,14 @@
 
             if (typeof Chart !== 'function') {
                 console.warn('Chart.js is unavailable; skipping chart rendering.');
+                setChartEmpty(true);
                 return;
             }
 
-            if (postsChart) postsChart.destroy();
-            if (userChart) userChart.destroy();
+            try {
+                if (postsChart) postsChart.destroy();
+                if (userChart) userChart.destroy();
+            } catch (_) {}
 
             const labels = Array.isArray(charts.weekly_labels) && charts.weekly_labels.length
                 ? charts.weekly_labels
@@ -1667,45 +1729,84 @@
                 ? charts.user_breakdown
                 : [0, 0, 0];
 
-            postsChart = new Chart(postsCtx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Posts',
-                        data: postsData,
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } },
-                        x: { grid: { display: false } }
+            try {
+                postsChart = new Chart(postsCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Posts',
+                            data: postsData,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { grid: { display: false } }
+                        }
                     }
-                }
-            });
+                });
 
-            userChart = new Chart(userCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Total Users', 'Verified Users', 'Active Users'],
-                    datasets: [{
-                        data: userBreakdown,
-                        backgroundColor: ['#94a3b8', '#60a5fa', '#34d399']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
+                userChart = new Chart(userCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Total Users', 'Verified Users', 'Active Users'],
+                        datasets: [{
+                            data: userBreakdown,
+                            backgroundColor: ['#94a3b8', '#60a5fa', '#34d399']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+                setChartEmpty(false);
+            } catch (err) {
+                console.error('Chart rendering failed:', err);
+                setChartEmpty(true);
+            }
+        }
+
+        async function ensureChartJsLoaded() {
+            if (typeof Chart === 'function') {
+                return true;
+            }
+            const sources = [
+                'https://cdn.jsdelivr.net/npm/chart.js',
+                'https://unpkg.com/chart.js/dist/chart.umd.js'
+            ];
+            for (const src of sources) {
+                try {
+                    await new Promise((resolve, reject) => {
+                        const existing = document.querySelector(`script[data-chart-src="${src}"]`);
+                        if (existing) {
+                            existing.addEventListener('load', resolve, { once: true });
+                            existing.addEventListener('error', reject, { once: true });
+                            return;
+                        }
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.defer = true;
+                        script.dataset.chartSrc = src;
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                    if (typeof Chart === 'function') {
+                        return true;
+                    }
+                } catch (_) {}
+            }
+            return typeof Chart === 'function';
         }
 
         function userFullName(user) {
@@ -2851,8 +2952,12 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             switchAdminPanel('overview');
+            const chartReady = await ensureChartJsLoaded();
+            if (!chartReady) {
+                showToast('Chart library unavailable. Retry after refresh.', 'error', 4000);
+            }
             loadAll().catch(err => showToast(err.message || 'Failed to load dashboard', 'error', 5000));
             renderAdminOnboardingControls();
 
