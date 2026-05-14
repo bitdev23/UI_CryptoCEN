@@ -10,24 +10,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --sidebar-start: #231f66;
-            --sidebar-end: #4b43b3;
-            --primary-700: #5568d3;
-            --primary-900: #2f3a8f;
+            --primary: #265dff;
+            --secondary: #0ea5e9;
+            --sidebar-start: #171b49;
+            --sidebar-end: #3148a6;
+            --primary-700: #1f4fe0;
+            --primary-900: #17339c;
             --surface: rgba(255, 255, 255, 0.92);
-            --surface-soft: rgba(248, 250, 252, 0.92);
-            --bg: #f8f9fa;
-            --bg-2: #f8fafc;
-            --text: #2c3e50;
+            --surface-soft: rgba(248, 250, 252, 0.9);
+            --bg: #eef4ff;
+            --bg-2: #f7faff;
+            --text: #182235;
             --muted: #64748b;
-            --border: #d9d9d9;
+            --border: #d7e1f0;
             --success: #52c41a;
             --warning: #faad14;
             --danger: #f5222d;
-            --shadow: 0 4px 12px rgba(0,0,0,0.15);
-            --radius: 10px;
+            --shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+            --radius: 16px;
         }
 
         * { box-sizing: border-box; }
@@ -39,9 +39,12 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             color: var(--text);
-            background: var(--bg);
+            background:
+                radial-gradient(circle at top left, rgba(38, 93, 255, 0.14), transparent 28%),
+                radial-gradient(circle at 85% 12%, rgba(14, 165, 233, 0.12), transparent 24%),
+                linear-gradient(180deg, #f6f9ff 0%, #edf3ff 48%, #f7faff 100%);
             line-height: 1.6;
         }
 
@@ -49,11 +52,11 @@
             position: sticky;
             top: 0;
             z-index: 30;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-bottom: 1px solid #dfe5f2;
-            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(215, 225, 240, 0.85);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
         }
 
         .topbar-inner {
@@ -75,7 +78,8 @@
 
         .header-title-group h1 {
             margin: 0;
-            font-size: 1rem;
+            font-family: 'Syne', 'DM Sans', sans-serif;
+            font-size: 1.08rem;
             font-weight: 800;
             color: var(--text);
             line-height: 1.2;
@@ -143,7 +147,7 @@
 
         .btn {
             border: 1px solid transparent;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 0.4rem 0.7rem;
             font-size: 0.8rem;
             font-weight: 600;
@@ -160,9 +164,10 @@
         .btn:hover { transform: translateY(-1px); }
 
         .btn-ghost {
-            background: #f3f4f6;
+            background: rgba(255, 255, 255, 0.82);
             color: #374151;
-            border-color: #e5e7eb;
+            border-color: #dbe4f3;
+            box-shadow: 0 10px 24px rgba(148, 163, 184, 0.08);
         }
 
         .btn-ghost:hover {
@@ -170,10 +175,10 @@
         }
 
         .btn-primary {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
-            box-shadow: 0 2px 10px rgba(79, 70, 229, 0.18);
-            border-color: rgba(79, 70, 229, 0.35);
+            box-shadow: 0 12px 26px rgba(38, 93, 255, 0.22);
+            border-color: rgba(38, 93, 255, 0.3);
         }
 
         .btn-primary:hover {
@@ -205,17 +210,14 @@
             background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%);
             border: none;
             border-radius: 0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 14px 0 40px rgba(23, 27, 73, 0.18);
             padding: 1rem 0.65rem;
             color: white;
-            overflow-y: auto;
+            overflow: visible;
             display: flex;
             flex-direction: column;
-            scrollbar-width: none;
             transition: padding 0.3s ease;
         }
-
-        .admin-sidebar::-webkit-scrollbar { display: none; }
 
         .admin-sidebar-brand {
             display: flex;
@@ -269,6 +271,91 @@
             font-family: inherit;
         }
 
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::after,
+        [data-tooltip]::before {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            z-index: 120;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            left: 50%;
+            bottom: calc(100% + 12px);
+            transform: translateX(-50%) translateY(8px);
+            min-width: 180px;
+            max-width: 260px;
+            width: max-content;
+            white-space: normal;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.96);
+            color: #f8fafc;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 600;
+            text-align: left;
+            box-shadow: 0 18px 34px rgba(15, 23, 42, 0.24);
+        }
+
+        [data-tooltip]::before {
+            content: '';
+            left: 50%;
+            bottom: calc(100% + 6px);
+            width: 10px;
+            height: 10px;
+            background: rgba(15, 23, 42, 0.96);
+            transform: translateX(-50%) translateY(8px) rotate(45deg);
+            border-radius: 2px;
+        }
+
+        [data-tooltip]:hover::after,
+        [data-tooltip]:hover::before,
+        [data-tooltip]:focus-visible::after,
+        [data-tooltip]:focus-visible::before {
+            opacity: 1;
+        }
+
+        [data-tooltip]:hover::after,
+        [data-tooltip]:focus-visible::after {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        [data-tooltip]:hover::before,
+        [data-tooltip]:focus-visible::before {
+            transform: translateX(-50%) translateY(0) rotate(45deg);
+        }
+
+        .admin-side-btn[data-tooltip]::after {
+            left: calc(100% + 16px);
+            top: 50%;
+            bottom: auto;
+            transform: translateY(-50%) translateX(-8px);
+        }
+
+        .admin-side-btn[data-tooltip]::before {
+            left: calc(100% + 10px);
+            top: 50%;
+            bottom: auto;
+            transform: translateY(-50%) translateX(-8px) rotate(45deg);
+        }
+
+        .admin-side-btn[data-tooltip]:hover::after,
+        .admin-side-btn[data-tooltip]:focus-visible::after {
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .admin-side-btn[data-tooltip]:hover::before,
+        .admin-side-btn[data-tooltip]:focus-visible::before {
+            transform: translateY(-50%) translateX(0) rotate(45deg);
+        }
+
         .admin-side-btn:hover {
             background: rgba(255,255,255,0.1);
             color: white;
@@ -308,6 +395,10 @@
 
         .admin-main {
             min-width: 0;
+            padding: 18px 20px 24px;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(38, 93, 255, 0.07), transparent 24%),
+                linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0));
         }
 
         .admin-main .container {
@@ -341,12 +432,23 @@
         }
 
         .card {
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 255, 0.92));
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 14px;
+            padding: 16px;
             box-shadow: var(--shadow);
             min-height: 108px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, rgba(38, 93, 255, 0.92), rgba(14, 165, 233, 0.5));
         }
 
         .card .label {
@@ -392,11 +494,11 @@
         }
 
         .panel {
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.92));
             border: 1px solid var(--border);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            padding: 14px;
+            padding: 16px;
         }
 
         .panel-header {
@@ -431,16 +533,17 @@
 
         .pill {
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 999px;
             padding: 0.4rem 0.9rem;
             font-size: 0.8rem;
             font-weight: 600;
-            color: var(--text);
-            background: #f8fafc;
+            color: #24324a;
+            background: linear-gradient(180deg, #ffffff, #eff5ff);
             cursor: pointer;
             transition: all 150ms ease;
             font-family: inherit;
             margin-right: 6px;
+            box-shadow: 0 8px 18px rgba(148, 163, 184, 0.08);
         }
 
         .pill:hover {
@@ -619,7 +722,7 @@
 
         .features-toolbar {
             margin-top: 16px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid rgba(203, 213, 225, 0.8);
             padding-top: 16px;
         }
 
@@ -631,10 +734,11 @@
         }
 
         .feature-group {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 10px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,246,255,0.92));
+            border: 1px solid #d8e3f3;
+            border-radius: 18px;
+            padding: 14px;
+            box-shadow: 0 16px 30px rgba(148, 163, 184, 0.08);
         }
 
         .feature-group-title {
@@ -679,11 +783,11 @@
         .fill-emerald { background: #10b981; }
 
         .management-panel {
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(244, 248, 255, 0.92));
             border: 1px solid var(--border);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            padding: 14px;
+            padding: 18px;
         }
 
         .management-head {
@@ -692,23 +796,32 @@
             align-items: flex-start;
             gap: 12px;
             flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 18px;
+            border-radius: 18px;
+            background:
+                radial-gradient(circle at top right, rgba(38, 93, 255, 0.16), transparent 28%),
+                linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(37, 64, 146, 0.92));
+            color: #f8fafc;
+            box-shadow: 0 18px 32px rgba(37, 64, 146, 0.2);
         }
 
         .management-head h2 {
             margin: 0;
-            font-size: 1rem;
+            font-family: 'Syne', 'DM Sans', sans-serif;
+            font-size: 1.1rem;
             font-weight: 800;
-            color: var(--text);
+            color: #f8fafc;
         }
 
         .management-head p {
             margin: 4px 0 0;
-            color: var(--muted);
-            font-size: 0.75rem;
+            color: rgba(241, 245, 249, 0.78);
+            font-size: 0.8rem;
         }
 
         .search-row {
-            margin-top: 12px;
+            margin-top: 16px;
             display: grid;
             grid-template-columns: 1.2fr auto;
             gap: 10px;
@@ -776,10 +889,13 @@
         }
 
         .table-wrap {
-            margin-top: 12px;
+            margin-top: 16px;
             border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: auto;
+            border-radius: 18px;
+            overflow-x: auto;
+            overflow-y: visible;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 20px 30px rgba(148, 163, 184, 0.08);
         }
 
         table {
@@ -806,7 +922,7 @@
         }
 
         tbody tr:hover {
-            background: #f8fbff;
+            background: linear-gradient(90deg, rgba(240, 247, 255, 0.98), rgba(248, 250, 255, 0.98));
         }
 
         .user-cell {
@@ -973,9 +1089,11 @@
             display: none;
             align-items: center;
             justify-content: center;
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.58);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             z-index: 100;
-            padding: 12px;
+            padding: 18px;
         }
 
         .modal.open { display: flex; }
@@ -984,9 +1102,9 @@
             width: min(980px, 100%);
             max-height: 90vh;
             overflow: auto;
-            background: #fff;
+            background: linear-gradient(180deg, #ffffff, #f8fbff);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: 22px;
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
             padding: 14px;
         }
@@ -996,15 +1114,22 @@
             justify-content: space-between;
             align-items: center;
             gap: 10px;
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(215, 225, 240, 0.85);
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
         .modal-close {
             border: 0;
-            background: #e2e8f0;
-            border-radius: 8px;
-            padding: 7px 10px;
+            background: #e9eff9;
+            border-radius: 12px;
+            padding: 9px 12px;
             font-weight: 700;
             cursor: pointer;
+            color: #1e293b;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
         }
 
         .mono {
@@ -1022,10 +1147,11 @@
         }
 
         .control-group {
-            border: 1px solid #e5eaf2;
-            border-radius: 11px;
-            background: #fbfdff;
-            padding: 10px;
+            border: 1px solid #dbe5f4;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,248,255,0.94));
+            padding: 14px;
+            box-shadow: 0 14px 28px rgba(148, 163, 184, 0.08);
         }
 
         .control-group h4 {
@@ -1058,10 +1184,146 @@
 
         .post {
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            background: #f8fbff;
-            padding: 10px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff, #f6faff);
+            padding: 12px;
             margin-top: 8px;
+        }
+
+        .incident-control-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid #dbe5f4;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff, #f7fbff);
+            box-shadow: 0 12px 22px rgba(148, 163, 184, 0.08);
+            font-size: 13px;
+            font-weight: 600;
+            color: #24324a;
+        }
+
+        .details-modal-card {
+            width: min(1240px, 100%);
+            max-height: 92vh;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .details-modal-top {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .details-modal-heading {
+            min-width: 0;
+        }
+
+        .details-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(38, 93, 255, 0.1);
+            color: var(--primary-900);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .details-meta {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        .details-modal-body {
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(300px, 360px);
+            gap: 18px;
+            background:
+                radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 24%),
+                linear-gradient(180deg, rgba(255,255,255,0.9), rgba(245,249,255,0.95));
+        }
+
+        .details-main-column,
+        .details-side-column {
+            min-width: 0;
+        }
+
+        .details-main-column {
+            display: grid;
+            gap: 16px;
+        }
+
+        .details-side-column {
+            display: grid;
+            gap: 14px;
+            align-content: start;
+        }
+
+        .details-surface {
+            border: 1px solid #dbe5f4;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,249,255,0.94));
+            box-shadow: 0 18px 30px rgba(148, 163, 184, 0.08);
+            padding: 16px;
+        }
+
+        .details-section-title {
+            margin: 0 0 12px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 0.02em;
+        }
+
+        .details-analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .analytics-card {
+            background: linear-gradient(180deg, #ffffff, #f3f8ff);
+            border: 1px solid #dbe5f4;
+            padding: 14px;
+            border-radius: 14px;
+        }
+
+        .details-dual-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .details-modal-footer {
+            position: sticky;
+            bottom: 0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 20px 18px;
+            border-top: 1px solid rgba(215, 225, 240, 0.85);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        #details-posts,
+        #user-audit-trail,
+        #linked-identities-list {
+            max-height: 260px;
+            overflow-y: auto;
         }
 
         .post small { color: var(--muted); }
@@ -1144,6 +1406,7 @@
         @media (max-width: 1280px) {
             .admin-shell { grid-template-columns: 1fr; }
             .admin-sidebar {
+            .details-modal-body { grid-template-columns: 1fr; }
                 position: static;
                 top: auto;
                 height: auto;
@@ -1151,6 +1414,7 @@
             }
             .feature-groups { grid-template-columns: 1fr; }
             .cards { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+            .details-dual-grid { grid-template-columns: 1fr; }
             .grid { grid-template-columns: 1fr; }
         }
 
@@ -1159,6 +1423,10 @@
             .topbar-inner { padding: 0.8rem 0.9rem; }
             .admin-shell { padding: 0; }
             .feature-groups { grid-template-columns: 1fr; }
+            .admin-main { padding: 12px; }
+            .details-modal-body { padding: 14px; }
+            .modal-top { padding: 14px 16px; }
+            .details-modal-footer { padding: 12px 16px 16px; }
         }
     </style>
 </head>
@@ -1183,11 +1451,11 @@
                 <span class="admin-sidebar-brand-text">Velank AI</span>
             </div>
             <nav class="admin-side-nav">
-                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)" title="Overview metrics and activity insights"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)" title="Operational tools, diagnostics, and platform settings"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="maintenance" onclick="switchAdminPanel('maintenance', this)" title="Maintenance controls and user communication"><span class="nav-icon">🔧</span><span class="nav-label">Maintenance</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)" title="User account and subscription management"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
-                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)" title="Admin action history and audit trail"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
+                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)" data-tooltip="Live health snapshot with user, post, and activity trends." aria-label="Overview metrics and activity insights"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)" data-tooltip="Diagnostics, notifications, flags, queues, and operational tooling." aria-label="Operational tools, diagnostics, and platform settings"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="maintenance" onclick="switchAdminPanel('maintenance', this)" data-tooltip="Incident communication, maintenance windows, and service controls." aria-label="Maintenance controls and user communication"><span class="nav-icon">🔧</span><span class="nav-label">Maintenance</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)" data-tooltip="Search users, review account state, and manage recovery or subscription actions." aria-label="User account and subscription management"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)" data-tooltip="Review sensitive admin events and export the audit trail." aria-label="Admin action history and audit trail"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
             </nav>
             <div class="admin-sidebar-user-card">
                 <div class="admin-sidebar-avatar">A</div>
@@ -1296,33 +1564,33 @@
                 <div class="feature-group">
                     <div class="feature-group-title">Operations</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)" title="Enable kill switches and emergency controls">🧯 Incident Controls</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)" title="Track worker health, failed jobs, and stuck jobs">🧵 Queue Monitor</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)" data-tooltip="Emergency controls for maintenance mode, kill switches, and retry behavior." aria-label="Enable kill switches and emergency controls">🧯 Incident Controls</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)" data-tooltip="Inspect worker heartbeats, failed jobs, and stuck queue items in one place." aria-label="Track worker health, failed jobs, and stuck jobs">🧵 Queue Monitor</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Monitoring</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" title="Inspect unresolved errors by severity and timeframe">⚠️ Error Monitoring</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" data-tooltip="Filter unresolved errors by severity and time window, then inspect stack traces." aria-label="Inspect unresolved errors by severity and timeframe">⚠️ Error Monitoring</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Content & Diagnostics</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)" title="Run ingestion and retrieval diagnostics per user">📚 KB Diagnostics</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" title="Control rollout percentages and feature availability">🚩 Feature Flags</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)" title="View user context in safe read-only mode">🕵️ Read-only Impersonation</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)" data-tooltip="Run per-user knowledge-base ingestion and retrieval diagnostics." aria-label="Run ingestion and retrieval diagnostics per user">📚 KB Diagnostics</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" data-tooltip="Control feature exposure with global toggles and rollout percentages." aria-label="Control rollout percentages and feature availability">🚩 Feature Flags</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)" data-tooltip="Open safe read-only support context for a specific user account." aria-label="View user context in safe read-only mode">🕵️ Read-only Impersonation</button>
                     </div>
                 </div>
 
                 <div class="feature-group">
                     <div class="feature-group-title">Settings</div>
                     <div class="feature-group-pills">
-                        <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)" title="Broadcast notifications to selected users">🔔 Notifications</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" title="View MRR, churn, and subscription metrics">📊 Revenue Dashboard</button>
-                        <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" title="Configure and test onboarding behavior">🧭 Onboarding</button>
+                        <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)" data-tooltip="Broadcast announcements, incidents, and campaign messages to users." aria-label="Broadcast notifications to selected users">🔔 Notifications</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" data-tooltip="Track MRR, churn, and active subscription mix." aria-label="View MRR, churn, and subscription metrics">📊 Revenue Dashboard</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" data-tooltip="Force, reset, or test onboarding behavior for support workflows." aria-label="Configure and test onboarding behavior">🧭 Onboarding</button>
                     </div>
                 </div>
             </div>
@@ -1420,11 +1688,11 @@
                         <button class="btn btn-ghost" onclick="loadIncidentControls()">Refresh</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px;">
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-maintenance" title="Block user access and show maintenance page"> Maintenance mode</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-generate" title="Temporarily disable preview generation endpoint"> Kill generate-preview</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-scheduler" title="Disable scheduling writes while incidents are active"> Kill scheduling writes</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-kb" title="Pause KB ingestion and training write operations"> Kill KB training writes</label>
-                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-linkedin" title="Pause all LinkedIn posting jobs"> Kill LinkedIn posting</label>
+                        <label class="incident-control-card" data-tooltip="Blocks user traffic and serves the maintenance page until the incident is cleared."><input type="checkbox" id="ctl-maintenance"> Maintenance mode</label>
+                        <label class="incident-control-card" data-tooltip="Temporarily disables preview generation requests while upstream systems are unstable."><input type="checkbox" id="ctl-kill-generate"> Kill generate-preview</label>
+                        <label class="incident-control-card" data-tooltip="Stops scheduling write operations so queued content is not persisted during an incident."><input type="checkbox" id="ctl-kill-scheduler"> Kill scheduling writes</label>
+                        <label class="incident-control-card" data-tooltip="Pauses KB ingestion and training writes to prevent corrupt or partial indexing."><input type="checkbox" id="ctl-kill-kb"> Kill KB training writes</label>
+                        <label class="incident-control-card" data-tooltip="Stops outbound LinkedIn posting jobs while you investigate publishing issues."><input type="checkbox" id="ctl-kill-linkedin"> Kill LinkedIn posting</label>
                     </div>
                     <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <input id="maintenance-banner-message" type="text" placeholder="Maintenance banner message" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
@@ -1592,9 +1860,9 @@
                     <p id="users-panel-subtitle">Manage user accounts, subscriptions, and account recovery.</p>
                 </div>
                 <div class="top-actions">
-                    <button class="btn btn-ghost" onclick="createUserPrompt()">Add User</button>
-                    <button class="btn btn-primary" onclick="exportUsersCsv()">Export CSV</button>
-                    <button class="btn btn-ghost" onclick="openSoftDeletedModal()">Soft-deleted Users</button>
+                    <button class="btn btn-ghost" onclick="createUserPrompt()" data-tooltip="Create a new user record manually for support or testing.">Add User</button>
+                    <button class="btn btn-primary" onclick="exportUsersCsv()" data-tooltip="Download the current user list with filters and visible state.">Export CSV</button>
+                    <button class="btn btn-ghost" onclick="openSoftDeletedModal()" data-tooltip="Review recently soft-deleted users and restore accounts when needed.">Soft-deleted Users</button>
                 </div>
             </div>
 
@@ -1699,138 +1967,158 @@
         </section>
     </main>
 
-    <div class="modal" id="details-modal">
-        <div class="modal-card">
-            <div class="modal-top">
-                <h3 id="details-title" style="margin:0;">User Details</h3>
+    <div class="modal" id="details-modal" role="dialog" aria-modal="true" aria-labelledby="details-title">
+        <div class="modal-card details-modal-card">
+            <div class="modal-top details-modal-top">
+                <div class="details-modal-heading">
+                    <div class="details-kicker">User Intelligence</div>
+                    <h3 id="details-title" style="margin:0;">User Details</h3>
+                    <div id="details-meta" class="mono details-meta"></div>
+                </div>
                 <button class="modal-close" onclick="closeDetails()">Close</button>
             </div>
-            <div id="details-meta" class="mono"></div>
-            <div id="details-analytics" class="details-analytics-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0;">
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">Total posts</div>
-                    <div id="details-total-posts" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">Published</div>
-                    <div id="details-published-posts" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">Scheduled</div>
-                    <div id="details-scheduled-posts" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">This month</div>
-                    <div id="details-posts-this-month" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">Failed posts</div>
-                    <div id="details-failed-posts" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-                <div class="analytics-card" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px;border-radius:10px;">
-                    <div style="font-size:12px;color:#64748b;">Last activity</div>
-                    <div id="details-last-activity" style="font-size:18px;font-weight:700;">-</div>
-                </div>
-            </div>
+            <div class="details-modal-body" id="details-modal-body">
+                <div class="details-main-column">
+                    <div class="details-surface">
+                        <div id="details-analytics" class="details-analytics-grid">
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">Total posts</div>
+                                <div id="details-total-posts" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">Published</div>
+                                <div id="details-published-posts" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">Scheduled</div>
+                                <div id="details-scheduled-posts" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">This month</div>
+                                <div id="details-posts-this-month" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">Failed posts</div>
+                                <div id="details-failed-posts" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                            <div class="analytics-card">
+                                <div style="font-size:12px;color:#64748b;">Last activity</div>
+                                <div id="details-last-activity" style="font-size:18px;font-weight:700;">-</div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin:16px 0;">
-                <div style="font-size:13px;font-weight:600;color:#b45309;margin-bottom:12px;">📊 Subscription Usage</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div>
-                        <div style="font-size:11px;color:#92400e;margin-bottom:4px;">Posts this month vs limit</div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="flex:1;">
-                                <div style="width:100%;height:20px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
-                                    <div id="usage-progress-bar" style="height:100%;background:#10b981;width:0%;transition:width 0.3s;"></div>
+                    <div class="details-surface" style="background:linear-gradient(180deg, #fff9ef, #fff4df);border-color:#f5d7a1;">
+                        <div style="font-size:13px;font-weight:600;color:#b45309;margin-bottom:12px;">📊 Subscription Usage</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <div style="font-size:11px;color:#92400e;margin-bottom:4px;">Posts this month vs limit</div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="flex:1;">
+                                        <div style="width:100%;height:20px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+                                            <div id="usage-progress-bar" style="height:100%;background:#10b981;width:0%;transition:width 0.3s;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size:12px;font-weight:600;color:#1f2937;min-width:45px;" id="usage-text">0%</div>
+                                </div>
+                                <div style="font-size:10px;color:#6b7280;margin-top:4px;"><span id="usage-current">0</span>/<span id="usage-limit">0</span> posts</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;color:#92400e;margin-bottom:4px;">Post success rate</div>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="flex:1;">
+                                        <div style="width:100%;height:20px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+                                            <div id="success-progress-bar" style="height:100%;background:#3b82f6;width:0%;transition:width 0.3s;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size:12px;font-weight:600;color:#1f2937;min-width:45px;" id="success-text">0%</div>
+                                </div>
+                                <div style="font-size:10px;color:#6b7280;margin-top:4px;"><span id="success-published">0</span>/<span id="success-total">0</span> published</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="details-dual-grid">
+                        <div class="details-surface">
+                            <h4 class="details-section-title">Post Activity · Last 14 Days</h4>
+                            <div style="background:#fafafa;border-radius:12px;padding:12px;border:1px solid #e5e7eb;">
+                                <div id="usage-timeline" style="display:flex;align-items:flex-end;gap:3px;height:80px;">
+                                    <div style="flex:1;background:#e5e7eb;border-radius:2px;min-height:2px;" data-posts="0"></div>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;padding:8px 0;flex-wrap:wrap;">
+                                    <div style="font-size:11px;color:#6b7280;">Posts per day</div>
+                                    <div style="font-size:11px;color:#6b7280;"><span id="timeline-max">0</span> max</div>
                                 </div>
                             </div>
-                            <div style="font-size:12px;font-weight:600;color:#1f2937;min-width:45px;" id="usage-text">0%</div>
                         </div>
-                        <div style="font-size:10px;color:#6b7280;margin-top:4px;"><span id="usage-current">0</span>/<span id="usage-limit">0</span> posts</div>
-                    </div>
-                    <div>
-                        <div style="font-size:11px;color:#92400e;margin-bottom:4px;">Post success rate</div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="flex:1;">
-                                <div style="width:100%;height:20px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
-                                    <div id="success-progress-bar" style="height:100%;background:#3b82f6;width:0%;transition:width 0.3s;"></div>
-                                </div>
+
+                        <div class="details-surface">
+                            <h4 class="details-section-title">Admin Action History</h4>
+                            <div id="user-audit-trail" style="border:1px solid #e5e7eb;border-radius:12px;padding:8px;background:#fafafa;">
+                                <div style="text-align:center;color:#9ca3af;font-size:12px;padding:12px;">Loading history...</div>
                             </div>
-                            <div style="font-size:12px;font-weight:600;color:#1f2937;min-width:45px;" id="success-text">0%</div>
                         </div>
-                        <div style="font-size:10px;color:#6b7280;margin-top:4px;"><span id="success-published">0</span>/<span id="success-total">0</span> published</div>
+                    </div>
+
+                    <div class="details-surface">
+                        <h4 class="details-section-title">Posts Preview</h4>
+                        <div id="details-posts"></div>
                     </div>
                 </div>
+
+                <aside class="details-side-column">
+                    <div class="admin-controls">
+                        <div class="control-group">
+                            <h4>Subscription Control</h4>
+                            <div class="control-actions">
+                                <button class="btn-sm btn-view" data-tooltip="Apply a one-month subscription immediately for this user." onclick="setSubscriptionPlan('1_month')">Set 1 Month</button>
+                                <button class="btn-sm btn-view" data-tooltip="Apply a three-month subscription immediately for this user." onclick="setSubscriptionPlan('3_month')">Set 3 Months</button>
+                                <button class="btn-sm btn-view" data-tooltip="Apply a yearly subscription immediately for this user." onclick="setSubscriptionPlan('12_month')">Set 12 Months</button>
+                                <button class="btn-sm btn-toggle" data-tooltip="Cancel the active paid subscription while keeping the account record." onclick="cancelSubscription()">Cancel Subscription</button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h4>Password Recovery</h4>
+                            <div class="control-actions">
+                                <button class="btn-sm btn-view" data-tooltip="Send the standard password reset email to the user." onclick="sendPasswordReset()">Send Reset Email</button>
+                            </div>
+                            <div class="control-inline">
+                                <input id="temp-password" type="text" placeholder="Set temporary password (min 8 chars)" />
+                                <button class="btn-sm btn-toggle" data-tooltip="Force a temporary password for assisted account recovery." onclick="setTemporaryPassword()">Set Temp Password</button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h4>Login Email Control</h4>
+                            <div class="control-inline">
+                                <input id="new-login-email" type="email" placeholder="Update user login email" />
+                                <button class="btn-sm btn-view" data-tooltip="Replace the primary login email used by this account." onclick="updateUserLoginEmail()">Update Email</button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h4>Restore Control</h4>
+                            <div class="control-actions">
+                                <button id="restore-user-button" class="btn-sm btn-view" data-tooltip="Restore a previously soft-deleted account.">Restore User</button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h4>Linked Identities</h4>
+                            <div id="linked-identities-list" style="margin-bottom:8px;color:#475569;font-size:13px;"></div>
+                            <div class="control-inline">
+                                <input id="link-provider" type="text" placeholder="provider (eg. google)" />
+                                <input id="link-provider-id" type="text" placeholder="provider_user_id (sub)" />
+                                <button class="btn-sm btn-view" data-tooltip="Attach a provider identity manually for account recovery workflows." onclick="attachIdentity()">Attach Identity</button>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
-
-            <div style="margin:16px 0;border-top:1px solid #e5e7eb;padding-top:16px;">
-                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px;">� Post Activity (Last 14 Days)</div>
-                <div style="background:#fafafa;border-radius:8px;padding:12px;border:1px solid #e5e7eb;">
-                    <div id="usage-timeline" style="display:flex;align-items:flex-end;gap:3px;height:80px;">
-                        <div style="flex:1;background:#e5e7eb;border-radius:2px;min-height:2px;" data-posts="0"></div>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;padding:8px 0;flex-wrap:wrap;">
-                        <div style="font-size:11px;color:#6b7280;">Posts per day</div>
-                        <div style="font-size:11px;color:#6b7280;"><span id="timeline-max">0</span> max</div>
-                    </div>
-                </div>
+            <div class="details-modal-footer">
+                <button class="btn btn-ghost" onclick="closeDetails()">Close Panel</button>
             </div>
-
-            <div style="margin:16px 0;border-top:1px solid #e5e7eb;padding-top:16px;">
-                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px;">�📋 Admin Action History</div>
-                <div id="user-audit-trail" style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fafafa;">
-                    <div style="text-align:center;color:#9ca3af;font-size:12px;padding:12px;">Loading history...</div>
-                </div>
-            </div>
-
-            <div class="admin-controls">
-                <div class="control-group">
-                    <h4>Subscription Control</h4>
-                    <div class="control-actions">
-                        <button class="btn-sm btn-view" onclick="setSubscriptionPlan('1_month')">Set 1 Month</button>
-                        <button class="btn-sm btn-view" onclick="setSubscriptionPlan('3_month')">Set 3 Months</button>
-                        <button class="btn-sm btn-view" onclick="setSubscriptionPlan('12_month')">Set 12 Months</button>
-                        <button class="btn-sm btn-toggle" onclick="cancelSubscription()">Cancel Subscription</button>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h4>Password Recovery</h4>
-                    <div class="control-actions">
-                        <button class="btn-sm btn-view" onclick="sendPasswordReset()">Send Reset Email</button>
-                    </div>
-                    <div class="control-inline">
-                        <input id="temp-password" type="text" placeholder="Set temporary password (min 8 chars)" />
-                        <button class="btn-sm btn-toggle" onclick="setTemporaryPassword()">Set Temp Password</button>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h4>Login Email Control</h4>
-                    <div class="control-inline">
-                        <input id="new-login-email" type="email" placeholder="Update user login email" />
-                        <button class="btn-sm btn-view" onclick="updateUserLoginEmail()">Update Email</button>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <h4>Restore Control</h4>
-                    <div class="control-actions">
-                        <button id="restore-user-button" class="btn-sm btn-view">Restore User</button>
-                    </div>
-                </div>
-                <div class="control-group">
-                    <h4>Linked Identities</h4>
-                    <div id="linked-identities-list" style="margin-bottom:8px;color:#475569;font-size:13px;"></div>
-                    <div class="control-inline">
-                        <input id="link-provider" type="text" placeholder="provider (eg. google)" />
-                        <input id="link-provider-id" type="text" placeholder="provider_user_id (sub)" />
-                        <button class="btn-sm btn-view" onclick="attachIdentity()">Attach Identity</button>
-                    </div>
-                </div>
-            </div>
-
-            <h4 style="margin: 12px 0 0;">Posts (preview)</h4>
-            <div id="details-posts"></div>
         </div>
     </div>
 
@@ -2381,10 +2669,10 @@
                     <td>${subscriptionCell(user)}</td>
                     <td>
                         <div class="row-actions">
-                            <button class="btn-sm btn-view" onclick="viewDetails('${user.id}')">View</button>
-                            <button class="btn-sm btn-view" onclick="quickSendReset('${user.id}')">Reset</button>
-                            <button class="btn-sm btn-toggle" onclick="toggleUser('${user.id}', ${user.active ? 'false' : 'true'})">${user.active ? 'Deactivate' : 'Activate'}</button>
-                            <button class="btn-sm btn-delete" onclick="deleteUser('${user.id}')">Delete</button>
+                            <button class="btn-sm btn-view" data-tooltip="Open analytics, subscription controls, linked identities, and post history." onclick="viewDetails('${user.id}')">View</button>
+                            <button class="btn-sm btn-view" data-tooltip="Send a password reset email without opening the detail panel." onclick="quickSendReset('${user.id}')">Reset</button>
+                            <button class="btn-sm btn-toggle" data-tooltip="${user.active ? 'Disable this account without deleting it.' : 'Reactivate this account and restore access.'}" onclick="toggleUser('${user.id}', ${user.active ? 'false' : 'true'})">${user.active ? 'Deactivate' : 'Activate'}</button>
+                            <button class="btn-sm btn-delete" data-tooltip="Start soft-delete or permanent deletion for this account." onclick="deleteUser('${user.id}')">Delete</button>
                         </div>
                     </td>
                 `;
@@ -2722,6 +3010,7 @@
             try {
                 const data = await api(`/api/admin/users/${userId}`);
                 selectedAdminUserId = userId;
+                const detailsBody = document.getElementById('details-modal-body');
 
                 document.getElementById('details-title').textContent = `${userFullName(data.user)} · ${data.user.email || '-'}`;
                 document.getElementById('details-meta').textContent = `Country: ${data.user.country || '-'} | Plan: ${data.user.plan || 'Free'} | Sub: ${data.user.subscription_status || '-'} | Ends: ${fmtDate(data.user.subscription_period_end)} | Signup: ${fmtDate(data.user.signup_date)}`;
@@ -2778,6 +3067,7 @@
                 }
 
                 document.getElementById('details-modal').classList.add('open');
+                if (detailsBody) detailsBody.scrollTop = 0;
                 // render linked identities
                 const linkedEl = document.getElementById('linked-identities-list');
                 linkedEl.innerHTML = '';
@@ -2800,8 +3090,6 @@
                 loadUserAuditTrail(userId).catch(err => {
                     console.warn('Failed to load audit trail:', err);
                 });
-
-                document.getElementById('details-modal').classList.add('open');
             } catch (err) {
                 showToast(err.message || 'Failed to load user details', 'error', 5000);
             } finally {
@@ -2860,6 +3148,8 @@
         function closeDetails() {
             selectedAdminUserId = '';
             document.getElementById('details-modal').classList.remove('open');
+            const detailsBody = document.getElementById('details-modal-body');
+            if (detailsBody) detailsBody.scrollTop = 0;
         }
 
         async function loadUserAuditTrail(userId) {
