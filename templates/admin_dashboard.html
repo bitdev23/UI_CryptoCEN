@@ -121,6 +121,83 @@
             padding: 22px;
         }
 
+        .admin-shell {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 240px minmax(0, 1fr);
+            gap: 16px;
+            padding: 18px;
+        }
+
+        .admin-sidebar {
+            position: sticky;
+            top: 86px;
+            height: fit-content;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
+
+        .admin-sidebar-title {
+            margin: 0 0 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            font-weight: 800;
+        }
+
+        .admin-side-nav {
+            display: grid;
+            gap: 8px;
+        }
+
+        .admin-side-btn {
+            border: 1px solid #dbe4f0;
+            background: #f8fafc;
+            color: #334155;
+            border-radius: 10px;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .admin-side-btn:hover {
+            border-color: #bfdbfe;
+            background: #eff6ff;
+        }
+
+        .admin-side-btn.active {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+        }
+
+        .admin-main {
+            min-width: 0;
+        }
+
+        .admin-main .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.is-active {
+            display: block;
+        }
+
         .cards {
             display: grid;
             grid-template-columns: repeat(6, minmax(160px, 1fr));
@@ -693,6 +770,11 @@
         }
 
         @media (max-width: 1280px) {
+            .admin-shell { grid-template-columns: 1fr; }
+            .admin-sidebar {
+                position: static;
+                top: auto;
+            }
             .cards { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
             .grid { grid-template-columns: 1fr; }
         }
@@ -703,7 +785,7 @@
             .table-tools { flex-direction: column; align-items: stretch; }
             .control-inline { grid-template-columns: 1fr; }
             .topbar-inner { padding: 12px 14px; }
-            .container { padding: 12px; }
+            .admin-shell { padding: 12px; }
         }
     </style>
 </head>
@@ -726,7 +808,20 @@
         </div>
     </header>
 
-    <main class="container">
+    <main class="admin-shell">
+        <aside class="admin-sidebar" aria-label="Admin sidebar">
+            <h3 class="admin-sidebar-title">Admin Panels</h3>
+            <nav class="admin-side-nav">
+                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)">Overview</button>
+                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)">Platform Features</button>
+                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)">User Management</button>
+                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)">Audit Logs</button>
+            </nav>
+        </aside>
+
+        <section class="admin-main">
+        <div class="container">
+        <section id="panel-overview" class="admin-panel is-active">
             <section class="cards">
             <div class="card">
                 <div class="label">Total Users</div>
@@ -798,15 +893,16 @@
                 <div class="chart-wrap" style="height: 175px; max-height: 175px;"><canvas id="userChart"></canvas></div>
             </div>
         </section>
+        </section>
 
         <!-- ========== FEATURES TAB NAVIGATION ========== -->
-        <section style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        <section id="panel-features" class="admin-panel" style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
             <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
-                <button class="pill active" onclick="switchFeatureTab('notifications')" style="cursor: pointer;">🔔 Notifications</button>
-                <button class="pill" onclick="switchFeatureTab('errors')" style="cursor: pointer;">⚠️ Error Monitoring</button>
-                <button class="pill" onclick="switchFeatureTab('revenue')" style="cursor: pointer;">📊 Revenue Dashboard</button>
-                <button class="pill" onclick="switchFeatureTab('flags')" style="cursor: pointer;">🚩 Feature Flags</button>
-                <button class="pill" onclick="switchFeatureTab('onboarding')" style="cursor: pointer;">🧭 Onboarding</button>
+                <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)" style="cursor: pointer;">🔔 Notifications</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" style="cursor: pointer;">⚠️ Error Monitoring</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" style="cursor: pointer;">📊 Revenue Dashboard</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" style="cursor: pointer;">🚩 Feature Flags</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" style="cursor: pointer;">🧭 Onboarding</button>
             </div>
 
             <!-- NOTIFICATIONS SECTION -->
@@ -947,7 +1043,7 @@
             </div>
         </div>
 
-        <section class="management-panel">
+        <section id="panel-users" class="management-panel admin-panel">
             <div class="management-head">
                 <div>
                     <h2>User Management</h2>
@@ -1044,7 +1140,7 @@
             </div>
         </section>
 
-        <section class="audit-panel">
+        <section id="panel-audit" class="audit-panel admin-panel">
             <div class="panel-header">
                 <div>
                     <h3 class="panel-title">Recent Admin Actions</h3>
@@ -1053,6 +1149,8 @@
                 <button class="btn btn-ghost" onclick="loadAuditLogs()">Refresh</button>
             </div>
             <div id="audit-list" class="audit-list"></div>
+        </section>
+        </div>
         </section>
     </main>
 
@@ -1559,13 +1657,23 @@
             if (postsChart) postsChart.destroy();
             if (userChart) userChart.destroy();
 
+            const labels = Array.isArray(charts.weekly_labels) && charts.weekly_labels.length
+                ? charts.weekly_labels
+                : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const postsData = Array.isArray(charts.weekly_posts) && charts.weekly_posts.length
+                ? charts.weekly_posts
+                : [0, 0, 0, 0, 0, 0, 0];
+            const userBreakdown = Array.isArray(charts.user_breakdown) && charts.user_breakdown.length === 3
+                ? charts.user_breakdown
+                : [0, 0, 0];
+
             postsChart = new Chart(postsCtx, {
                 type: 'line',
                 data: {
-                    labels: charts.weekly_labels || [],
+                    labels,
                     datasets: [{
                         label: 'Posts',
-                        data: charts.weekly_posts || [],
+                        data: postsData,
                         borderColor: '#2563eb',
                         backgroundColor: 'rgba(37, 99, 235, 0.15)',
                         fill: true,
@@ -1588,7 +1696,7 @@
                 data: {
                     labels: ['Total Users', 'Verified Users', 'Active Users'],
                     datasets: [{
-                        data: charts.user_breakdown || [0, 0, 0],
+                        data: userBreakdown,
                         backgroundColor: ['#94a3b8', '#60a5fa', '#34d399']
                     }]
                 },
@@ -1847,7 +1955,40 @@
             document.querySelectorAll('.pill[data-range]').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-range') === range);
             });
-            loadOverview(range).catch(err => alert(err.message || 'Failed to update chart range'));
+            loadOverview(range).catch(err => showToast(err.message || 'Failed to update chart range', 'error'));
+        }
+
+        function switchAdminPanel(panelName, triggerEl = null) {
+            const panels = {
+                overview: 'panel-overview',
+                features: 'panel-features',
+                users: 'panel-users',
+                audit: 'panel-audit'
+            };
+
+            const targetId = panels[panelName] || panels.overview;
+            document.querySelectorAll('.admin-panel').forEach(panel => {
+                panel.classList.remove('is-active');
+            });
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.classList.add('is-active');
+            }
+
+            document.querySelectorAll('.admin-side-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = triggerEl || document.querySelector(`.admin-side-btn[data-panel-target="${panelName}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+
+            if (panelName === 'overview') {
+                setTimeout(() => {
+                    try {
+                        if (postsChart) postsChart.resize();
+                        if (userChart) userChart.resize();
+                    } catch (_) {}
+                }, 80);
+            }
         }
 
         async function loadOverview(range) {
@@ -2390,11 +2531,17 @@
             }
         }
 
-        function switchFeatureTab(tabName) {
+        function switchFeatureTab(tabName, triggerEl = null) {
             document.querySelectorAll('.feature-tab').forEach(tab => tab.style.display = 'none');
-            document.querySelectorAll('.pill').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`feature-tab-${tabName}`).style.display = 'block';
-            event.target.classList.add('active');
+            document.querySelectorAll('.feature-tab-trigger').forEach(btn => btn.classList.remove('active'));
+            const target = document.getElementById(`feature-tab-${tabName}`);
+            if (target) {
+                target.style.display = 'block';
+            }
+            const btn = triggerEl || document.querySelector(`.feature-tab-trigger[data-feature-tab="${tabName}"]`);
+            if (btn) {
+                btn.classList.add('active');
+            }
             
             if (tabName === 'notifications') setTimeout(() => loadNotifications(), 100);
             if (tabName === 'errors') setTimeout(() => loadErrorLogs(), 100);
@@ -2705,6 +2852,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            switchAdminPanel('overview');
             loadAll().catch(err => showToast(err.message || 'Failed to load dashboard', 'error', 5000));
             renderAdminOnboardingControls();
 
