@@ -7288,11 +7288,37 @@
         }
         .creator-v4 .cv-pv-topbar.generating { opacity: 0.45 }
         .creator-v4 .cv-pv-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             font-size: clamp(0.78rem, 0.55vw + 0.42rem, 0.92rem);
             font-weight: 800;
             color: var(--cv-text);
             letter-spacing: -0.01em;
             white-space: nowrap;
+        }
+        .creator-v4 .cv-pv-title-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(99,102,241,0.24), rgba(79,70,229,0.2));
+            color: #4f46e5;
+            box-shadow: 0 0 0 1px rgba(79,70,229,0.16), 0 0 10px rgba(99,102,241,0.35);
+            animation: cvTitleGlow 2.1s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        @keyframes cvTitleGlow {
+            0%, 100% {
+                box-shadow: 0 0 0 1px rgba(79,70,229,0.16), 0 0 10px rgba(99,102,241,0.3);
+                transform: translateY(0);
+            }
+            50% {
+                box-shadow: 0 0 0 1px rgba(79,70,229,0.22), 0 0 16px rgba(99,102,241,0.5);
+                transform: translateY(-1px);
+            }
         }
         .creator-v4 .cv-pv-meta-hidden {
             display: none;
@@ -7429,6 +7455,7 @@
             font-size: clamp(12px, 0.85vw + 2px, 13.5px); line-height: 1.65;
             color: #1a1a1a; white-space: pre-wrap;
             word-break: break-word; outline: none;
+            margin: 0;
         }
         .creator-v4 .li-mockup-body .li-empty-state {
             text-align: center; padding: 14px 16px 10px; color: #aaa;
@@ -20284,7 +20311,7 @@
   <!-- Preview Column -->
   <div class="cv-preview-col">
     <div class="cv-pv-topbar" id="pvBar">
-            <div class="cv-pv-title">Preview &amp; Publish</div>
+                        <div class="cv-pv-title"><span class="cv-pv-title-icon" aria-hidden="true"><i class="fas fa-wand-magic-sparkles"></i></span>Preview &amp; Publish</div>
             <div class="cv-pv-meta-hidden" aria-hidden="true">
                 <span id="cv-pv-avatar">Y</span>
                 <span id="cv-pv-name">Your Name</span>
@@ -20326,8 +20353,6 @@
           <div class="li-mockup-body" id="li-mockup-body">
             <div class="li-empty-state" id="li-empty-state">
               <div class="li-empty-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
-              <h5>Your post preview</h5>
-              <p>Configure settings on the left, then hit Generate to see your AI-crafted LinkedIn post appear right here.</p>
             </div>
             <div class="creator-preview-loading" id="li-loading-state">
               <div class="cv-skeleton-lines">
