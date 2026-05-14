@@ -4487,6 +4487,36 @@
         .creator-v4 .cv-workspace .cv-insights-col {
             transition: all 0.34s cubic-bezier(0.22, 1, 0.36, 1);
         }
+        .creator-v4 .cv-pane-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(129,140,248,0.22);
+        }
+        .creator-v4 .cv-pane-toggle-btn {
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(199,210,254,0.9);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .creator-v4 .cv-pane-toggle-btn.is-active {
+            background: rgba(129,140,248,0.24);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+        }
+        .creator-v4 .cv-pane-toggle-btn:hover {
+            color: #ffffff;
+            background: rgba(129,140,248,0.16);
+        }
         .creator-v4 .cv-workspace.cv-workspace-focus .cv-form-scroll {
             flex: 1 1 100%;
             min-width: 0;
@@ -4509,6 +4539,24 @@
             opacity: 1;
             transform: translateX(0);
             pointer-events: auto;
+        }
+        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col,
+        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col {
+            width: clamp(340px, 34vw, 560px);
+            min-width: 300px;
+            max-width: 560px;
+        }
+        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
+        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            overflow: hidden;
+            border-width: 0;
+            margin: 0;
         }
 
         /* ---------- Topbar ---------- */
@@ -6129,6 +6177,11 @@
             color: rgba(203,213,225,0.72);
             margin-top: 3px;
             letter-spacing: 0.01em;
+        }
+        .creator-v4 .cv-insights-top-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .creator-v4 .cv-insights-brain-icon {
             width: clamp(26px, 2vw, 32px); height: clamp(26px, 2vw, 32px);
@@ -8530,10 +8583,20 @@
 
         /* ── 1024px: Drop insights, 2-column (form + preview) ── */
         @media (max-width: 1024px) {
-            .creator-v4 .cv-insights-col { display: none }
             .creator-v4 .cv-preview-col {
                 width: clamp(320px, 32vw, 400px);
                 position: sticky; top: 12px;
+            }
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
+                display: none !important;
+            }
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col,
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
+                display: flex !important;
+                width: clamp(320px, 38vw, 460px) !important;
+                min-width: 300px !important;
+                max-width: 460px !important;
             }
             .creator-v4 .cv-form-inner { padding: 0 18px }
             .creator-v4 .cv-sec-title { font-size: 1.02rem }
@@ -8552,6 +8615,14 @@
             .creator-v4 .cv-workspace.cv-workspace-focus .cv-preview-col,
             .creator-v4 .cv-workspace.cv-workspace-focus .cv-insights-col {
                 display: none !important;
+            }
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
+                display: none !important;
+            }
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col,
+            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
+                display: flex !important;
             }
             .creator-v4 .cv-hero {
                 margin: 12px 16px;
@@ -20126,6 +20197,10 @@
                 <span id="pvTime">—</span>
             </div>
       <div class="cv-pv-actions">
+                <div class="cv-pane-toggle" role="tablist" aria-label="Creator side panel">
+                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="preview" aria-pressed="true" onclick="setCreatorSidePane('preview')">Preview</button>
+                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="insights" aria-pressed="false" onclick="setCreatorSidePane('insights')">Insights</button>
+                </div>
         <button class="cv-pv-action-btn" onclick="copyPost()" title="Copy"><i class="far fa-copy"></i></button>
       </div>
     </div>
@@ -20217,8 +20292,12 @@
                 <div class="cv-insights-title">Post Insights</div>
                 <div class="cv-insights-sub">Generation rationale and publish readiness</div>
             </div>
-            <div class="cv-insights-brain-icon">
-                <i class="fas fa-brain" style="color:rgba(165,180,252,0.75);font-size:0.72rem;"></i>
+            <div class="cv-insights-top-actions">
+                <div class="cv-pane-toggle" role="tablist" aria-label="Creator side panel">
+                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="preview" aria-pressed="true" onclick="setCreatorSidePane('preview')">Preview</button>
+                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="insights" aria-pressed="false" onclick="setCreatorSidePane('insights')">Insights</button>
+                </div>
+                <div class="cv-insights-brain-icon"><i class="fas fa-brain" style="color:rgba(165,180,252,0.75);font-size:0.72rem;"></i></div>
             </div>
         </div>
         <div class="cv-insights-body">
@@ -26082,6 +26161,21 @@
     let cvGenerateProgressTimer = null;
     let cvGenerateInFlight = false;
     let cvHasGeneratedResult = false;
+    let cvActiveSidePane = 'preview';
+
+    function syncCreatorSidePaneToggle() {
+        document.querySelectorAll('#content-creator [data-side-pane-btn]').forEach(btn => {
+            const mode = String(btn.dataset.sidePaneBtn || '').trim();
+            const isActive = mode === cvActiveSidePane;
+            btn.classList.toggle('is-active', isActive);
+            btn.setAttribute('aria-pressed', String(isActive));
+        });
+    }
+
+    function setCreatorSidePane(mode = 'preview') {
+        cvActiveSidePane = mode === 'insights' ? 'insights' : 'preview';
+        syncCreatorWorkspaceLayout();
+    }
 
     function syncCreatorWorkspaceLayout() {
         const workspace = document.getElementById('cv-workspace');
@@ -26092,6 +26186,9 @@
         const revealAuxColumns = cvGenerateInFlight || cvHasGeneratedResult || hasGeneratedContent;
         workspace.classList.toggle('cv-workspace-focus', !revealAuxColumns);
         workspace.classList.toggle('cv-workspace-generated', revealAuxColumns);
+        workspace.classList.toggle('cv-side-preview', cvActiveSidePane !== 'insights');
+        workspace.classList.toggle('cv-side-insights', cvActiveSidePane === 'insights');
+        syncCreatorSidePaneToggle();
     }
 
     function setCreatorGenerateButtonsLoading(isLoading) {
@@ -27052,7 +27149,6 @@
             if (data.success && content) {
                 cvGenerateInFlight = false;
                 setCreatorGenerateButtonsLoading(false);
-                completeCreatorGenerateProgress('Post ready to review');
                 postText.classList.remove('skeleton');
                 postText.style.display = 'block';
                 postText.removeAttribute('contenteditable');
@@ -27098,6 +27194,8 @@
                 toggleCreatorQuickActions(true);
                 saveCreatorDraftState();
                 saveCreatorStyleProfile();
+                setCreatorSidePane('preview');
+                completeCreatorGenerateProgress('Post ready to review');
                 showMockupResult(content);
                 updateQuickQualityMeter(content);
                 refreshCvStepperState();

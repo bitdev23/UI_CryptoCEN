@@ -5232,7 +5232,7 @@ def normalize_hashtags(tags: list) -> list:
 
 
 def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list) -> list:
-    """Generate meaningful compound hashtags from theme/industry/role/topics."""
+    """Generate readable hashtags from theme/industry/role/topics."""
     candidates = []
 
     # Build compound hashtags from multi-word phrases (e.g. 'CEX vs DEX' → 'CEXvsDEX')
@@ -5253,9 +5253,14 @@ def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list
             words = re.findall(r'[A-Za-z0-9]+', phrase)
             significant = [w for w in words if w.lower() not in noise and len(w) >= 2]
             if len(significant) >= 2:
-                # CamelCase compound: 'custodial model' → 'CustodialModel'
-                compound = ''.join(w.capitalize() if w.islower() else w for w in significant[:4])
-                candidates.append(compound)
+                # Prefer clean standalone tags first to avoid awkward fused tags.
+                for token in significant[:3]:
+                    if len(token) >= 3:
+                        candidates.append(token)
+                # Add one compact compound only for short 2-word phrases.
+                if len(significant) == 2 and all(len(token) <= 12 for token in significant[:2]):
+                    compound = ''.join(token.capitalize() if token.islower() else token for token in significant[:2])
+                    candidates.append(compound)
             elif significant:
                 candidates.append(significant[0])
 
@@ -5266,7 +5271,7 @@ def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list
             if len(clean) >= 3:
                 candidates.append(clean)
 
-    # Standard LinkedIn hashtags as low-priority fallback
+    # Standard fallback tags as low priority.
     candidates.extend(['LinkedIn', 'ProfessionalGrowth'])
     return normalize_hashtags(candidates)
 
@@ -6878,11 +6883,11 @@ Post:
             evaluation = _eval_future.result()
 
         quality_threshold = clamp_int(req_data.get('quality_threshold', 75), 60, 95, 75)
-        retry_cap_rate = 0.35
+        retry_cap_rate = 1.0
         try:
-            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '0.35')))
+            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '1.0')))
         except Exception:
-            retry_cap_rate = 0.35
+            retry_cap_rate = 1.0
         retry_cap_rate = max(0.0, min(1.0, retry_cap_rate))
 
         retry_attempted = False
@@ -6890,13 +6895,27 @@ Post:
         selected_draft = 'draft_1'
         second_evaluation = None
 
-        if evaluation.get('score', 0) < quality_threshold and retry_allowed and _has_budget(20):
+        heuristics = _post_contract_heuristics(body, theme, goal_key)
+        needs_topic_anchor_retry = any(
+            'Opening line is not clearly anchored to the requested topic' in str(issue)
+            for issue in (heuristics.get('issues') or [])
+        )
+        needs_length_retry = (
+            word_count_mode == 'custom_range'
+            and (words_count(body) < min_words or words_count(body) > max_words)
+        )
+
+        if (evaluation.get('score', 0) < quality_threshold or needs_topic_anchor_retry or needs_length_retry) and retry_allowed and _has_budget(20):
             retry_attempted = True
-            feedback_issues = evaluation.get('issues') or [
+            feedback_issues = list(evaluation.get('issues') or [
                 'Improve hook specificity and topic anchoring',
                 'Increase clarity and concrete detail',
                 'Strengthen CTA quality'
-            ]
+            ])
+            if needs_topic_anchor_retry:
+                feedback_issues.append('Opening line must be directly anchored to the requested topic')
+            if needs_length_retry:
+                feedback_issues.append(f'Keep output strictly between {min_words} and {max_words} words')
             retry_prompt = _PromptBuilder.build_retry_prompt(
                 prompt, evaluation.get('score', 0), feedback_issues
             )
@@ -6946,6 +6965,105 @@ Post:
                     grounding_rewrite_applied = True
                     if _verify_kb_ctx:
                         logger.info('Grounding rewrite applied successfully')
+
+        if word_count_mode == 'custom_range' and words_count(body) < min_words and _has_budget(12):
+            expand_prompt = f"""Rewrite and expand the LinkedIn post below.
+Hard rules:
+- Keep the same topic, role perspective, and goal.
+- Keep it natural and concrete.
+- Keep total length strictly between {min_words} and {max_words} words.
+- Output post body only (no hashtags).
+
+Post:
+{body}
+"""
+            try:
+                expanded = ai.generate(expand_prompt, max_tokens=900, task='rewrite')
+                _track_usage(expanded)
+                expanded_text = (expanded.get('text') or '').strip()
+                if expanded_text:
+                    body = enforce_linkedin_quality(
+                        remove_hashtags_from_body(_strip_llm_preamble(expanded_text)),
+                        user_industry,
+                        user_role,
+                        theme,
+                        target_audience_hint,
+                        emoji_level,
+                    )
+            except Exception as expand_error:
+                logger.warning('Length expansion rewrite failed: %s', expand_error)
+
+        if word_count_mode == 'custom_range':
+            body = enforce_word_ceiling(body, max_words)
+
+        # ── Final hard guard (production safety net) ───────────────────────
+        def _quality_violations(candidate_body: str) -> list:
+            violations = []
+            wc = words_count(candidate_body)
+            heur = _post_contract_heuristics(candidate_body, theme, goal_key)
+
+            if word_count_mode == 'custom_range' and (wc < min_words or wc > max_words):
+                violations.append(f'Length out of range ({wc} words, expected {min_words}-{max_words})')
+
+            if any('Opening line is not clearly anchored to the requested topic' in str(issue) for issue in (heur.get('issues') or [])):
+                violations.append('Opening line is not anchored to topic')
+
+            if goal_key in {'spark_comments', 'grow_network'} and not str(candidate_body or '').strip().endswith('?'):
+                violations.append('Goal-aligned CTA question missing at the end')
+
+            return violations
+
+        final_violations = _quality_violations(body)
+        if final_violations and _has_budget(10):
+            strict_fix_prompt = f"""Rewrite this LinkedIn post and satisfy ALL hard rules:
+1) Keep topic strictly about: {theme}
+2) Keep perspective: {user_role} in {user_industry}
+3) Keep tone: {post_tone}
+4) Keep goal: {business_goal}
+5) End with one natural, open question
+6) Keep body length strictly between {min_words} and {max_words} words
+7) Output body only (no hashtags, no labels)
+
+Post:
+{body}
+"""
+            try:
+                strict_fix = ai.generate(strict_fix_prompt, max_tokens=900, task='rewrite')
+                _track_usage(strict_fix)
+                strict_fix_text = (strict_fix.get('text') or '').strip()
+                if strict_fix_text:
+                    body = enforce_linkedin_quality(
+                        remove_hashtags_from_body(_strip_llm_preamble(strict_fix_text)),
+                        user_industry,
+                        user_role,
+                        theme,
+                        target_audience_hint,
+                        emoji_level,
+                    )
+                    if word_count_mode == 'custom_range':
+                        body = enforce_word_ceiling(body, max_words)
+                    final_violations = _quality_violations(body)
+            except Exception as strict_fix_error:
+                logger.warning('Final hard-guard rewrite failed: %s', strict_fix_error)
+
+        if final_violations:
+            logger.warning('Generation blocked by hard quality guard: %s', '; '.join(final_violations))
+            return jsonify({
+                'success': False,
+                'message': 'Quality guard blocked a weak draft. Please regenerate once.',
+                'quality_guard_blocked': True,
+                'quality_issues': final_violations,
+                'settings_applied': {
+                    'industry': user_industry,
+                    'role': user_role,
+                    'tone': post_tone,
+                    'goal_key': goal_key,
+                    'word_count_mode': word_count_mode,
+                    'min_words': min_words,
+                    'max_words': max_words,
+                    'output_words': words_count(body),
+                }
+            }), 422
 
         candidate_tags = derive_hashtag_candidates(theme, user_industry, user_role, topics)
         merged_tags = normalize_hashtags(generated_tags + candidate_tags)
