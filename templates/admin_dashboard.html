@@ -5,24 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Velank Admin Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #667eea;
+            --secondary: #764ba2;
             --primary-700: #5568d3;
             --primary-900: #2f3a8f;
             --surface: rgba(255, 255, 255, 0.92);
             --surface-soft: rgba(248, 250, 252, 0.92);
-            --bg: #eef2ff;
+            --bg: #f8f9fa;
             --bg-2: #f8fafc;
-            --text: #0f172a;
+            --text: #2c3e50;
             --muted: #64748b;
-            --border: rgba(148, 163, 184, 0.28);
-            --success: #16a34a;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --shadow: 0 18px 42px rgba(30, 41, 59, 0.10);
-            --radius: 18px;
+            --border: #d9d9d9;
+            --success: #52c41a;
+            --warning: #faad14;
+            --danger: #f5222d;
+            --shadow: 0 4px 12px rgba(0,0,0,0.15);
+            --radius: 10px;
         }
 
         * { box-sizing: border-box; }
@@ -34,33 +37,31 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
             color: var(--text);
-            background:
-                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.18), transparent 30%),
-                radial-gradient(circle at 80% 0%, rgba(118, 75, 162, 0.14), transparent 28%),
-                linear-gradient(180deg, #f8fbff 0%, #eef2ff 100%);
+            background: var(--bg);
+            line-height: 1.6;
         }
 
         .topbar {
             position: sticky;
             top: 0;
             z-index: 30;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid #dfe5f2;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
         }
 
         .topbar-inner {
-            max-width: 1680px;
+            max-width: 100%;
             margin: 0 auto;
-            padding: 14px 28px;
+            padding: 0.8rem 1.1rem;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
-            gap: 16px;
+            gap: 0.56rem;
         }
 
         .brand {
@@ -98,34 +99,52 @@
 
         .top-actions {
             display: flex;
-            gap: 8px;
+            gap: 0.56rem;
             flex-wrap: wrap;
         }
 
-        .btn {
-            border: 0;
+        .top-actions > .btn {
+            min-height: 38px;
+            height: 38px;
             border-radius: 10px;
-            padding: 9px 12px;
-            font-size: 12px;
-            font-weight: 700;
+            padding-left: 0.85rem;
+            padding-right: 0.85rem;
+        }
+
+        .btn {
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 0.4rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: 0.18s ease;
+            transition: all 150ms ease;
             line-height: 1;
+            font-family: inherit;
         }
 
         .btn:hover { transform: translateY(-1px); }
 
         .btn-ghost {
-            background: #eef2ff;
-            color: #3730a3;
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }
+
+        .btn-ghost:hover {
+            background: #e5e7eb;
         }
 
         .btn-primary {
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.26);
         }
 
-        .btn-primary:hover { background: var(--primary-700); }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.34);
+        }
 
         .container {
             max-width: 1680px;
@@ -138,8 +157,8 @@
             align-items: stretch;
             display: grid;
             grid-template-columns: 220px minmax(0, 1fr);
-            gap: 18px;
-            padding: 18px 18px 22px;
+            gap: 0;
+            padding: 1rem;
         }
 
         .admin-sidebar {
@@ -148,96 +167,91 @@
             align-self: start;
             height: calc(100vh - 120px);
             max-height: calc(100vh - 120px);
-            background:
-                linear-gradient(180deg, rgba(102, 126, 234, 0.98) 0%, rgba(118, 75, 162, 0.98) 100%);
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 24px;
-            box-shadow: 0 24px 52px rgba(76, 58, 120, 0.30);
-            padding: 16px 12px;
-            color: #fff;
-            overflow: auto;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 1rem 0.65rem;
+            color: white;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            scrollbar-width: none;
+            transition: padding 0.3s ease;
         }
 
-        .admin-sidebar::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background:
-                radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 28%),
-                radial-gradient(circle at bottom left, rgba(255,255,255,0.10), transparent 32%);
-            pointer-events: none;
-        }
-
-        .admin-sidebar > * {
-            position: relative;
-            z-index: 1;
-        }
+        .admin-sidebar::-webkit-scrollbar { display: none; }
 
         .admin-sidebar-title {
             margin: 0 0 8px;
-            font-size: 10px;
+            font-size: 0.56rem;
             text-transform: uppercase;
             letter-spacing: 0.12em;
-            color: rgba(255,255,255,0.72);
+            color: rgba(255,255,255,0.38);
             font-weight: 800;
         }
 
         .admin-sidebar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-            padding: 4px 6px 14px;
-            border-bottom: 1px solid rgba(255,255,255,0.18);
+            gap: 0.65rem;
+            margin-bottom: 0.9rem;
+            padding: 0 0.5rem;
         }
 
         .admin-sidebar-brand img {
-            height: 24px;
+            height: 34px;
             width: auto;
             object-fit: contain;
-            filter: brightness(0) invert(1);
+        }
+
+        .admin-sidebar-brand > div {
+            min-width: 0;
         }
 
         .admin-sidebar-brand small {
             display: block;
-            font-size: 11px;
-            color: rgba(255,255,255,0.78);
-            margin-top: 2px;
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.75);
+            margin-top: 0.08rem;
+            font-weight: 600;
         }
 
         .admin-side-nav {
-            display: grid;
-            gap: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
             flex: 1;
         }
 
         .admin-side-btn {
             border: none;
             background: transparent;
-            color: rgba(255,255,255,0.78);
-            border-radius: 10px;
+            color: rgba(255,255,255,0.75);
+            border-radius: 8px;
             text-align: left;
-            padding: 10px 12px;
-            font-size: 13px;
-            font-weight: 600;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.82rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.18s ease;
+            transition: all 0.2s ease;
             letter-spacing: 0;
             position: relative;
             display: flex;
             align-items: center;
             gap: 0.65rem;
+            font-family: inherit;
         }
 
         .admin-side-btn:hover {
-            background: rgba(255,255,255,0.16);
-            color: #fff;
+            background: rgba(255,255,255,0.1);
+            color: white;
         }
 
         .admin-side-btn.active {
             background: rgba(255, 255, 255, 0.18);
-            color: #fff;
-            font-weight: 700;
+            color: white;
+            font-weight: 600;
         }
 
         .admin-side-btn.active::before {
@@ -254,10 +268,10 @@
         .admin-side-btn .nav-icon {
             width: 18px;
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             line-height: 1;
             flex-shrink: 0;
-            opacity: 0.9;
+            opacity: 1;
         }
 
         .admin-side-btn .nav-label {
@@ -310,7 +324,7 @@
         }
 
         .card .label {
-            font-size: 11px;
+            font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             color: var(--muted);
@@ -319,14 +333,14 @@
 
         .card .value {
             margin-top: 8px;
-            font-size: 29px;
+            font-size: 1.8rem;
             font-weight: 800;
             line-height: 1;
         }
 
         .card .sub {
             margin-top: 8px;
-            font-size: 12px;
+            font-size: 0.75rem;
             color: var(--muted);
             display: flex;
             align-items: center;
@@ -362,46 +376,58 @@
         .panel-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
         }
 
         .panel-title {
             margin: 0;
-            font-size: 16px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text);
             line-height: 1.2;
         }
 
         .panel-sub {
             margin: 4px 0 0;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 0.75rem;
         }
 
         .period-pills {
             display: inline-flex;
-            gap: 6px;
-            background: #f1f5f9;
-            border-radius: 10px;
-            padding: 4px;
+            gap: 0;
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
         }
 
         .pill {
-            border: 0;
-            border-radius: 8px;
-            padding: 6px 9px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #475569;
-            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text);
+            background: #f8fafc;
             cursor: pointer;
+            transition: all 150ms ease;
+            font-family: inherit;
+            margin-right: 6px;
+        }
+
+        .pill:hover {
+            border-color: var(--primary);
+            background: #eef2ff;
+            color: var(--primary);
         }
 
         .pill.active {
-            background: #fff;
-            color: #0f172a;
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.26);
         }
 
         .chart-wrap {
@@ -528,20 +554,22 @@
         .management-head {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-start;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         .management-head h2 {
             margin: 0;
-            font-size: 19px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
         }
 
         .management-head p {
             margin: 4px 0 0;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 0.75rem;
         }
 
         .search-row {
@@ -694,16 +722,55 @@
 
         .btn-sm {
             border-radius: 8px;
-            font-size: 11px;
-            font-weight: 700;
-            border: 0;
-            padding: 7px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid #dbe3f2;
+            background: #f8fafc;
+            color: #64748b;
+            padding: 0.4rem 0.65rem;
             cursor: pointer;
+            transition: all 150ms ease;
+            font-family: inherit;
         }
 
-        .btn-view { background: #dbeafe; color: #1d4ed8; }
-        .btn-toggle { background: #fef3c7; color: #a16207; }
-        .btn-delete { background: #fee2e2; color: #b91c1c; }
+        .btn-sm:hover {
+            border-color: #c9d4e8;
+            background: #eef2ff;
+            color: #334155;
+        }
+
+        .btn-view { 
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .btn-view:hover {
+            background: #bfdbfe;
+            color: #1e40af;
+        }
+
+        .btn-toggle { 
+            background: #fef3c7;
+            color: #a16207;
+            border-color: #fde68a;
+        }
+
+        .btn-toggle:hover {
+            background: #fde68a;
+            color: #92400e;
+        }
+
+        .btn-delete { 
+            background: #fee2e2;
+            color: #b91c1c;
+            border-color: #fca5a5;
+        }
+
+        .btn-delete:hover {
+            background: #fca5a5;
+            color: #991b1b;
+        }
 
         .pagination {
             margin-top: 10px;
@@ -940,11 +1007,12 @@
         }
 
         @media (max-width: 1280px) {
-            .admin-shell { grid-template-columns: 1fr; min-height: auto; }
+            .admin-shell { grid-template-columns: 1fr; }
             .admin-sidebar {
                 position: static;
                 top: auto;
-                min-height: auto;
+                height: auto;
+                max-height: none;
             }
             .cards { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
             .grid { grid-template-columns: 1fr; }
@@ -952,11 +1020,8 @@
 
         @media (max-width: 820px) {
             .cards { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
-            .search-row { grid-template-columns: 1fr; }
-            .table-tools { flex-direction: column; align-items: stretch; }
-            .control-inline { grid-template-columns: 1fr; }
-            .topbar-inner { padding: 12px 14px; }
-            .admin-shell { padding: 12px; }
+            .topbar-inner { padding: 0.8rem 0.9rem; }
+            .admin-shell { padding: 0.8rem; }
         }
     </style>
 </head>
