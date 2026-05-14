@@ -19310,17 +19310,17 @@
             </div>
             <div class="nav-item" data-tab="content-creator" onclick="switchTab('content-creator', this)">
                 <i class="fas fa-pen-fancy"></i>
-                <span>LinkedIn Post</span>
+                <span>Create Post</span>
             </div>
             <div class="nav-item" data-tab="scheduler" onclick="switchTab('scheduler', this)">
                 <i class="fas fa-calendar-alt"></i>
-                <span>Scheduler</span>
+                <span>Schedule Post</span>
             </div>
 
             <div class="sidebar-nav-section-label">Content</div>
             <div class="nav-item" data-tab="knowledge-base" onclick="switchTab('knowledge-base', this)">
                 <i class="fas fa-book"></i>
-                <span>Database</span>
+                <span>Upload Files</span>
             </div>
             <div class="nav-item" data-tab="post-history" onclick="switchTab('post-history', this)">
                 <i class="fas fa-clock"></i>
@@ -20266,13 +20266,13 @@
       <span id="creator-date-pill" class="lip-date-pill"><i class="fas fa-calendar-day" style="opacity:0.6;margin-right:0.35rem;"></i>Saturday, March 21, 2026</span>
     </div>
   </div>
-  <select id="generation-ui-mode" onchange="toggleGenerationMode()">
-    <option value="simple">Simple</option>
-    <option value="advanced" selected>Advanced</option>
+    <select id="generation-ui-mode" onchange="toggleGenerationMode()">
+        <option value="simple" selected>Simple</option>
+        <option value="advanced">Advanced</option>
   </select>
   <div class="creator-mode-switch">
-    <button id="creator-mode-simple" class="creator-mode-btn" type="button">Simple</button>
-    <button id="creator-mode-advanced" class="creator-mode-btn active" type="button">Advanced</button>
+        <button id="creator-mode-simple" class="creator-mode-btn active" type="button">Simple</button>
+        <button id="creator-mode-advanced" class="creator-mode-btn" type="button">Advanced</button>
   </div>
   <div id="creator-mode-hint"></div>
   <div class="creator-progress-bar" id="creator-progress-bar">
@@ -24295,6 +24295,14 @@
             return;
         }
         hasAttemptedFirstTimeOnboarding = true;
+        // Anchor true first-time users on Dashboard before opening the guided flow.
+        switchTab('dashboard', null, true);
+        if (typeof setConfigUxMode === 'function') {
+            setConfigUxMode('quick');
+        }
+        if (typeof setGenerationMode === 'function') {
+            setGenerationMode('simple');
+        }
         openFirstRunOnboarding();
     }
 
@@ -32537,7 +32545,7 @@
         if (ftuOverlay && !ftuOverlay.dataset.boundClickClose) {
             ftuOverlay.addEventListener('click', function(event) {
                 if (event.target === ftuOverlay) {
-                    closeFirstRunOnboarding(true);
+                    closeFirstRunOnboarding(false);
                 }
             });
             ftuOverlay.dataset.boundClickClose = '1';
@@ -32611,7 +32619,7 @@
         }
         const firstRunModal = document.getElementById('ftu-onboarding-overlay');
         if (firstRunModal && firstRunModal.classList.contains('is-open')) {
-            closeFirstRunOnboarding(true);
+            closeFirstRunOnboarding(false);
             return;
         }
         // Close upgrade modal
@@ -34266,7 +34274,7 @@
                 <h3 id="ftu-title">Build your LinkedIn growth engine</h3>
                 <div class="ftu-head-sub">Set your strategy once, then generate grounded posts at scale with Velank.</div>
             </div>
-            <button class="ftu-close" type="button" aria-label="Close onboarding" onclick="closeFirstRunOnboarding(true)">
+            <button class="ftu-close" type="button" aria-label="Close onboarding" onclick="closeFirstRunOnboarding(false)">
                 <i class="fas fa-xmark"></i>
             </button>
         </div>
