@@ -5,46 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Velank Admin Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='branding/favicon.svg') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         :root {
-            --primary: #2563eb;
-            --primary-700: #1d4ed8;
-            --surface: #ffffff;
-            --surface-soft: #f8fafc;
-            --bg: #f1f5f9;
+            --primary: #667eea;
+            --primary-700: #5568d3;
+            --primary-900: #2f3a8f;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-soft: rgba(248, 250, 252, 0.92);
+            --bg: #eef2ff;
+            --bg-2: #f8fafc;
             --text: #0f172a;
             --muted: #64748b;
-            --border: #e2e8f0;
+            --border: rgba(148, 163, 184, 0.28);
             --success: #16a34a;
             --warning: #d97706;
             --danger: #dc2626;
-            --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-            --radius: 14px;
+            --shadow: 0 18px 42px rgba(30, 41, 59, 0.10);
+            --radius: 18px;
         }
 
         * { box-sizing: border-box; }
 
+        html, body {
+            min-height: 100%;
+        }
+
         body {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            font-family: Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             color: var(--text);
-            background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 35%), var(--bg);
+            background:
+                radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.18), transparent 30%),
+                radial-gradient(circle at 80% 0%, rgba(118, 75, 162, 0.14), transparent 28%),
+                linear-gradient(180deg, #f8fbff 0%, #eef2ff 100%);
         }
 
         .topbar {
             position: sticky;
             top: 0;
             z-index: 30;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
         }
 
         .topbar-inner {
-            max-width: 1600px;
+            max-width: 1680px;
             margin: 0 auto;
-            padding: 14px 24px;
+            padding: 14px 28px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -116,37 +128,56 @@
         .btn-primary:hover { background: var(--primary-700); }
 
         .container {
-            max-width: 1600px;
+            max-width: 1680px;
             margin: 0 auto;
-            padding: 22px;
+            padding: 0;
         }
 
         .admin-shell {
-            max-width: 1600px;
-            margin: 0 auto;
+            min-height: calc(100vh - 74px);
+            align-items: stretch;
             display: grid;
-            grid-template-columns: 240px minmax(0, 1fr);
-            gap: 16px;
-            padding: 18px;
+            grid-template-columns: 220px minmax(0, 1fr);
+            gap: 18px;
+            padding: 18px 18px 22px;
         }
 
         .admin-sidebar {
             position: sticky;
-            top: 86px;
-            height: fit-content;
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-            border: 1px solid rgba(255,255,255,0.24);
-            border-radius: var(--radius);
-            box-shadow: 0 16px 34px rgba(90, 70, 150, 0.28);
-            padding: 12px;
+            top: 90px;
+            align-self: start;
+            height: calc(100vh - 120px);
+            max-height: calc(100vh - 120px);
+            background:
+                linear-gradient(180deg, rgba(102, 126, 234, 0.98) 0%, rgba(118, 75, 162, 0.98) 100%);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 24px;
+            box-shadow: 0 24px 52px rgba(76, 58, 120, 0.30);
+            padding: 16px 12px;
             color: #fff;
+            overflow: auto;
+        }
+
+        .admin-sidebar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 28%),
+                radial-gradient(circle at bottom left, rgba(255,255,255,0.10), transparent 32%);
+            pointer-events: none;
+        }
+
+        .admin-sidebar > * {
+            position: relative;
+            z-index: 1;
         }
 
         .admin-sidebar-title {
-            margin: 0 0 10px;
-            font-size: 12px;
+            margin: 0 0 8px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.12em;
             color: rgba(255,255,255,0.72);
             font-weight: 800;
         }
@@ -155,13 +186,13 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
-            padding: 6px 8px 12px;
+            margin-bottom: 12px;
+            padding: 4px 6px 14px;
             border-bottom: 1px solid rgba(255,255,255,0.18);
         }
 
         .admin-sidebar-brand img {
-            height: 20px;
+            height: 24px;
             width: auto;
             object-fit: contain;
             filter: brightness(0) invert(1);
@@ -176,32 +207,63 @@
 
         .admin-side-nav {
             display: grid;
-            gap: 8px;
+            gap: 2px;
+            flex: 1;
         }
 
         .admin-side-btn {
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.08);
-            color: rgba(255,255,255,0.88);
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.78);
             border-radius: 10px;
             text-align: left;
             padding: 10px 12px;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.18s ease;
+            letter-spacing: 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
         }
 
         .admin-side-btn:hover {
-            border-color: rgba(255,255,255,0.4);
-            background: rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.16);
+            color: #fff;
         }
 
         .admin-side-btn.active {
-            border-color: rgba(255,255,255,0.55);
-            background: rgba(255,255,255,0.24);
+            background: rgba(255, 255, 255, 0.18);
             color: #fff;
-            box-shadow: 0 10px 20px rgba(10, 14, 30, 0.22);
+            font-weight: 700;
+        }
+
+        .admin-side-btn.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 18%;
+            bottom: 18%;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: #fff;
+        }
+
+        .admin-side-btn .nav-icon {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+            line-height: 1;
+            flex-shrink: 0;
+            opacity: 0.9;
+        }
+
+        .admin-side-btn .nav-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .admin-main {
@@ -212,6 +274,15 @@
             max-width: 100%;
             margin: 0;
             padding: 0;
+        }
+
+        .admin-panel,
+        .management-panel,
+        .audit-panel,
+        .panel,
+        .card {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
         .admin-panel {
@@ -358,6 +429,66 @@
             background: linear-gradient(180deg, rgba(248,250,252,0.85), rgba(248,250,252,0.95));
             border-radius: 12px;
             padding: 12px;
+        }
+
+        .sidebar-footer {
+            margin-top: 14px;
+            padding: 10px 10px 0;
+            border-top: 1px solid rgba(255,255,255,0.16);
+            color: rgba(255,255,255,0.76);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .admin-sidebar-user-card {
+            margin: 12px 4px 10px;
+            padding: 10px 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.11);
+            border: 1px solid rgba(255,255,255,0.15);
+            display: grid;
+            grid-template-columns: 30px minmax(0, 1fr);
+            gap: 0.55rem;
+            align-items: center;
+        }
+
+        .admin-sidebar-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #eef2ff;
+            background: rgba(123, 146, 255, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+        }
+
+        .admin-sidebar-user-meta {
+            min-width: 0;
+        }
+
+        .admin-sidebar-user-name {
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .admin-sidebar-user-plan {
+            margin-top: 0.08rem;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.68rem;
+            font-weight: 600;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .distribution-row { margin-bottom: 14px; }
@@ -809,10 +940,11 @@
         }
 
         @media (max-width: 1280px) {
-            .admin-shell { grid-template-columns: 1fr; }
+            .admin-shell { grid-template-columns: 1fr; min-height: auto; }
             .admin-sidebar {
                 position: static;
                 top: auto;
+                min-height: auto;
             }
             .cards { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
             .grid { grid-template-columns: 1fr; }
@@ -856,13 +988,24 @@
                     <small>Platform operations</small>
                 </div>
             </div>
+            <div class="admin-sidebar-user-card">
+                <div class="admin-sidebar-avatar">A</div>
+                <div class="admin-sidebar-user-meta">
+                    <div class="admin-sidebar-user-name">{{ admin_email or 'Admin' }}</div>
+                    <div class="admin-sidebar-user-plan">Operations · control center</div>
+                </div>
+            </div>
             <h3 class="admin-sidebar-title">Admin Panels</h3>
             <nav class="admin-side-nav">
-                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)">Overview</button>
-                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)">Platform Features</button>
-                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)">User Management</button>
-                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)">Audit Logs</button>
+                <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
+                <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
             </nav>
+            <div class="sidebar-footer">
+                Production control plane<br>
+                Built for operations, incident response, and user support.
+            </div>
         </aside>
 
         <section class="admin-main">
@@ -1882,8 +2025,7 @@
                 return true;
             }
             const sources = [
-                'https://cdn.jsdelivr.net/npm/chart.js',
-                'https://unpkg.com/chart.js/dist/chart.umd.js'
+                'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'
             ];
             for (const src of sources) {
                 try {
