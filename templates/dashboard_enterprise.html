@@ -20438,8 +20438,8 @@
                 <section class="kb4-topbar">
                     <div class="kb4-top-head">
                         <div>
-                            <h2>Database</h2>
-                            <p>Follow the workflow: upload files, train your database, then use templates to generate focused linkedin posts.</p>
+                            <h2>Upload Files</h2>
+                            <p>Follow the workflow: upload files, train your AI, then use files and templates to generate focused linkedin posts.</p>
                         </div>
                         <div class="kb4-storage-chip"><span class="dot dot-amber"></span> <span id="kb-overview-files-meta">0 MB used</span></div>
                     </div>
@@ -20454,8 +20454,8 @@
                 <section class="kb4-main-grid">
                     <div class="kb4-upload-card">
                         <div class="kb4-upload-card-head">
-                            <div class="kb4-step-clue"><span class="kb4-step-badge">1</span> Upload your source files</div>
-                            <h3>Add files to your Database</h3>
+                            <div class="kb4-step-clue"><span class="kb4-step-badge">1</span> Upload Files</div>
+                            <h3>Upload Files</h3>
                             <p>Max 50 MB each · auto-indexed on upload</p>
                         </div>
                         <div class="kb4-upload-drop" id="kb-upload-dropzone" onclick="document.getElementById('kb-file')?.click()">
@@ -20506,8 +20506,8 @@
 
                     <div class="kb4-status-card">
                         <div class="kb4-status-head">
-                            <div class="kb4-step-clue"><span class="kb4-step-badge">2</span> Verify Database Status</div>
-                            <div class="kb4-status-label" id="kb-status">Database Trained</div>
+                            <div class="kb4-step-clue"><span class="kb4-step-badge">2</span> Verify Uploaded Files</div>
+                            <div class="kb4-status-label" id="kb-status">AI Trained on your uploaded files</div>
                             <div class="kb4-status-head-row">
                                 <div id="kb-last-updated" class="kb4-status-updated">Last updated: just now</div>
                                 <div id="kb-files-ready-banner" class="kb-ready-banner" style="display:none;"></div>
@@ -29470,7 +29470,7 @@
 
             const statusHeading = trainingInProgress
                 ? 'Indexing in progress'
-                : (trained ? 'Database Trained' : (trainingStatus === 'failed' ? 'Indexing Failed' : 'Training Required'));
+                : (trained ? 'AI Trained on your uploaded files' : (trainingStatus === 'failed' ? 'Indexing Failed' : 'Training Required'));
 
             kbStatusEl.textContent = statusHeading;
 
