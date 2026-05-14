@@ -59,9 +59,37 @@
             margin: 0 auto;
             padding: 0.8rem 1.1rem;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
             gap: 0.56rem;
+        }
+
+        .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            min-width: 0;
+        }
+
+        .header-title-group h1 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .header-date-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            border: 1px solid #e2e8f5;
+            background: #f5f7fc;
+            color: #64748b;
+            font-size: 0.68rem;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .brand {
@@ -458,17 +486,17 @@
         }
 
         .sidebar-footer {
-            margin-top: 14px;
-            padding: 10px 10px 0;
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.55rem 0;
             border-top: 1px solid rgba(255,255,255,0.16);
             color: rgba(255,255,255,0.76);
-            font-size: 11px;
-            line-height: 1.45;
+            font-size: 0.68rem;
+            line-height: 1.35;
         }
 
         .admin-sidebar-user-card {
-            margin: 12px 4px 10px;
-            padding: 10px 10px;
+            margin: auto 4px 8px;
+            padding: 9px 10px;
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.11);
             border: 1px solid rgba(255,255,255,0.15);
@@ -1027,7 +1055,11 @@
 </head>
 <body>
     <header class="topbar">
-        <div class="topbar-inner" style="justify-content: flex-end;">
+        <div class="topbar-inner">
+            <div class="header-title-group">
+                <h1>Admin Dashboard</h1>
+                <span class="header-date-badge">Control Plane</span>
+            </div>
             <div class="top-actions">
                 <a class="btn btn-ghost" href="/">User App</a>
                 <a class="btn btn-primary" href="/admin/logout">Logout</a>
@@ -1044,13 +1076,6 @@
                     <small>Platform operations</small>
                 </div>
             </div>
-            <div class="admin-sidebar-user-card">
-                <div class="admin-sidebar-avatar">A</div>
-                <div class="admin-sidebar-user-meta">
-                    <div class="admin-sidebar-user-name">{{ admin_email or 'Admin' }}</div>
-                    <div class="admin-sidebar-user-plan">Operations · control center</div>
-                </div>
-            </div>
             <h3 class="admin-sidebar-title">Admin Panels</h3>
             <nav class="admin-side-nav">
                 <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
@@ -1059,6 +1084,13 @@
                 <button type="button" class="admin-side-btn" data-panel-target="users" onclick="switchAdminPanel('users', this)"><span class="nav-icon">◧</span><span class="nav-label">User Management</span></button>
                 <button type="button" class="admin-side-btn" data-panel-target="audit" onclick="switchAdminPanel('audit', this)"><span class="nav-icon">▣</span><span class="nav-label">Audit Logs</span></button>
             </nav>
+            <div class="admin-sidebar-user-card">
+                <div class="admin-sidebar-avatar">A</div>
+                <div class="admin-sidebar-user-meta">
+                    <div class="admin-sidebar-user-name">{{ admin_email or 'Admin' }}</div>
+                    <div class="admin-sidebar-user-plan">Operations · control center</div>
+                </div>
+            </div>
             <div class="sidebar-footer">
                 Production control plane<br>
                 Built for operations, incident response, and user support.
