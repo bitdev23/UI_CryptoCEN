@@ -330,3 +330,44 @@ def send_otp_email_sync(to_email: str, otp_code: str) -> bool:
     else:
         logger.error('[OTP_EMAIL] ✗ Synchronous OTP failed for %s', to_email)
     return result
+
+
+def send_email_async(to_email: str, subject: str, html_content: str) -> None:
+    """Public passthrough for custom async email sends from admin operations."""
+    _send_async(to_email, subject, html_content)
+
+
+def send_maintenance_upcoming_email(
+    to_email: str,
+    message: str,
+    starts_at: str = '',
+    ends_at: str = '',
+) -> None:
+    subject = 'Scheduled Maintenance Notice'
+    start_block = f'<p><strong>Start:</strong> {starts_at}</p>' if starts_at else ''
+    end_block = f'<p><strong>Expected End:</strong> {ends_at}</p>' if ends_at else ''
+    html = _wrap_html(f"""
+<div class="header">Scheduled maintenance update</div>
+<div class="body-text">
+  <p>{message}</p>
+  {start_block}
+  {end_block}
+  <p>During this window, some features may be unavailable.</p>
+  <a class="cta-btn" href="{_APP_URL}">Open CryptoCEN →</a>
+</div>
+""")
+    _send_async(to_email, subject, html)
+
+
+def send_maintenance_live_email(to_email: str, message: str = '') -> None:
+    subject = 'Service Restored: CryptoCEN is Live'
+    note = message or 'All services are now available and operating normally.'
+    html = _wrap_html(f"""
+<div class="header">We are back live</div>
+<div class="body-text">
+  <p>{note}</p>
+  <p>Thank you for your patience during the maintenance window.</p>
+  <a class="cta-btn" href="{_APP_URL}">Open CryptoCEN →</a>
+</div>
+""")
+    _send_async(to_email, subject, html)

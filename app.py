@@ -388,6 +388,91 @@ def get_csrf_token() -> str:
         token = secrets.token_hex(32)
     return token
 
+
+_INCIDENT_STATE_CACHE = {
+    'expires_at': 0.0,
+    'state': {
+        'maintenance_mode': {'enabled': False, 'config': {}},
+        'kill_generate_preview': {'enabled': False, 'config': {}},
+        'kill_scheduler': {'enabled': False, 'config': {}},
+        'kill_kb_training': {'enabled': False, 'config': {}},
+        'kill_linkedin_posting': {'enabled': False, 'config': {}},
+    },
+}
+
+
+def _get_incident_state_cached() -> dict:
+    now_ts = time.time()
+    if now_ts < float(_INCIDENT_STATE_CACHE.get('expires_at', 0.0)):
+        return _INCIDENT_STATE_CACHE.get('state', {})
+    defaults = {
+        'maintenance_mode': {'enabled': False, 'config': {}},
+        'kill_generate_preview': {'enabled': False, 'config': {}},
+        'kill_scheduler': {'enabled': False, 'config': {}},
+        'kill_kb_training': {'enabled': False, 'config': {}},
+        'kill_linkedin_posting': {'enabled': False, 'config': {}},
+    }
+    if not auth_supabase:
+        _INCIDENT_STATE_CACHE['state'] = defaults
+        _INCIDENT_STATE_CACHE['expires_at'] = now_ts + 15
+        return defaults
+    try:
+        rows = auth_supabase.table('feature_flags').select('key,is_enabled_globally,config').in_('key', list(defaults.keys())).execute().data or []
+        merged = dict(defaults)
+        for row in rows:
+            key = str(row.get('key') or '').strip()
+            if key in merged:
+                merged[key] = {
+                    'enabled': bool(row.get('is_enabled_globally', False)),
+                    'config': row.get('config', {}) or {},
+                }
+        _INCIDENT_STATE_CACHE['state'] = merged
+        _INCIDENT_STATE_CACHE['expires_at'] = now_ts + 20
+        return merged
+    except Exception as e:
+        logger.debug('Incident controls fetch failed: %s', e)
+        _INCIDENT_STATE_CACHE['state'] = defaults
+        _INCIDENT_STATE_CACHE['expires_at'] = now_ts + 10
+        return defaults
+
+
+@app.before_request
+def _enforce_incident_controls():
+    path = request.path or '/'
+    if path.startswith('/admin') or path.startswith('/api/admin'):
+        return None
+    if path.startswith('/static/') or path.startswith('/assets/'):
+        return None
+    if path in {'/health', '/api/health'}:
+        return None
+    if path.startswith('/auth') or path.startswith('/login') or path.startswith('/signup'):
+        return None
+
+    controls = _get_incident_state_cached()
+    maintenance = controls.get('maintenance_mode', {})
+    maintenance_enabled = bool(maintenance.get('enabled', False))
+    maintenance_msg = str((maintenance.get('config', {}) or {}).get('banner_message') or 'Scheduled maintenance is currently active. Please check back shortly.')
+
+    if maintenance_enabled:
+        if path.startswith('/api/'):
+            return jsonify({'success': False, 'maintenance': True, 'message': maintenance_msg}), 503
+        return (
+            f"<html><head><title>Maintenance</title></head><body style='font-family:Arial,sans-serif;margin:40px;'>"
+            f"<h2>CryptoCEN is under maintenance</h2><p>{maintenance_msg}</p></body></html>",
+            503,
+            {'Content-Type': 'text/html; charset=utf-8'},
+        )
+
+    if controls.get('kill_generate_preview', {}).get('enabled') and path == '/api/generate-preview':
+        return jsonify({'success': False, 'message': 'Generation is temporarily disabled by incident control.'}), 503
+    if controls.get('kill_scheduler', {}).get('enabled') and path.startswith('/api/scheduled-posts'):
+        return jsonify({'success': False, 'message': 'Scheduling is temporarily disabled by incident control.'}), 503
+    if controls.get('kill_kb_training', {}).get('enabled') and request.method in {'POST', 'PUT', 'PATCH'} and (
+        'knowledge-base' in path or 'kb' in path
+    ):
+        return jsonify({'success': False, 'message': 'Knowledge base operations are temporarily disabled by incident control.'}), 503
+    return None
+
 # Make csrf_token available in all templates
 app.jinja_env.globals['csrf_token'] = get_csrf_token
 

@@ -8,7 +8,9 @@ data_dir) so the module never imports from app.py, avoiding circular deps.
 from __future__ import annotations
 
 import calendar
+import csv
 import hmac
+import io
 import json
 import logging
 import os
@@ -22,6 +24,7 @@ from uuid import UUID
 from dotenv import dotenv_values
 from flask import (
     Blueprint,
+    Response,
     jsonify,
     redirect,
     render_template,
@@ -332,6 +335,76 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             return True
         except Exception:
             return False
+
+    def _dict_diff(before: dict, after: dict) -> dict:
+        before = before or {}
+        after = after or {}
+        keys = set(before.keys()) | set(after.keys())
+        changes = {}
+        for key in sorted(keys):
+            if before.get(key) != after.get(key):
+                changes[key] = {'before': before.get(key), 'after': after.get(key)}
+        return changes
+
+    def _get_feature_flag_row(flag_key: str):
+        if not auth_supabase:
+            return None
+        try:
+            rows = auth_supabase.table('feature_flags').select('*').eq('key', flag_key).limit(1).execute().data or []
+            return rows[0] if rows else None
+        except Exception as e:
+            logger.error('Feature flag read failed for %s: %s', flag_key, e)
+            return None
+
+    def _set_feature_flag(flag_key: str, enabled: bool, config: dict | None = None, name: str = ''):
+        if not auth_supabase:
+            return False
+        now = datetime.utcnow().isoformat() + 'Z'
+        row = {
+            'key': flag_key,
+            'name': name or flag_key.replace('_', ' ').title(),
+            'description': 'Admin incident control',
+            'is_enabled_globally': bool(enabled),
+            'rollout_percentage': 100 if enabled else 0,
+            'config': config or {},
+            'updated_at': now,
+        }
+        try:
+            auth_supabase.table('feature_flags').upsert(row, on_conflict='key').execute()
+            return True
+        except Exception as e:
+            logger.error('Feature flag upsert failed for %s: %s', flag_key, e)
+            return False
+
+    def _extract_user_email(user_obj) -> str:
+        if isinstance(user_obj, dict):
+            return str(user_obj.get('email') or '').strip().lower()
+        return str(getattr(user_obj, 'email', '') or '').strip().lower()
+
+    def _extract_user_metadata(user_obj) -> dict:
+        if isinstance(user_obj, dict):
+            return user_obj.get('user_metadata', {}) or {}
+        return getattr(user_obj, 'user_metadata', {}) or {}
+
+    def _collect_target_emails(scope: str = 'all') -> list[str]:
+        emails = []
+        for user in _list_all_auth_users(max_users=20000, per_page=1000):
+            user_obj = user if isinstance(user, dict) else (getattr(user, 'user', None) or user)
+            email = _extract_user_email(user_obj)
+            if not email:
+                continue
+            md = _extract_user_metadata(user_obj)
+            if scope == 'active' and md.get('is_active') is False:
+                continue
+            if scope == 'verified':
+                if isinstance(user_obj, dict):
+                    verified = bool(user_obj.get('email_confirmed_at') or user_obj.get('confirmed_at'))
+                else:
+                    verified = bool(getattr(user_obj, 'email_confirmed_at', None) or getattr(user_obj, 'confirmed_at', None))
+                if not verified:
+                    continue
+            emails.append(email)
+        return sorted(set(emails))
 
     def _get_admin_credentials():
         env_email = os.getenv('ADMIN_EMAIL', '').strip().lower()
@@ -799,10 +872,17 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             else:
                 current_metadata = getattr(user_obj, 'user_metadata', {}) if user_obj else {}
             current_metadata = current_metadata or {}
+            before_state = {'is_active': bool(current_metadata.get('is_active', True))}
             current_metadata['is_active'] = active
             attributes = {'user_metadata': current_metadata, 'ban_duration': 'none' if active else '876000h'}
             auth_supabase.auth.admin.update_user_by_id(user_id, attributes)
-            _log_action('toggle_user_status', user_id, {'active': active})
+            after_state = {'is_active': active}
+            _log_action('toggle_user_status', user_id, {
+                'active': active,
+                'before': before_state,
+                'after': after_state,
+                'diff': _dict_diff(before_state, after_state),
+            })
             return jsonify({'success': True, 'message': 'User activated' if active else 'User deactivated'})
         except Exception as e:
             logger.error("Admin status update failed: %s", e)
@@ -1232,6 +1312,8 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
         now = datetime.utcnow()
         period_end = _add_months_utc(now, months)
         try:
+            before_rows = auth_supabase.table('subscriptions').select('plan,status,current_period_end,cancel_at_period_end').eq('user_id', user_id).limit(1).execute().data or []
+            before_state = before_rows[0] if before_rows else {}
             auth_supabase.table('subscriptions').upsert({
                 'user_id': user_id, 'plan': plan, 'status': 'active',
                 'billing_provider': 'manual',
@@ -1239,7 +1321,19 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
                 'current_period_end': period_end.isoformat() + 'Z',
                 'cancel_at_period_end': False, 'updated_at': now.isoformat() + 'Z',
             }, on_conflict='user_id').execute()
-            _log_action('set_subscription_plan', user_id, {'plan': plan, 'months': months})
+            after_state = {
+                'plan': plan,
+                'status': 'active',
+                'current_period_end': period_end.isoformat() + 'Z',
+                'cancel_at_period_end': False,
+            }
+            _log_action('set_subscription_plan', user_id, {
+                'plan': plan,
+                'months': months,
+                'before': before_state,
+                'after': after_state,
+                'diff': _dict_diff(before_state, after_state),
+            })
             return jsonify({
                 'success': True,
                 'message': f'Subscription updated to {plan.replace("_", " ")}',
@@ -1256,11 +1350,19 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
         try:
             now = datetime.utcnow().isoformat() + 'Z'
+            before_rows = auth_supabase.table('subscriptions').select('status,cancel_at_period_end,updated_at').eq('user_id', user_id).limit(1).execute().data or []
+            before_state = before_rows[0] if before_rows else {}
             auth_supabase.table('subscriptions').upsert({
                 'user_id': user_id, 'status': 'cancelled',
                 'cancel_at_period_end': True, 'updated_at': now,
             }, on_conflict='user_id').execute()
-            _log_action('cancel_subscription', user_id, {'cancel_at_period_end': True})
+            after_state = {'status': 'cancelled', 'cancel_at_period_end': True, 'updated_at': now}
+            _log_action('cancel_subscription', user_id, {
+                'cancel_at_period_end': True,
+                'before': before_state,
+                'after': after_state,
+                'diff': _dict_diff(before_state, after_state),
+            })
             return jsonify({'success': True, 'message': 'Subscription marked to cancel'})
         except Exception as e:
             logger.error("Admin cancel subscription failed: %s", e)
@@ -1310,8 +1412,17 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
         if '@' not in new_email:
             return jsonify({'success': False, 'message': 'Valid email is required'}), 400
         try:
+            selected = _find_auth_user_by_id(user_id)
+            old_email = str(getattr(selected, 'email', '') or (selected.get('email', '') if isinstance(selected, dict) else '')).strip().lower() if selected else ''
             auth_supabase.auth.admin.update_user_by_id(user_id, {'email': new_email})
-            _log_action('update_user_email', user_id, {'new_email': new_email})
+            before_state = {'email': old_email}
+            after_state = {'email': new_email}
+            _log_action('update_user_email', user_id, {
+                'new_email': new_email,
+                'before': before_state,
+                'after': after_state,
+                'diff': _dict_diff(before_state, after_state),
+            })
             return jsonify({'success': True, 'message': 'User email updated successfully', 'email': new_email})
         except Exception as e:
             logger.error("Admin update user email failed: %s", e)
@@ -1605,5 +1716,424 @@ def create_admin_blueprint(*, limiter, logger, data_dir: str):
             })
         except Exception as e:
             return _safe_api_error('Failed to fetch referral stats', e)
+
+    # ── Advanced admin operations ───────────────────────────────────────
+
+    @admin_bp.route('/api/admin/audit-export.csv', methods=['GET'])
+    @require_admin_api
+    def admin_audit_export_csv():
+        """Export recent admin audit records as CSV, including before/after diff payloads."""
+        if not auth_supabase:
+            return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
+        try:
+            raw_limit = request.args.get('limit', '500')
+            try:
+                limit = max(1, min(5000, int(raw_limit)))
+            except Exception:
+                limit = 500
+            rows = auth_supabase.table('system_logs') \
+                .select('id,level,message,request_path,request_method,metadata,created_at') \
+                .like('message', 'admin:%') \
+                .order('created_at', desc=True) \
+                .limit(limit) \
+                .execute().data or []
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                'id', 'created_at', 'action', 'admin_email', 'target_user_id', 'request_method',
+                'request_path', 'before', 'after', 'diff', 'details',
+            ])
+            for row in rows:
+                metadata = row.get('metadata', {}) or {}
+                details = metadata.get('details', {}) or {}
+                writer.writerow([
+                    row.get('id', ''),
+                    row.get('created_at', ''),
+                    str(row.get('message', '')).replace('admin:', '', 1),
+                    metadata.get('admin_email', ''),
+                    metadata.get('target_user_id', ''),
+                    row.get('request_method', ''),
+                    row.get('request_path', ''),
+                    json.dumps(details.get('before', {}), ensure_ascii=True),
+                    json.dumps(details.get('after', {}), ensure_ascii=True),
+                    json.dumps(details.get('diff', {}), ensure_ascii=True),
+                    json.dumps(details, ensure_ascii=True),
+                ])
+
+            ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            csv_data = output.getvalue()
+            output.close()
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename=admin_audit_export_{ts}.csv'},
+            )
+        except Exception as e:
+            return _safe_api_error('Failed to export audit logs', e)
+
+    @admin_bp.route('/api/admin/queue/health', methods=['GET'])
+    @require_admin_api
+    def admin_queue_health():
+        """Queue/worker health with stuck and failed job visibility."""
+        try:
+            from redis import Redis as RawRedis
+            from rq import Queue, Worker
+            from rq.registry import FailedJobRegistry, FinishedJobRegistry, ScheduledJobRegistry, StartedJobRegistry
+
+            queue_name = os.getenv('KB_QUEUE_NAME', 'mantraj_kb_jobs')
+            conn = RawRedis(
+                host=os.getenv('REDIS_HOST', '127.0.0.1'),
+                port=int(os.getenv('REDIS_PORT', '6379')),
+                db=int(os.getenv('REDIS_DB', '0')),
+                password=os.getenv('REDIS_PASSWORD', None) or None,
+                ssl=os.getenv('REDIS_SSL', '').lower() in {'1', 'true', 'yes'},
+                decode_responses=False,
+                socket_connect_timeout=5,
+            )
+            queue = Queue(queue_name, connection=conn)
+            started = StartedJobRegistry(queue=queue)
+            failed = FailedJobRegistry(queue=queue)
+            scheduled = ScheduledJobRegistry(queue=queue)
+            finished = FinishedJobRegistry(queue=queue)
+
+            now = datetime.utcnow()
+            stuck_threshold_min = max(1, min(240, int(request.args.get('stuck_minutes', '20'))))
+            stuck_jobs = []
+            for job_id in started.get_job_ids()[:200]:
+                try:
+                    job = queue.fetch_job(job_id)
+                    if not job:
+                        continue
+                    started_at = job.started_at
+                    if not started_at:
+                        continue
+                    elapsed_min = (now - started_at.replace(tzinfo=None)).total_seconds() / 60.0
+                    if elapsed_min >= stuck_threshold_min:
+                        stuck_jobs.append({
+                            'job_id': job.id,
+                            'func_name': job.func_name,
+                            'enqueued_at': job.enqueued_at.isoformat() + 'Z' if job.enqueued_at else None,
+                            'started_at': started_at.isoformat() + 'Z',
+                            'elapsed_minutes': round(elapsed_min, 1),
+                        })
+                except Exception:
+                    continue
+
+            failed_jobs = []
+            for job_id in failed.get_job_ids()[:50]:
+                try:
+                    job = queue.fetch_job(job_id)
+                    if not job:
+                        continue
+                    failed_jobs.append({
+                        'job_id': job.id,
+                        'func_name': job.func_name,
+                        'exc_info': (job.exc_info or '')[-600:],
+                        'ended_at': job.ended_at.isoformat() + 'Z' if job.ended_at else None,
+                    })
+                except Exception:
+                    continue
+
+            worker_rows = []
+            for worker in Worker.all(connection=conn):
+                worker_rows.append({
+                    'name': worker.name,
+                    'state': worker.state,
+                    'last_heartbeat': worker.last_heartbeat.isoformat() + 'Z' if worker.last_heartbeat else None,
+                    'current_job_id': worker.get_current_job_id(),
+                })
+
+            return jsonify({
+                'success': True,
+                'queue_name': queue_name,
+                'counts': {
+                    'queued': queue.count,
+                    'started': len(started),
+                    'failed': len(failed),
+                    'scheduled': len(scheduled),
+                    'finished': len(finished),
+                    'workers': len(worker_rows),
+                    'stuck': len(stuck_jobs),
+                },
+                'workers': worker_rows,
+                'stuck_jobs': stuck_jobs,
+                'failed_jobs': failed_jobs,
+            })
+        except Exception as e:
+            return _safe_api_error('Failed to fetch queue health', e)
+
+    @admin_bp.route('/api/admin/queue/jobs/<job_id>/retry', methods=['POST'])
+    @require_admin_api
+    def admin_retry_queue_job(job_id):
+        try:
+            from redis import Redis as RawRedis
+            from rq import Queue
+            queue_name = os.getenv('KB_QUEUE_NAME', 'mantraj_kb_jobs')
+            conn = RawRedis(
+                host=os.getenv('REDIS_HOST', '127.0.0.1'),
+                port=int(os.getenv('REDIS_PORT', '6379')),
+                db=int(os.getenv('REDIS_DB', '0')),
+                password=os.getenv('REDIS_PASSWORD', None) or None,
+                ssl=os.getenv('REDIS_SSL', '').lower() in {'1', 'true', 'yes'},
+                decode_responses=False,
+                socket_connect_timeout=5,
+            )
+            queue = Queue(queue_name, connection=conn)
+            job = queue.fetch_job(job_id)
+            if not job:
+                return jsonify({'success': False, 'message': 'Job not found'}), 404
+            job.requeue()
+            _log_action('queue_retry_job', '', {'job_id': job_id, 'queue_name': queue_name})
+            return jsonify({'success': True, 'message': f'Job {job_id} re-queued'})
+        except Exception as e:
+            return _safe_api_error('Failed to retry queue job', e)
+
+    @admin_bp.route('/api/admin/queue/jobs/<job_id>/cancel', methods=['POST'])
+    @require_admin_api
+    def admin_cancel_queue_job(job_id):
+        try:
+            from redis import Redis as RawRedis
+            from rq import Queue
+            queue_name = os.getenv('KB_QUEUE_NAME', 'mantraj_kb_jobs')
+            conn = RawRedis(
+                host=os.getenv('REDIS_HOST', '127.0.0.1'),
+                port=int(os.getenv('REDIS_PORT', '6379')),
+                db=int(os.getenv('REDIS_DB', '0')),
+                password=os.getenv('REDIS_PASSWORD', None) or None,
+                ssl=os.getenv('REDIS_SSL', '').lower() in {'1', 'true', 'yes'},
+                decode_responses=False,
+                socket_connect_timeout=5,
+            )
+            queue = Queue(queue_name, connection=conn)
+            job = queue.fetch_job(job_id)
+            if not job:
+                return jsonify({'success': False, 'message': 'Job not found'}), 404
+            job.cancel()
+            _log_action('queue_cancel_job', '', {'job_id': job_id, 'queue_name': queue_name})
+            return jsonify({'success': True, 'message': f'Job {job_id} canceled'})
+        except Exception as e:
+            return _safe_api_error('Failed to cancel queue job', e)
+
+    @admin_bp.route('/api/admin/kb-diagnostics/<user_id>', methods=['GET'])
+    @require_admin_api
+    def admin_kb_diagnostics(user_id):
+        """Inspect user KB ingestion stats and run a retrieval probe."""
+        if not auth_supabase:
+            return jsonify({'success': False, 'message': 'Supabase not configured'}), 500
+        if not _is_valid_uuid(user_id):
+            return jsonify({'success': False, 'message': 'Invalid user_id'}), 400
+        try:
+            query = str(request.args.get('query') or 'What are this user\'s top insights?').strip()
+
+            files = auth_supabase.table('kb_files').select(
+                'id,filename,status,chunk_count,error_message,created_at,processed_at'
+            ).eq('user_id', user_id).order('created_at', desc=True).limit(50).execute().data or []
+
+            file_count = len(files)
+            indexed_files = sum(1 for f in files if str(f.get('status') or '').lower() == 'indexed')
+            total_chunks = sum(int(f.get('chunk_count') or 0) for f in files)
+
+            embedding_count = 0
+            try:
+                emb_count_resp = auth_supabase.table('kb_embeddings').select('id', count='exact').eq('user_id', user_id).limit(1).execute()
+                embedding_count = int(getattr(emb_count_resp, 'count', 0) or 0)
+            except Exception:
+                embedding_count = 0
+
+            retrieval = []
+            try:
+                from rag_system_pgvector import RAGStore
+                rag = RAGStore(user_id=user_id)
+                matches = rag.hybrid_search(query=query, k=5, min_similarity=0.05) or []
+                for m in matches:
+                    retrieval.append({
+                        'source': m.get('source') or m.get('document_name') or 'unknown',
+                        'similarity': round(float(m.get('similarity') or 0.0), 4),
+                        'snippet': str(m.get('content') or '')[:280],
+                    })
+            except Exception as e:
+                retrieval = [{'source': 'probe', 'similarity': 0.0, 'snippet': f'Retrieval probe failed: {e}'}]
+
+            return jsonify({
+                'success': True,
+                'user_id': user_id,
+                'stats': {
+                    'file_count': file_count,
+                    'indexed_files': indexed_files,
+                    'total_chunks': total_chunks,
+                    'embedding_count': embedding_count,
+                },
+                'files': files,
+                'probe_query': query,
+                'retrieval': retrieval,
+            })
+        except Exception as e:
+            return _safe_api_error('Failed to run KB diagnostics', e)
+
+    @admin_bp.route('/api/admin/impersonation/start', methods=['POST'])
+    @require_admin_api
+    def admin_impersonation_start():
+        """Start a read-only impersonation context for support debugging."""
+        payload = request.get_json(silent=True) or {}
+        user_id = str(payload.get('user_id') or '').strip()
+        if not _is_valid_uuid(user_id):
+            return jsonify({'success': False, 'message': 'Valid user_id is required'}), 400
+        selected = _find_auth_user_by_id(user_id)
+        if not selected:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        email = _extract_user_email(selected)
+        session['admin_impersonation'] = {
+            'user_id': user_id,
+            'email': email,
+            'mode': 'read_only',
+            'started_at': datetime.utcnow().isoformat() + 'Z',
+            'started_by': session.get('admin_email', ''),
+        }
+        _log_action('impersonation_start', user_id, {'mode': 'read_only', 'email': email})
+        return jsonify({'success': True, 'impersonation': session.get('admin_impersonation')})
+
+    @admin_bp.route('/api/admin/impersonation/stop', methods=['POST'])
+    @require_admin_api
+    def admin_impersonation_stop():
+        current = session.pop('admin_impersonation', None)
+        _log_action('impersonation_stop', (current or {}).get('user_id', ''), {'stopped': bool(current)})
+        return jsonify({'success': True, 'stopped': bool(current)})
+
+    @admin_bp.route('/api/admin/impersonation/status', methods=['GET'])
+    @require_admin_api
+    def admin_impersonation_status():
+        return jsonify({'success': True, 'impersonation': session.get('admin_impersonation')})
+
+    @admin_bp.route('/api/admin/impersonation/context', methods=['GET'])
+    @require_admin_api
+    def admin_impersonation_context():
+        ctx = session.get('admin_impersonation') or {}
+        user_id = str(ctx.get('user_id') or '').strip()
+        if not user_id:
+            return jsonify({'success': False, 'message': 'No active impersonation context'}), 404
+        try:
+            posts = auth_supabase.table('posts').select('id,status,created_at,scheduled_for,posted_at,error_message').eq('user_id', user_id).order('created_at', desc=True).limit(20).execute().data or []
+            scheduled = auth_supabase.table('scheduled_posts_v2').select('id,status,scheduled_for,created_at').eq('user_id', user_id).order('created_at', desc=True).limit(20).execute().data or []
+            sub = auth_supabase.table('subscriptions').select('*').eq('user_id', user_id).limit(1).execute().data or []
+            kb_files = auth_supabase.table('kb_files').select('id,filename,status,chunk_count,created_at').eq('user_id', user_id).order('created_at', desc=True).limit(10).execute().data or []
+            return jsonify({
+                'success': True,
+                'impersonation': ctx,
+                'snapshot': {
+                    'posts': posts,
+                    'scheduled_posts': scheduled,
+                    'subscription': sub[0] if sub else {},
+                    'kb_files': kb_files,
+                },
+            })
+        except Exception as e:
+            return _safe_api_error('Failed to load impersonation context', e)
+
+    @admin_bp.route('/api/admin/incident-controls', methods=['GET'])
+    @require_admin_api
+    def admin_incident_controls_get():
+        try:
+            keys = [
+                'maintenance_mode',
+                'kill_generate_preview',
+                'kill_scheduler',
+                'kill_kb_training',
+                'kill_linkedin_posting',
+            ]
+            state = {}
+            for key in keys:
+                row = _get_feature_flag_row(key) or {}
+                state[key] = {
+                    'enabled': bool(row.get('is_enabled_globally', False)),
+                    'config': row.get('config', {}) or {},
+                    'updated_at': row.get('updated_at'),
+                }
+            return jsonify({'success': True, 'controls': state})
+        except Exception as e:
+            return _safe_api_error('Failed to fetch incident controls', e)
+
+    @admin_bp.route('/api/admin/incident-controls', methods=['POST'])
+    @require_admin_api
+    def admin_incident_controls_update():
+        payload = request.get_json(silent=True) or {}
+        controls = payload.get('controls') or {}
+        if not isinstance(controls, dict):
+            return jsonify({'success': False, 'message': 'controls must be an object'}), 400
+        try:
+            updated = []
+            for key, value in controls.items():
+                if key not in {
+                    'maintenance_mode',
+                    'kill_generate_preview',
+                    'kill_scheduler',
+                    'kill_kb_training',
+                    'kill_linkedin_posting',
+                }:
+                    continue
+                enabled = bool((value or {}).get('enabled', False))
+                config = (value or {}).get('config', {}) or {}
+                config['updated_by'] = session.get('admin_email', '')
+                config['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+                if _set_feature_flag(key, enabled, config=config):
+                    updated.append({'key': key, 'enabled': enabled})
+            _log_action('incident_controls_update', '', {'updated': updated})
+            return jsonify({'success': True, 'updated': updated})
+        except Exception as e:
+            return _safe_api_error('Failed to update incident controls', e)
+
+    @admin_bp.route('/api/admin/maintenance/notify', methods=['POST'])
+    @require_admin_api
+    def admin_maintenance_notify():
+        """Broadcast maintenance upcoming/live emails to selected user scope."""
+        payload = request.get_json(silent=True) or {}
+        notice_type = str(payload.get('type') or 'upcoming').strip().lower()
+        scope = str(payload.get('scope') or 'active').strip().lower()
+        subject = str(payload.get('subject') or '').strip()
+        message = str(payload.get('message') or '').strip()
+        starts_at = str(payload.get('starts_at') or '').strip()
+        ends_at = str(payload.get('ends_at') or '').strip()
+        if notice_type not in {'upcoming', 'live'}:
+            return jsonify({'success': False, 'message': 'type must be upcoming or live'}), 400
+        if scope not in {'all', 'active', 'verified'}:
+            return jsonify({'success': False, 'message': 'scope must be all, active, or verified'}), 400
+        if not message:
+            return jsonify({'success': False, 'message': 'message is required'}), 400
+        try:
+            from notifications import send_email_async, send_maintenance_live_email, send_maintenance_upcoming_email
+
+            recipients = _collect_target_emails(scope=scope)
+            if not recipients:
+                return jsonify({'success': False, 'message': 'No recipients found for selected scope'}), 404
+
+            if notice_type == 'upcoming':
+                mail_subject = subject or 'Scheduled Maintenance Notice'
+            else:
+                mail_subject = subject or 'Service Restored: CryptoCEN is Live'
+
+            sent = 0
+            for email in recipients:
+                try:
+                    if subject:
+                        html = f'<div style="font-family:Arial,sans-serif"><h2>{mail_subject}</h2><p>{message}</p></div>'
+                        send_email_async(to_email=email, subject=mail_subject, html_content=html)
+                    elif notice_type == 'upcoming':
+                        send_maintenance_upcoming_email(to_email=email, message=message, starts_at=starts_at, ends_at=ends_at)
+                    else:
+                        send_maintenance_live_email(to_email=email, message=message)
+                    sent += 1
+                except Exception:
+                    continue
+
+            _log_action('maintenance_notify', '', {
+                'type': notice_type,
+                'scope': scope,
+                'requested_recipients': len(recipients),
+                'sent': sent,
+                'subject': mail_subject,
+            })
+            return jsonify({'success': True, 'sent': sent, 'requested': len(recipients)})
+        except Exception as e:
+            return _safe_api_error('Failed to send maintenance notice', e)
 
     return admin_bp

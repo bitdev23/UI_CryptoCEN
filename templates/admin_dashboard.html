@@ -954,6 +954,10 @@
                 <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" style="cursor: pointer;">⚠️ Error Monitoring</button>
                 <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" style="cursor: pointer;">📊 Revenue Dashboard</button>
                 <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" style="cursor: pointer;">🚩 Feature Flags</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)" style="cursor: pointer;">🧯 Incident Controls</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)" style="cursor: pointer;">🧵 Queue Monitor</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)" style="cursor: pointer;">📚 KB Diagnostics</button>
+                <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)" style="cursor: pointer;">🕵️ Read-only Impersonation</button>
                 <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" style="cursor: pointer;">🧭 Onboarding</button>
             </div>
 
@@ -1037,6 +1041,100 @@
                         <button class="btn btn-ghost" onclick="loadFeatureFlags()">Refresh</button>
                     </div>
                     <div id="feature-flags-list" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+
+            <div id="feature-tab-incident" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Incident & Maintenance Controls</h3>
+                            <p class="panel-sub">Kill switches, maintenance mode, and user communication</p>
+                        </div>
+                        <button class="btn btn-ghost" onclick="loadIncidentControls()">Refresh</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px;">
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-maintenance"> Maintenance mode</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-generate"> Kill generate-preview</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-scheduler"> Kill scheduling writes</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-kb"> Kill KB training writes</label>
+                        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;"><input type="checkbox" id="ctl-kill-linkedin"> Kill LinkedIn posting</label>
+                    </div>
+                    <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <input id="maintenance-banner-message" type="text" placeholder="Maintenance banner message" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <button class="btn btn-primary" onclick="saveIncidentControls()">Save Incident Controls</button>
+                    </div>
+                    <div style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:12px;display:grid;gap:8px;">
+                        <div style="font-weight:700;font-size:13px;color:#1e293b;">Email Maintenance Notices</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+                            <select id="maintenance-notice-type" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                                <option value="upcoming">Upcoming maintenance</option>
+                                <option value="live">App is live</option>
+                            </select>
+                            <select id="maintenance-notice-scope" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                                <option value="active">Active users</option>
+                                <option value="verified">Verified users</option>
+                                <option value="all">All users</option>
+                            </select>
+                            <input id="maintenance-starts-at" type="text" placeholder="Start time (optional)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                            <input id="maintenance-ends-at" type="text" placeholder="End time (optional)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        </div>
+                        <input id="maintenance-notice-subject" type="text" placeholder="Custom email subject (optional)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <textarea id="maintenance-notice-message" placeholder="Message for users" style="min-height:90px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;"></textarea>
+                        <div><button class="btn btn-primary" onclick="sendMaintenanceNotice()">Send Email Notice</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="feature-tab-queue" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Queue Monitor</h3>
+                            <p class="panel-sub">Worker health, failed jobs, and stuck jobs</p>
+                        </div>
+                        <button class="btn btn-ghost" onclick="loadQueueMonitor()">Refresh</button>
+                    </div>
+                    <div id="queue-health-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px;"></div>
+                    <div id="queue-workers-list" style="margin-top:12px;"></div>
+                    <div id="queue-failed-list" style="margin-top:12px;"></div>
+                    <div id="queue-stuck-list" style="margin-top:12px;"></div>
+                </div>
+            </div>
+
+            <div id="feature-tab-kbdiag" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">KB Diagnostics Per User</h3>
+                            <p class="panel-sub">Inspect ingestion status and retrieval quality</p>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;">
+                        <input id="kbdiag-user-id" type="text" placeholder="User ID" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <input id="kbdiag-query" type="text" placeholder="Probe query" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <button class="btn btn-primary" onclick="runKbDiagnostics()">Run</button>
+                    </div>
+                    <div id="kbdiag-result" style="margin-top:12px;"></div>
+                </div>
+            </div>
+
+            <div id="feature-tab-impersonation" class="feature-tab" style="display: none;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Read-only Impersonation</h3>
+                            <p class="panel-sub">Support context for one user without write actions</p>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;">
+                        <input id="impersonation-user-id" type="text" placeholder="Target user ID" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;">
+                        <button class="btn btn-primary" onclick="startImpersonationContext()">Start</button>
+                        <button class="btn btn-ghost" onclick="loadImpersonationContext()">Refresh</button>
+                        <button class="btn btn-ghost" onclick="stopImpersonationContext()">Stop</button>
+                    </div>
+                    <div id="impersonation-status" style="margin-top:10px;color:#475569;font-size:12px;"></div>
+                    <div id="impersonation-result" style="margin-top:12px;"></div>
                 </div>
             </div>
 
@@ -1198,7 +1296,10 @@
                     <h3 class="panel-title">Recent Admin Actions</h3>
                     <p class="panel-sub">System audit trail for sensitive operations</p>
                 </div>
-                <button class="btn btn-ghost" onclick="loadAuditLogs()">Refresh</button>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-ghost" onclick="loadAuditLogs()">Refresh</button>
+                    <button class="btn btn-primary" onclick="exportAuditCsv()">Export CSV + Diff</button>
+                </div>
             </div>
             <div id="audit-list" class="audit-list"></div>
         </section>
@@ -2648,7 +2749,243 @@
             if (tabName === 'errors') setTimeout(() => loadErrorLogs(), 100);
             if (tabName === 'revenue') setTimeout(() => loadRevenueMetrics(), 100);
             if (tabName === 'flags') setTimeout(() => loadFeatureFlags(), 100);
+            if (tabName === 'incident') setTimeout(() => loadIncidentControls(), 100);
+            if (tabName === 'queue') setTimeout(() => loadQueueMonitor(), 100);
+            if (tabName === 'kbdiag') setTimeout(() => runKbDiagnostics(true), 100);
+            if (tabName === 'impersonation') setTimeout(() => loadImpersonationContext(), 100);
             if (tabName === 'onboarding') setTimeout(() => renderAdminOnboardingControls(), 100);
+        }
+
+        function exportAuditCsv() {
+            window.open('/api/admin/audit-export.csv?limit=1000', '_blank', 'noopener');
+        }
+
+        async function loadIncidentControls() {
+            try {
+                const data = await api('/api/admin/incident-controls');
+                const c = data.controls || {};
+                document.getElementById('ctl-maintenance').checked = !!c.maintenance_mode?.enabled;
+                document.getElementById('ctl-kill-generate').checked = !!c.kill_generate_preview?.enabled;
+                document.getElementById('ctl-kill-scheduler').checked = !!c.kill_scheduler?.enabled;
+                document.getElementById('ctl-kill-kb').checked = !!c.kill_kb_training?.enabled;
+                document.getElementById('ctl-kill-linkedin').checked = !!c.kill_linkedin_posting?.enabled;
+                document.getElementById('maintenance-banner-message').value = String(c.maintenance_mode?.config?.banner_message || '');
+            } catch (err) {
+                showToast(err.message || 'Failed to load incident controls', 'error');
+            }
+        }
+
+        async function saveIncidentControls() {
+            showLoading('Saving incident controls...');
+            try {
+                const payload = {
+                    controls: {
+                        maintenance_mode: {
+                            enabled: document.getElementById('ctl-maintenance').checked,
+                            config: {
+                                banner_message: (document.getElementById('maintenance-banner-message').value || '').trim()
+                            }
+                        },
+                        kill_generate_preview: { enabled: document.getElementById('ctl-kill-generate').checked },
+                        kill_scheduler: { enabled: document.getElementById('ctl-kill-scheduler').checked },
+                        kill_kb_training: { enabled: document.getElementById('ctl-kill-kb').checked },
+                        kill_linkedin_posting: { enabled: document.getElementById('ctl-kill-linkedin').checked }
+                    }
+                };
+                await api('/api/admin/incident-controls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                showToast('Incident controls updated', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to save incident controls', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function sendMaintenanceNotice() {
+            const type = document.getElementById('maintenance-notice-type').value;
+            const scope = document.getElementById('maintenance-notice-scope').value;
+            const subject = (document.getElementById('maintenance-notice-subject').value || '').trim();
+            const message = (document.getElementById('maintenance-notice-message').value || '').trim();
+            const startsAt = (document.getElementById('maintenance-starts-at').value || '').trim();
+            const endsAt = (document.getElementById('maintenance-ends-at').value || '').trim();
+            if (!message) {
+                showToast('Maintenance message is required', 'error');
+                return;
+            }
+            showLoading('Sending maintenance emails...');
+            try {
+                const data = await api('/api/admin/maintenance/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type,
+                        scope,
+                        subject,
+                        message,
+                        starts_at: startsAt,
+                        ends_at: endsAt
+                    })
+                });
+                showToast(`Maintenance email queued for ${data.sent || 0} users`, 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to send maintenance notice', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadQueueMonitor() {
+            const summary = document.getElementById('queue-health-summary');
+            const workers = document.getElementById('queue-workers-list');
+            const failed = document.getElementById('queue-failed-list');
+            const stuck = document.getElementById('queue-stuck-list');
+            summary.innerHTML = '<div style="color:#64748b;font-size:12px;">Loading queue health...</div>';
+            workers.innerHTML = '';
+            failed.innerHTML = '';
+            stuck.innerHTML = '';
+            try {
+                const data = await api('/api/admin/queue/health');
+                const counts = data.counts || {};
+                summary.innerHTML = [
+                    ['Queue', data.queue_name || '-'],
+                    ['Queued', counts.queued || 0],
+                    ['Started', counts.started || 0],
+                    ['Failed', counts.failed || 0],
+                    ['Workers', counts.workers || 0],
+                    ['Stuck', counts.stuck || 0],
+                ].map(([k, v]) => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">${esc(k)}</div><div style="font-size:19px;font-weight:700;">${esc(v)}</div></div>`).join('');
+
+                const workerRows = (data.workers || []).map(w => `<div style="padding:8px;border-bottom:1px solid #eef2f7;font-size:12px;"><strong>${esc(w.name)}</strong> · ${esc(w.state)} · heartbeat: ${esc(fmtDate(w.last_heartbeat))}</div>`).join('');
+                workers.innerHTML = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Workers</div><div style="border:1px solid #e2e8f0;border-radius:8px;">${workerRows || '<div style="padding:10px;color:#64748b;">No workers detected</div>'}</div>`;
+
+                const failedRows = (data.failed_jobs || []).map(j => `
+                    <div style="padding:10px;border-bottom:1px solid #eef2f7;font-size:12px;">
+                        <div style="font-weight:700;">${esc(j.job_id)} · ${esc(j.func_name || '-')}</div>
+                        <div style="margin-top:4px;color:#64748b;white-space:pre-wrap;">${esc(j.exc_info || '-')}</div>
+                        <div style="margin-top:6px;"><button class="btn btn-ghost" onclick="retryQueueJob('${esc(j.job_id)}')">Retry</button> <button class="btn btn-ghost" onclick="cancelQueueJob('${esc(j.job_id)}')">Cancel</button></div>
+                    </div>
+                `).join('');
+                failed.innerHTML = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Failed Jobs</div><div style="border:1px solid #e2e8f0;border-radius:8px;">${failedRows || '<div style="padding:10px;color:#64748b;">No failed jobs</div>'}</div>`;
+
+                const stuckRows = (data.stuck_jobs || []).map(j => `<div style="padding:8px;border-bottom:1px solid #eef2f7;font-size:12px;"><strong>${esc(j.job_id)}</strong> · ${esc(j.func_name || '-')} · ${esc(j.elapsed_minutes)} min</div>`).join('');
+                stuck.innerHTML = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;">Stuck Jobs</div><div style="border:1px solid #e2e8f0;border-radius:8px;">${stuckRows || '<div style="padding:10px;color:#64748b;">No stuck jobs</div>'}</div>`;
+            } catch (err) {
+                summary.innerHTML = `<div style="color:#b91c1c;font-size:12px;">${esc(err.message || 'Queue monitor failed')}</div>`;
+            }
+        }
+
+        async function retryQueueJob(jobId) {
+            try {
+                await api(`/api/admin/queue/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
+                showToast(`Re-queued ${jobId}`, 'success');
+                await loadQueueMonitor();
+            } catch (err) {
+                showToast(err.message || 'Retry failed', 'error');
+            }
+        }
+
+        async function cancelQueueJob(jobId) {
+            try {
+                await api(`/api/admin/queue/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+                showToast(`Canceled ${jobId}`, 'success');
+                await loadQueueMonitor();
+            } catch (err) {
+                showToast(err.message || 'Cancel failed', 'error');
+            }
+        }
+
+        async function runKbDiagnostics(skipIfEmpty = false) {
+            const userId = (document.getElementById('kbdiag-user-id').value || '').trim();
+            const query = (document.getElementById('kbdiag-query').value || '').trim();
+            const target = document.getElementById('kbdiag-result');
+            if (!userId) {
+                if (!skipIfEmpty) showToast('User ID is required', 'error');
+                target.innerHTML = '<div style="color:#64748b;font-size:12px;">Enter a user ID to run KB diagnostics.</div>';
+                return;
+            }
+            target.innerHTML = '<div style="color:#64748b;font-size:12px;">Running KB diagnostics...</div>';
+            try {
+                const url = `/api/admin/kb-diagnostics/${encodeURIComponent(userId)}?query=${encodeURIComponent(query || 'What are this user\'s top insights?')}`;
+                const data = await api(url);
+                const stats = data.stats || {};
+                const statHtml = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px;">
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Files</div><div style="font-size:18px;font-weight:700;">${esc(stats.file_count || 0)}</div></div>
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Indexed</div><div style="font-size:18px;font-weight:700;">${esc(stats.indexed_files || 0)}</div></div>
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Chunks</div><div style="font-size:18px;font-weight:700;">${esc(stats.total_chunks || 0)}</div></div>
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Embeddings</div><div style="font-size:18px;font-weight:700;">${esc(stats.embedding_count || 0)}</div></div>
+                    </div>
+                `;
+                const retrievalHtml = (data.retrieval || []).map(r => `<div style="padding:8px;border-bottom:1px solid #eef2f7;"><div style="font-size:12px;font-weight:700;">${esc(r.source || '-')} · similarity ${esc(r.similarity || 0)}</div><div style="font-size:12px;color:#64748b;margin-top:3px;">${esc(r.snippet || '-')}</div></div>`).join('');
+                target.innerHTML = `${statHtml}<div style="font-weight:700;font-size:13px;margin:4px 0;">Retrieval Probe</div><div style="border:1px solid #e2e8f0;border-radius:8px;">${retrievalHtml || '<div style="padding:10px;color:#64748b;">No retrieval records.</div>'}</div>`;
+            } catch (err) {
+                target.innerHTML = `<div style="color:#b91c1c;font-size:12px;">${esc(err.message || 'KB diagnostics failed')}</div>`;
+            }
+        }
+
+        async function startImpersonationContext() {
+            const userId = (document.getElementById('impersonation-user-id').value || '').trim();
+            if (!userId) {
+                showToast('Target user ID is required', 'error');
+                return;
+            }
+            showLoading('Starting read-only impersonation...');
+            try {
+                await api('/api/admin/impersonation/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                showToast('Read-only impersonation context started', 'success');
+                await loadImpersonationContext();
+            } catch (err) {
+                showToast(err.message || 'Failed to start impersonation', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function stopImpersonationContext() {
+            try {
+                await api('/api/admin/impersonation/stop', { method: 'POST' });
+                document.getElementById('impersonation-status').textContent = 'No active read-only impersonation context.';
+                document.getElementById('impersonation-result').innerHTML = '';
+                showToast('Impersonation context stopped', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to stop impersonation', 'error');
+            }
+        }
+
+        async function loadImpersonationContext() {
+            const statusEl = document.getElementById('impersonation-status');
+            const resultEl = document.getElementById('impersonation-result');
+            try {
+                const status = await api('/api/admin/impersonation/status');
+                const ctx = status.impersonation;
+                if (!ctx || !ctx.user_id) {
+                    statusEl.textContent = 'No active read-only impersonation context.';
+                    resultEl.innerHTML = '';
+                    return;
+                }
+                statusEl.textContent = `Active for ${ctx.user_id} (${ctx.email || 'unknown'}) · started ${fmtDate(ctx.started_at)}`;
+                const data = await api('/api/admin/impersonation/context');
+                const snap = data.snapshot || {};
+                resultEl.innerHTML = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;">
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Posts</div><div style="font-size:18px;font-weight:700;">${esc((snap.posts || []).length)}</div></div>
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">Scheduled</div><div style="font-size:18px;font-weight:700;">${esc((snap.scheduled_posts || []).length)}</div></div>
+                        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;"><div style="font-size:11px;color:#64748b;">KB Files</div><div style="font-size:18px;font-weight:700;">${esc((snap.kb_files || []).length)}</div></div>
+                    </div>
+                    <div style="margin-top:8px;font-size:12px;color:#475569;">Subscription: ${esc(snap.subscription?.plan || 'free')} · ${esc(snap.subscription?.status || 'inactive')}</div>
+                `;
+            } catch (err) {
+                statusEl.textContent = 'Unable to load impersonation context.';
+                resultEl.innerHTML = `<div style="color:#b91c1c;font-size:12px;">${esc(err.message || 'Impersonation context failed')}</div>`;
+            }
         }
 
         // Notification Functions
