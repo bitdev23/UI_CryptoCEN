@@ -12,6 +12,8 @@
         :root {
             --primary: #667eea;
             --secondary: #764ba2;
+            --sidebar-start: #231f66;
+            --sidebar-end: #4b43b3;
             --primary-700: #5568d3;
             --primary-900: #2f3a8f;
             --surface: rgba(255, 255, 255, 0.92);
@@ -200,7 +202,7 @@
             align-self: start;
             height: calc(100vh - 74px);
             max-height: calc(100vh - 74px);
-            background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
+            background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%);
             border: none;
             border-radius: 0;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -214,15 +216,6 @@
         }
 
         .admin-sidebar::-webkit-scrollbar { display: none; }
-
-        .admin-sidebar-title {
-            margin: 0 0 7px;
-            font-size: 0.56rem;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: rgba(255,255,255,0.38);
-            font-weight: 800;
-        }
 
         .admin-sidebar-brand {
             display: flex;
@@ -240,6 +233,7 @@
             max-width: 100%;
             width: auto;
             object-fit: contain;
+            filter: brightness(0) invert(1);
         }
 
         .admin-side-nav {
@@ -493,13 +487,13 @@
 
         .admin-sidebar-user-card {
             margin: auto 4px 8px;
-            padding: 9px 10px;
-            border-radius: 12px;
+            padding: 0.5rem 0.55rem;
+            border-radius: 10px;
             background: rgba(255, 255, 255, 0.11);
             border: 1px solid rgba(255,255,255,0.15);
             display: grid;
             grid-template-columns: 30px minmax(0, 1fr);
-            gap: 0.55rem;
+            gap: 0.5rem;
             align-items: center;
         }
 
@@ -522,9 +516,9 @@
         }
 
         .admin-sidebar-user-name {
-            margin: auto 4px 0.4rem;
-            padding: 0.5rem 0.55rem;
-            border-radius: 10px;
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 700;
             line-height: 1.2;
             white-space: nowrap;
             overflow: hidden;
@@ -540,6 +534,108 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .admin-sidebar-toggle-wrap {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .admin-sidebar-toggle {
+            width: 100%;
+            min-height: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .admin-sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.22);
+            transform: translateY(-1px);
+        }
+
+        .admin-shell.sidebar-collapsed {
+            grid-template-columns: 72px minmax(0, 1fr);
+        }
+
+        .admin-shell.sidebar-collapsed .admin-sidebar {
+            padding: 1rem 0.5rem;
+        }
+
+        .admin-shell.sidebar-collapsed .admin-side-btn {
+            justify-content: center;
+            padding: 0.5rem;
+            gap: 0;
+            border-radius: 10px;
+        }
+
+        .admin-shell.sidebar-collapsed .admin-side-btn .nav-label,
+        .admin-shell.sidebar-collapsed .admin-sidebar-user-meta,
+        .admin-shell.sidebar-collapsed .sidebar-footer,
+        .admin-shell.sidebar-collapsed .admin-sidebar-toggle .toggle-label {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .admin-shell.sidebar-collapsed .admin-side-btn.active::before {
+            display: none;
+        }
+
+        .admin-shell.sidebar-collapsed .admin-side-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .admin-shell.sidebar-collapsed .admin-sidebar-user-card {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            padding: 0.45rem 0.3rem;
+        }
+
+        .features-toolbar {
+            margin-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+
+        .feature-groups {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .feature-group {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .feature-group-title {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .feature-group-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .distribution-row { margin-bottom: 14px; }
@@ -1039,6 +1135,7 @@
                 height: auto;
                 max-height: none;
             }
+            .feature-groups { grid-template-columns: 1fr; }
             .cards { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
             .grid { grid-template-columns: 1fr; }
         }
@@ -1047,6 +1144,7 @@
             .cards { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
             .topbar-inner { padding: 0.8rem 0.9rem; }
             .admin-shell { padding: 0; }
+            .feature-groups { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -1069,7 +1167,6 @@
             <div class="admin-sidebar-brand">
                 <img src="{{ url_for('static', filename='branding/velank-logo-dark.svg') }}" alt="Velank" />
             </div>
-            <h3 class="admin-sidebar-title">Admin Panels</h3>
             <nav class="admin-side-nav">
                 <button type="button" class="admin-side-btn active" data-panel-target="overview" onclick="switchAdminPanel('overview', this)"><span class="nav-icon">◉</span><span class="nav-label">Overview</span></button>
                 <button type="button" class="admin-side-btn" data-panel-target="features" onclick="switchAdminPanel('features', this)"><span class="nav-icon">⚙</span><span class="nav-label">Platform Features</span></button>
@@ -1087,6 +1184,12 @@
             <div class="sidebar-footer">
                 Production control plane<br>
                 Built for operations, incident response, and user support.
+            </div>
+            <div class="admin-sidebar-toggle-wrap">
+                <button class="admin-sidebar-toggle" type="button" onclick="toggleAdminSidebar()">
+                    <span class="toggle-icon">◀</span>
+                    <span class="toggle-label">Collapse</span>
+                </button>
             </div>
         </aside>
 
@@ -1173,41 +1276,39 @@
         </section>
 
         <!-- ========== FEATURES TAB NAVIGATION ========== -->
-        <section id="panel-features" class="admin-panel" style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-            <!-- Operations Category -->
-            <div style="margin-bottom: 18px;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 8px;">Operations</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)" style="cursor: pointer;">🧯 Incident Controls</button>
-                    <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)" style="cursor: pointer;">🧵 Queue Monitor</button>
+        <section id="panel-features" class="admin-panel features-toolbar">
+            <div class="feature-groups">
+                <div class="feature-group">
+                    <div class="feature-group-title">Operations</div>
+                    <div class="feature-group-pills">
+                        <button class="pill feature-tab-trigger" data-feature-tab="incident" onclick="switchFeatureTab('incident', this)">🧯 Incident Controls</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="queue" onclick="switchFeatureTab('queue', this)">🧵 Queue Monitor</button>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Monitoring Category -->
-            <div style="margin-bottom: 18px;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 8px;">Monitoring</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)" style="cursor: pointer;">⚠️ Error Monitoring</button>
+
+                <div class="feature-group">
+                    <div class="feature-group-title">Monitoring</div>
+                    <div class="feature-group-pills">
+                        <button class="pill feature-tab-trigger" data-feature-tab="errors" onclick="switchFeatureTab('errors', this)">⚠️ Error Monitoring</button>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Content & Diagnostics Category -->
-            <div style="margin-bottom: 18px;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 8px;">Content & Diagnostics</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)" style="cursor: pointer;">📚 KB Diagnostics</button>
-                    <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)" style="cursor: pointer;">🚩 Feature Flags</button>
-                    <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)" style="cursor: pointer;">🕵️ Read-only Impersonation</button>
+
+                <div class="feature-group">
+                    <div class="feature-group-title">Content & Diagnostics</div>
+                    <div class="feature-group-pills">
+                        <button class="pill feature-tab-trigger" data-feature-tab="kbdiag" onclick="switchFeatureTab('kbdiag', this)">📚 KB Diagnostics</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="flags" onclick="switchFeatureTab('flags', this)">🚩 Feature Flags</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="impersonation" onclick="switchFeatureTab('impersonation', this)">🕵️ Read-only Impersonation</button>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Settings Category -->
-            <div style="margin-bottom: 18px;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding: 0 8px;">Settings</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)" style="cursor: pointer;">🔔 Notifications</button>
-                    <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)" style="cursor: pointer;">📊 Revenue Dashboard</button>
-                    <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)" style="cursor: pointer;">🧭 Onboarding</button>
+
+                <div class="feature-group">
+                    <div class="feature-group-title">Settings</div>
+                    <div class="feature-group-pills">
+                        <button class="pill feature-tab-trigger active" data-feature-tab="notifications" onclick="switchFeatureTab('notifications', this)">🔔 Notifications</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="revenue" onclick="switchFeatureTab('revenue', this)">📊 Revenue Dashboard</button>
+                        <button class="pill feature-tab-trigger" data-feature-tab="onboarding" onclick="switchFeatureTab('onboarding', this)">🧭 Onboarding</button>
+                    </div>
                 </div>
             </div>
 
@@ -1408,7 +1509,7 @@
         </section>
 
         <!-- MAINTENANCE PANEL (SIDEBAR BUTTON) -->
-        <section id="panel-maintenance" class="admin-panel" style="display: none;">
+        <section id="panel-maintenance" class="admin-panel">
             <div class="panel">
                 <div class="panel-header">
                     <div>
@@ -2433,6 +2534,27 @@
                 btn.classList.toggle('active', btn.getAttribute('data-range') === range);
             });
             loadOverview(range).catch(err => showToast(err.message || 'Failed to update chart range', 'error'));
+        }
+
+        function applyAdminSidebarState(collapsed) {
+            const shell = document.querySelector('.admin-shell');
+            if (!shell) return;
+            shell.classList.toggle('sidebar-collapsed', !!collapsed);
+            const toggle = document.querySelector('.admin-sidebar-toggle');
+            if (toggle) {
+                const icon = toggle.querySelector('.toggle-icon');
+                const label = toggle.querySelector('.toggle-label');
+                if (icon) icon.textContent = collapsed ? '▶' : '◀';
+                if (label) label.textContent = collapsed ? 'Expand' : 'Collapse';
+            }
+        }
+
+        function toggleAdminSidebar() {
+            const shell = document.querySelector('.admin-shell');
+            if (!shell) return;
+            const next = !shell.classList.contains('sidebar-collapsed');
+            applyAdminSidebarState(next);
+            localStorage.setItem('admin_sidebar_collapsed', next ? '1' : '0');
         }
 
         function switchAdminPanel(panelName, triggerEl = null) {
@@ -3594,6 +3716,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            applyAdminSidebarState(localStorage.getItem('admin_sidebar_collapsed') === '1');
             switchAdminPanel('overview');
             const chartReady = await ensureChartJsLoaded();
             if (!chartReady) {
