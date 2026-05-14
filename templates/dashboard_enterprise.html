@@ -7381,12 +7381,19 @@
             align-items: center;
         }
         .creator-v4 .cv-focus-toggle {
-            width: auto;
-            min-width: 64px;
-            padding: 0 8px;
+            width: auto !important;
+            height: clamp(30px, 2vw, 36px) !important;
+            min-width: 108px;
+            padding: 0 10px;
             gap: 5px;
             font-size: 11px;
             font-weight: 700;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            flex: 0 0 auto;
         }
         .creator-v4 .cv-focus-toggle.is-on {
             background: linear-gradient(135deg, rgba(79,70,229,0.16), rgba(99,102,241,0.22));
@@ -7607,49 +7614,6 @@
             font-weight: 700;
             padding: 7px 8px;
         }
-        .creator-v4 .cv-readability-controls {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-top: 2px;
-            padding-top: 6px;
-            border-top: 1px solid rgba(148,163,184,0.2);
-        }
-        .creator-v4 .cv-readability-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .creator-v4 .cv-readability-group label {
-            font-size: 0.62rem;
-            font-weight: 800;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-        .creator-v4 .cv-readability-group button {
-            min-width: 26px;
-            padding: 5px 7px;
-            font-size: 10px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #475569;
-        }
-        .creator-v4 .cv-readability-group button.is-active {
-            color: #fff;
-            background: linear-gradient(135deg, #5b67f4, #4f46e5);
-            border-color: #4f46e5;
-            box-shadow: 0 3px 10px rgba(79,70,229,0.35);
-        }
-        .creator-v4 .li-mockup-body.cv-read-size-s #post-text { font-size: 12px; }
-        .creator-v4 .li-mockup-body.cv-read-size-m #post-text { font-size: clamp(12px, 0.85vw + 2px, 13.5px); }
-        .creator-v4 .li-mockup-body.cv-read-size-l #post-text { font-size: clamp(13.5px, 1vw + 2px, 16px); }
-        .creator-v4 .li-mockup-body.cv-read-lh-tight #post-text { line-height: 1.45; }
-        .creator-v4 .li-mockup-body.cv-read-lh-normal #post-text { line-height: 1.65; }
-        .creator-v4 .li-mockup-body.cv-read-lh-relaxed #post-text { line-height: 1.85; }
         .creator-v4.cv-reading-focus .cv-pv-char-row,
         .creator-v4.cv-reading-focus .cv-pv-reactions,
         .creator-v4.cv-reading-focus .cv-pv-footer,
@@ -17235,17 +17199,6 @@
             border-color: rgba(16,185,129,0.45) !important;
             color: rgba(167,243,208,0.98) !important;
         }
-        body.dark-mode .creator-v4 .cv-readability-controls {
-            border-top-color: rgba(148,163,184,0.2) !important;
-        }
-        body.dark-mode .creator-v4 .cv-readability-group label {
-            color: rgba(148,163,184,0.95) !important;
-        }
-        body.dark-mode .creator-v4 .cv-readability-group button {
-            background: rgba(15,23,42,0.9) !important;
-            border-color: rgba(148,163,184,0.28) !important;
-            color: rgba(226,232,240,0.86) !important;
-        }
         body.dark-mode .creator-v4 .creator-quick-actions button:hover {
             background: var(--surface-2) !important;
             border-color: rgba(255,255,255,0.12) !important;
@@ -20497,20 +20450,6 @@
                 <button type="button" onclick="regeneratePost()"><i class="fas fa-arrows-rotate"></i> Regenerate</button>
                 <button type="button" onclick="openScheduleModal()"><i class="fas fa-calendar"></i> Schedule</button>
                 <button type="button" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Publish</button>
-                <div class="cv-readability-controls">
-                    <div class="cv-readability-group">
-                        <label>Size</label>
-                        <button type="button" data-read-size="s" aria-pressed="false" onclick="setCreatorReadability('size','s')">S</button>
-                        <button type="button" data-read-size="m" aria-pressed="true" class="is-active" onclick="setCreatorReadability('size','m')">M</button>
-                        <button type="button" data-read-size="l" aria-pressed="false" onclick="setCreatorReadability('size','l')">L</button>
-                    </div>
-                    <div class="cv-readability-group">
-                        <label>Spacing</label>
-                        <button type="button" data-read-line="tight" aria-pressed="false" onclick="setCreatorReadability('line','tight')">T</button>
-                        <button type="button" data-read-line="normal" aria-pressed="true" class="is-active" onclick="setCreatorReadability('line','normal')">N</button>
-                        <button type="button" data-read-line="relaxed" aria-pressed="false" onclick="setCreatorReadability('line','relaxed')">R</button>
-                    </div>
-                </div>
             </div>
       <div id="post-preview">
 
@@ -26467,8 +26406,6 @@
     let cvHasGeneratedResult = false;
     let cvActiveSidePane = 'preview';
     let cvFocusMode = false;
-    let cvReadSize = 'm';
-    let cvReadLine = 'normal';
 
     function syncCreatorSidePaneToggle() {
         document.querySelectorAll('#content-creator [data-side-pane-btn]').forEach(btn => {
@@ -26533,40 +26470,6 @@
             setCreatorSidePane('preview');
         }
         syncCreatorFocusMode();
-    }
-
-    function syncCreatorReadabilityControls() {
-        document.querySelectorAll('#content-creator [data-read-size]').forEach(btn => {
-            const active = String(btn.dataset.readSize || '') === cvReadSize;
-            btn.classList.toggle('is-active', active);
-            btn.setAttribute('aria-pressed', String(active));
-        });
-        document.querySelectorAll('#content-creator [data-read-line]').forEach(btn => {
-            const active = String(btn.dataset.readLine || '') === cvReadLine;
-            btn.classList.toggle('is-active', active);
-            btn.setAttribute('aria-pressed', String(active));
-        });
-    }
-
-    function applyCreatorReadability() {
-        const body = document.getElementById('li-mockup-body');
-        if (!body) return;
-        body.classList.remove(
-            'cv-read-size-s', 'cv-read-size-m', 'cv-read-size-l',
-            'cv-read-lh-tight', 'cv-read-lh-normal', 'cv-read-lh-relaxed'
-        );
-        body.classList.add(`cv-read-size-${cvReadSize}`);
-        body.classList.add(`cv-read-lh-${cvReadLine}`);
-        syncCreatorReadabilityControls();
-    }
-
-    function setCreatorReadability(kind, value) {
-        if (kind === 'size') {
-            cvReadSize = (value === 's' || value === 'l') ? value : 'm';
-        } else if (kind === 'line') {
-            cvReadLine = (value === 'tight' || value === 'relaxed') ? value : 'normal';
-        }
-        applyCreatorReadability();
     }
 
     function syncCreatorWorkspaceLayout() {
@@ -26875,7 +26778,6 @@
         setConfigUxMode('quick');
         renderCreatorStyleSuggestion();
         updateQuickQualityMeter();
-        applyCreatorReadability();
         syncCreatorFocusMode();
         setCreatorGenerationStatus('idle');
         refreshPreviewIdentity();
