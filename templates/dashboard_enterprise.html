@@ -4507,15 +4507,24 @@
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
+            opacity: 0.82;
         }
-        .creator-v4 .cv-pane-toggle-btn.is-active {
-            background: rgba(129,140,248,0.24);
+        .creator-v4 .cv-pane-toggle-btn.is-active,
+        .creator-v4 .cv-pane-toggle-btn[aria-pressed="true"] {
+            background: linear-gradient(135deg, rgba(129,140,248,0.55), rgba(99,102,241,0.48));
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+            opacity: 1;
+            box-shadow: 0 2px 12px rgba(99,102,241,0.38), inset 0 0 0 1px rgba(255,255,255,0.18);
+            text-shadow: 0 1px 2px rgba(15,23,42,0.42);
         }
         .creator-v4 .cv-pane-toggle-btn:hover {
             color: #ffffff;
             background: rgba(129,140,248,0.16);
+            opacity: 1;
+        }
+        .creator-v4 .cv-pane-toggle-btn:focus-visible {
+            outline: 2px solid rgba(165,180,252,0.8);
+            outline-offset: 1px;
         }
         .creator-v4 .cv-workspace.cv-workspace-focus .cv-form-scroll {
             flex: 1 1 100%;
@@ -22161,24 +22170,6 @@
             navTarget.classList.add('active');
         }
 
-        // ── Auto-collapse sidebar for LinkedIn Post tab ──
-        const appContainer = document.querySelector('.app-container');
-        if (appContainer && window.innerWidth > 768) {
-            if (tabId === 'content-creator') {
-                // Remember if sidebar was already collapsed by user before we auto-collapse
-                if (!appContainer.classList.contains('sidebar-collapsed')) {
-                    window._sidebarAutoCollapsed = true;
-                    applySidebarState(true);
-                }
-            } else {
-                // Leaving LinkedIn Post: restore sidebar only if we auto-collapsed it
-                if (window._sidebarAutoCollapsed) {
-                    window._sidebarAutoCollapsed = false;
-                    applySidebarState(false);
-                }
-            }
-        }
-        
         // Update page title
         const titles = {
             'dashboard': 'Dashboard',
@@ -32505,14 +32496,7 @@
         refreshBillingStatus(false);
 
         const savedCollapsedState = localStorage.getItem('sidebarCollapsed') === '1';
-        // If LinkedIn Post tab is active, keep sidebar collapsed (auto-collapse took effect in switchTab)
-        const activeTabId = localStorage.getItem('activeTab') || '';
-        if (activeTabId === 'content-creator') {
-            applySidebarState(true);
-            if (!savedCollapsedState) window._sidebarAutoCollapsed = true;
-        } else {
-            applySidebarState(savedCollapsedState);
-        }
+        applySidebarState(savedCollapsedState);
 
         document.querySelectorAll('.sidebar .nav-item').forEach(item => {
             const label = item.querySelector('span');
