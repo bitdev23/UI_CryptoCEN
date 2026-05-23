@@ -20120,6 +20120,10 @@
                     </select>
                                         <i class="fas fa-chevron-down cv-kb-pop-icon"></i>
                   </div>
+                                    <label id="strict-grounding-row-visible" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary, #64748b);cursor:pointer;">
+                                        <input type="checkbox" id="strict-grounding-toggle-visible" onchange="setStrictGroundingEnabled(this.checked)">
+                                        <span><i class="fas fa-shield-halved" style="color:#dc2626;margin-right:4px;"></i>Strict</span>
+                                    </label>
                   <span class="cv-topic-sep">|</span>
                   <span class="cv-char-count"><b id="topic-char-count">0</b> / 300</span>
                 </div>
@@ -22988,7 +22992,7 @@
             kbMode: document.getElementById('kb-mode')?.value || 'use_kb',
             workspaceId: document.getElementById('kb-workspace-select-post')?.value || '',
             postText: getEditablePostText(),
-            strictGrounding: document.getElementById('strict-grounding-toggle')?.checked || false,
+            strictGrounding: getStrictGroundingEnabled(),
             timestamp: Date.now()
         };
     }
@@ -23058,11 +23062,7 @@
         }
 
         // Restore strict grounding toggle
-        const sgToggle = document.getElementById('strict-grounding-toggle');
-        if (sgToggle) {
-            sgToggle.checked = !!state.strictGrounding;
-            _syncStrictGroundingVisual();
-        }
+        setStrictGroundingEnabled(!!state.strictGrounding);
 
         if (state.postText) {
             setEditablePostText(state.postText);
@@ -25391,8 +25391,35 @@
         }
     }
 
+    function getStrictGroundingEnabled() {
+        const visible = document.getElementById('strict-grounding-toggle-visible');
+        const hidden = document.getElementById('strict-grounding-toggle');
+        if (visible) return !!visible.checked;
+        if (hidden) return !!hidden.checked;
+        return false;
+    }
+
+    function setStrictGroundingEnabled(enabled) {
+        const value = !!enabled;
+        const visible = document.getElementById('strict-grounding-toggle-visible');
+        const hidden = document.getElementById('strict-grounding-toggle');
+        if (visible) visible.checked = value;
+        if (hidden) hidden.checked = value;
+        _syncStrictGroundingVisual();
+        if (typeof saveCreatorDraftState === 'function') {
+            saveCreatorDraftState();
+        }
+    }
+
     function _syncStrictGroundingVisual() {
         const cb = document.getElementById('strict-grounding-toggle');
+        const visible = document.getElementById('strict-grounding-toggle-visible');
+        if (cb && visible) {
+            visible.checked = !!cb.checked;
+        } else if (visible && !cb) {
+            // No hidden checkbox present, keep visible state as source of truth.
+            visible.checked = !!visible.checked;
+        }
         const track = document.getElementById('strict-grounding-track');
         const thumb = document.getElementById('strict-grounding-thumb');
         if (!cb || !track || !thumb) return;
@@ -25406,6 +25433,7 @@
         const fileGroup = document.getElementById('kb-specific-files-group');
         const advancedDetails = document.getElementById('kb-advanced-details');
         const strictRow = document.getElementById('strict-grounding-row');
+        const strictRowVisible = document.getElementById('strict-grounding-row-visible');
         const showAdvanced = false;
 
         if (wsGroup) wsGroup.style.display = showAdvanced ? 'block' : 'none';
@@ -25423,6 +25451,9 @@
         // Hide strict grounding toggle when KB is disabled — it only makes sense with KB
         if (strictRow) {
             strictRow.style.display = mode === 'no_kb' ? 'none' : 'flex';
+        }
+        if (strictRowVisible) {
+            strictRowVisible.style.display = mode === 'no_kb' ? 'none' : 'inline-flex';
         }
 
         updateKbModeGuidance();
@@ -27007,10 +27038,8 @@
             if (typeof updateTopicCounter === 'function') updateTopicCounter();
         }
 
-        const strictToggle = document.getElementById('strict-grounding-toggle');
-        if (strictToggle && !strictToggle.checked) {
-            strictToggle.checked = true;
-            if (typeof _syncStrictGroundingVisual === 'function') _syncStrictGroundingVisual();
+        if (!getStrictGroundingEnabled()) {
+            setStrictGroundingEnabled(true);
         }
 
         const kbModeEl = document.getElementById('kb-mode');
@@ -27573,7 +27602,7 @@
         const _scToggle = document.getElementById('sc-enabled-toggle');
         const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
         const style_clone_mode = use_style_clone ? style_clone_mode_ui : 'off';
-        const strict_grounding = (document.getElementById('strict-grounding-toggle')?.checked || false) || (presetApplied && presetApplied.autoApplied);
+        const strict_grounding = getStrictGroundingEnabled() || (presetApplied && presetApplied.autoApplied);
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),

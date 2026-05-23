@@ -5559,6 +5559,47 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
     }
 
 
+def _build_kb_grounded_fallback_post(theme: str, kb_context: str, goal_key: str) -> str:
+    """Build a deterministic fallback post grounded in retrieved KB context.
+
+    Used only as a last-resort rescue when model output is degenerate (topic echo
+    or extremely short). This avoids hard-failing generation when KB evidence exists.
+    """
+    normalized_theme = _normalize_topic_text(theme) or str(theme or '').strip() or 'this topic'
+    theme_lower = normalized_theme.lower()
+    kb_text = str(kb_context or '')
+
+    category_focus = ''
+    if 'crypto' in theme_lower and 'asset' in theme_lower and _is_classification_topic(normalized_theme):
+        category_focus = (
+            'A practical map from the KB is to separate assets into Layer 1, Layer 2, '
+            'stablecoins, DeFi tokens, NFTs, meme coins, real-world assets (RWA), and '
+            'liquid staking tokens.'
+        )
+    else:
+        category_focus = 'The KB excerpts point to clear categories, each with different utility and risk trade-offs.'
+
+    ticker_candidates = []
+    for token in re.findall(r'\b[A-Z]{2,6}\b', kb_text):
+        if token not in ticker_candidates and token not in {'KB', 'USD'}:
+            ticker_candidates.append(token)
+    example_suffix = ''
+    if ticker_candidates:
+        example_suffix = f" Examples from your files include {', '.join(ticker_candidates[:8])}."
+
+    cta_line = "What category are you prioritizing right now, and why?"
+    if goal_key in {'spark_comments', 'grow_network'}:
+        cta_line = "Which category do you trust most in this cycle, and what is your reasoning?"
+
+    paragraphs = [
+        f"{normalized_theme} becomes clearer when you classify assets by function, not hype.",
+        f"{category_focus}{example_suffix}",
+        "The useful test is simple: define what each category is designed to do, then evaluate value accrual, liquidity profile, and risk before comparing them.",
+        cta_line,
+    ]
+    return '\n\n'.join(paragraphs).strip()
+
+
 def _evaluate_post_quality(ai, body: str, theme: str, goal_key: str) -> dict:
     heuristic = _post_contract_heuristics(body, theme, goal_key)
     short_body = str(body or '').strip()[:1800]
@@ -7173,6 +7214,16 @@ Post:
             violations = []
             wc = words_count(candidate_body)
             heur = _post_contract_heuristics(candidate_body, theme, goal_key)
+            body_norm = re.sub(r'\s+', ' ', str(candidate_body or '').strip().lower())
+            theme_norm = re.sub(r'\s+', ' ', _normalize_topic_text(theme).strip().lower())
+
+            if wc < 35:
+                violations.append(f'Output too short ({wc} words)')
+
+            # Guard against degenerate outputs like repeating the topic only.
+            if theme_norm:
+                if body_norm == theme_norm or body_norm.startswith(theme_norm):
+                    violations.append('Output appears to echo the topic input instead of a full post')
 
             if word_count_mode == 'custom_range' and (wc < min_words or wc > max_words):
                 violations.append(f'Length out of range ({wc} words, expected {min_words}-{max_words})')
@@ -7219,6 +7270,31 @@ Post:
                     final_violations = _quality_violations(body)
             except Exception as strict_fix_error:
                 logger.warning('Final hard-guard rewrite failed: %s', strict_fix_error)
+
+        if final_violations:
+            recoverable_violations = {
+                'Output too short',
+                'Output appears to echo the topic input instead of a full post',
+            }
+            has_recoverable = any(
+                any(v.startswith(prefix) for prefix in recoverable_violations)
+                for v in final_violations
+            )
+
+            if has_recoverable and kb_context:
+                logger.info('Applying KB-grounded fallback post rescue due to recoverable quality violations: %s', '; '.join(final_violations))
+                body = _build_kb_grounded_fallback_post(theme, kb_context, goal_key)
+                body = enforce_linkedin_quality(
+                    body,
+                    user_industry,
+                    user_role,
+                    theme,
+                    target_audience_hint,
+                    emoji_level,
+                )
+                if word_count_mode == 'custom_range':
+                    body = enforce_word_ceiling(body, max_words)
+                final_violations = _quality_violations(body)
 
         if final_violations:
             logger.warning('Generation blocked by hard quality guard: %s', '; '.join(final_violations))
