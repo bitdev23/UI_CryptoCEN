@@ -10,6 +10,17 @@
         var _tokenStore = localStorage;
         (function () {
             try {
+                // Back-compat migration: promote existing sessionStorage tokens from old builds.
+                if (!_tokenStore.getItem('access_token')) {
+                    var legacyAccess = sessionStorage.getItem('access_token');
+                    var legacyRefresh = sessionStorage.getItem('refresh_token');
+                    if (legacyAccess) {
+                        _tokenStore.setItem('access_token', legacyAccess);
+                    }
+                    if (legacyRefresh) {
+                        _tokenStore.setItem('refresh_token', legacyRefresh);
+                    }
+                }
                 // If Supabase redirected to / with #access_token= in the hash
                 // (happens when redirect_to URL isn't in Supabase allowlist),
                 // forward to /auth/callback so the token handler can process it.
@@ -24675,6 +24686,8 @@
             const url = new URL(window.location.href);
             action = String(url.searchParams.get('admin_onboarding') || '').trim().toLowerCase();
             if (action) {
+                localStorage.setItem('admin_pending_onboarding_action', action);
+                localStorage.setItem('admin_pending_onboarding_action_ts', String(Date.now()));
                 url.searchParams.delete('admin_onboarding');
                 window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
             }
@@ -24689,8 +24702,6 @@
                 action = pending;
             }
         }
-        localStorage.removeItem('admin_pending_onboarding_action');
-        localStorage.removeItem('admin_pending_onboarding_action_ts');
         if (action === 'ftu') {
             return 'ftu';
         }
@@ -24698,6 +24709,55 @@
             return 'spotlight';
         }
         return '';
+    }
+
+    function clearAdminRequestedOnboardingAction() {
+        localStorage.removeItem('admin_pending_onboarding_action');
+        localStorage.removeItem('admin_pending_onboarding_action_ts');
+    }
+
+    function runAdminRequestedOnboardingAction(action, attempt = 0) {
+        const requested = String(action || '').trim().toLowerCase();
+        if (!requested) {
+            return;
+        }
+        const maxAttempts = 24;
+        const hasPtour = Boolean(document.getElementById('ptour-overlay'));
+        const hasFtu = Boolean(document.getElementById('ftu-onboarding-overlay'));
+        if (!hasPtour || !hasFtu) {
+            if (attempt < maxAttempts) {
+                setTimeout(() => runAdminRequestedOnboardingAction(requested, attempt + 1), 180);
+            }
+            return;
+        }
+
+        // Prevent default auto-onboarding logic from racing this explicit admin action.
+        hasAttemptedFirstTimeOnboarding = true;
+
+        if (requested === 'ftu') {
+            closeProductSpotlightTour(false);
+            openFirstRunOnboarding();
+            const isOpen = document.getElementById('ftu-onboarding-overlay')?.classList.contains('is-open');
+            if (isOpen) {
+                clearAdminRequestedOnboardingAction();
+                return;
+            }
+            if (attempt < maxAttempts) {
+                setTimeout(() => runAdminRequestedOnboardingAction(requested, attempt + 1), 220);
+            }
+            return;
+        }
+
+        closeFirstRunOnboarding(false);
+        openProductSpotlightTour({ force: true, resume: false });
+        const isSpotlightOpen = document.getElementById('ptour-overlay')?.classList.contains('is-open');
+        if (isSpotlightOpen) {
+            clearAdminRequestedOnboardingAction();
+            return;
+        }
+        if (attempt < maxAttempts) {
+            setTimeout(() => runAdminRequestedOnboardingAction(requested, attempt + 1), 220);
+        }
     }
 
     function showFirstRunOnboardingFeedback(message = '', type = 'info') {
@@ -33411,6 +33471,14 @@
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', async function() {
+        // Back-compat migration in case this tab still carries legacy session-scoped tokens.
+        if (!_tokenStore.getItem('access_token') && sessionStorage.getItem('access_token')) {
+            _tokenStore.setItem('access_token', sessionStorage.getItem('access_token'));
+            if (sessionStorage.getItem('refresh_token')) {
+                _tokenStore.setItem('refresh_token', sessionStorage.getItem('refresh_token'));
+            }
+        }
+
         // ══ Auth pre-check: verify (or refresh) the token BEFORE firing any API calls.
         //    This prevents the "flash of dashboard → session expired" for stale/missing tokens.
         const _preToken = _tokenStore.getItem('access_token');
@@ -33548,13 +33616,7 @@
 
         if (adminRequestedOnboardingAction) {
             setTimeout(() => {
-                if (adminRequestedOnboardingAction === 'ftu') {
-                    closeProductSpotlightTour(false);
-                    openFirstRunOnboarding();
-                    return;
-                }
-                closeFirstRunOnboarding(false);
-                openProductSpotlightTour({ force: true, resume: false });
+                runAdminRequestedOnboardingAction(adminRequestedOnboardingAction, 0);
             }, 420);
         }
 
