@@ -20186,7 +20186,7 @@
         <!-- ── Strict Grounding Toggle ── -->
         <div id="strict-grounding-row" style="margin-top:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bg-secondary, #f8f9fa);border:1px solid var(--border-color, #e2e8f0);">
           <label class="toggle-switch" style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer;">
-            <input type="checkbox" id="strict-grounding-toggle" style="opacity:0;width:0;height:0;" onchange="_syncStrictGroundingVisual();saveCreatorDraftState();">
+            <input type="checkbox" id="strict-grounding-toggle" checked style="opacity:0;width:0;height:0;" onchange="_syncStrictGroundingVisual();saveCreatorDraftState();">
             <span id="strict-grounding-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;border-radius:20px;transition:0.3s;" onclick="var cb=document.getElementById('strict-grounding-toggle');cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));"><span id="strict-grounding-thumb" style="position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:white;border-radius:50%;transition:0.3s;display:block;"></span></span>
           </label>
           <div style="flex:1;">
@@ -23059,8 +23059,8 @@
 
         // Restore strict grounding toggle
         const sgToggle = document.getElementById('strict-grounding-toggle');
-        if (sgToggle && state.strictGrounding) {
-            sgToggle.checked = true;
+        if (sgToggle) {
+            sgToggle.checked = !!state.strictGrounding;
             _syncStrictGroundingVisual();
         }
 
@@ -26956,6 +26956,90 @@
         saveCreatorDraftState();
     }
 
+    function isCryptoTypesClassificationTopic(text) {
+        const value = String(text || '').trim().toLowerCase();
+        if (!value) return false;
+        const normalized = value.replace(/^\s*\d+\s*[\.)\-:]\s*/, '').trim();
+        const hasTypesSignal = /(types?|categories?|classification|taxonomy)\s+of/.test(normalized);
+        const hasCryptoSignal = /(crypto|cryptocurrency|web3|blockchain)\s+assets?/.test(normalized);
+        return hasTypesSignal && hasCryptoSignal;
+    }
+
+    function getCryptoTypesCanonicalTopic() {
+        return 'Types of Crypto Assets: L1, L2, Stablecoins, DeFi Tokens, NFTs, Meme Coins, RWA, Liquid Staking Tokens. Include examples.';
+    }
+
+    function pickBestKbFileForCryptoTypes() {
+        const files = Array.isArray(kbFileOptionsCache) ? kbFileOptionsCache : [];
+        if (!files.length) return '';
+
+        const scoreFile = (file) => {
+            const name = String(file?.name || '').toLowerCase();
+            let score = 0;
+            if (file?.indexed) score += 8;
+            if (name.includes('crypto')) score += 5;
+            if (name.includes('web3')) score += 4;
+            if (name.includes('knowledge')) score += 4;
+            if (name.includes('asset')) score += 3;
+            if (name.includes('type') || name.includes('category') || name.includes('classification')) score += 3;
+            if (name.includes('table')) score += 2;
+            return score;
+        };
+
+        const ranked = [...files].sort((a, b) => scoreFile(b) - scoreFile(a));
+        return ranked[0]?.id ? String(ranked[0].id) : '';
+    }
+
+    function applyCryptoTypesGroundingPreset(topicValue, kbModeValue, selectedFileIds) {
+        if (!isCryptoTypesClassificationTopic(topicValue)) {
+            return {
+                topic: String(topicValue || ''),
+                kb_mode: String(kbModeValue || 'use_kb'),
+                specific_file_ids: Array.isArray(selectedFileIds) ? selectedFileIds : [],
+                autoApplied: false,
+            };
+        }
+
+        const canonicalTopic = getCryptoTypesCanonicalTopic();
+        const topicInput = document.getElementById('topic-input');
+        if (topicInput && String(topicInput.value || '').trim() !== canonicalTopic) {
+            topicInput.value = canonicalTopic;
+            if (typeof updateTopicCounter === 'function') updateTopicCounter();
+        }
+
+        const strictToggle = document.getElementById('strict-grounding-toggle');
+        if (strictToggle && !strictToggle.checked) {
+            strictToggle.checked = true;
+            if (typeof _syncStrictGroundingVisual === 'function') _syncStrictGroundingVisual();
+        }
+
+        const kbModeEl = document.getElementById('kb-mode');
+        if (kbModeEl && kbModeEl.value !== 'specific_files') {
+            kbModeEl.value = 'specific_files';
+            if (typeof toggleKbSourceMode === 'function') toggleKbSourceMode();
+            if (typeof syncCreatorReplicaControls === 'function') syncCreatorReplicaControls();
+        }
+
+        let normalizedIds = Array.isArray(selectedFileIds)
+            ? selectedFileIds.map(v => String(v)).filter(Boolean)
+            : [];
+
+        const preferredFileId = pickBestKbFileForCryptoTypes();
+        if (preferredFileId) {
+            normalizedIds = [preferredFileId];
+            if (typeof setSelectedSpecificFileIds === 'function') {
+                setSelectedSpecificFileIds(normalizedIds);
+            }
+        }
+
+        return {
+            topic: canonicalTopic,
+            kb_mode: 'specific_files',
+            specific_file_ids: normalizedIds,
+            autoApplied: true,
+        };
+    }
+
     function applyWritingPreset(preset, triggerBtn = null) {
         const tone = document.getElementById('post-tone');
         const lengthSelect = document.getElementById('cv-length-select');
@@ -27415,7 +27499,7 @@
             return;
         }
 
-        const topic = document.getElementById('topic-input')?.value || '';
+        let topic = document.getElementById('topic-input')?.value || '';
         const industry = getIndustryValue();
         const role = getRoleValue();
         const audience_type = document.getElementById('audience-type')?.value || 'individual';
@@ -27430,16 +27514,23 @@
         const word_count_mode = document.getElementById('word-count-mode')?.value || 'custom_range';
         const min_words = parseInt(document.getElementById('min-words')?.value || '120', 10);
         const max_words = parseInt(document.getElementById('max-words')?.value || '220', 10);
-        const kb_mode = document.getElementById('kb-mode')?.value || 'use_kb';
+        let kb_mode = document.getElementById('kb-mode')?.value || 'use_kb';
         const workspaceValue = document.getElementById('kb-workspace-select-post')?.value || '';
         const workspace_id = workspaceValue === KB_CREATE_TEMPLATE_VALUE ? '' : workspaceValue;
-        const specific_file_ids = getSelectedSpecificFileIds();
+        let specific_file_ids = getSelectedSpecificFileIds();
         const postPreview = document.getElementById('post-preview');
         const postText = document.getElementById('post-text');
         const postPlaceholder = document.getElementById('post-placeholder');
         const insightsPanel = document.getElementById('generation-insights');
         const validatorPanel = document.getElementById('prepublish-validator');
         const futureSuggestionsPanel = document.getElementById('future-suggestions');
+
+        const presetApplied = applyCryptoTypesGroundingPreset(topic, kb_mode, specific_file_ids);
+        if (presetApplied && presetApplied.autoApplied) {
+            topic = presetApplied.topic;
+            kb_mode = presetApplied.kb_mode;
+            specific_file_ids = presetApplied.specific_file_ids;
+        }
 
         if (kb_mode === 'specific_files' && specific_file_ids.length === 0) {
             showToast('error', 'Select at least one file for this mode', 'fas fa-exclamation-circle');
@@ -27482,7 +27573,7 @@
         const _scToggle = document.getElementById('sc-enabled-toggle');
         const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
         const style_clone_mode = use_style_clone ? style_clone_mode_ui : 'off';
-        const strict_grounding = document.getElementById('strict-grounding-toggle')?.checked || false;
+        const strict_grounding = (document.getElementById('strict-grounding-toggle')?.checked || false) || (presetApplied && presetApplied.autoApplied);
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),

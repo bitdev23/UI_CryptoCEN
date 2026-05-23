@@ -5697,6 +5697,27 @@ def _extract_topic_keywords(topic: str) -> list:
     return keywords
 
 
+def _is_classification_topic(topic: str) -> bool:
+    """Detect classification intent (types/categories/taxonomy style topics)."""
+    normalized = _normalize_topic_text(topic).lower()
+    if not normalized:
+        return False
+    has_structure_signal = bool(re.search(r'\b(types?|categories?|classification|taxonomy)\b', normalized))
+    has_of_signal = ' of ' in normalized or normalized.startswith(('types', 'categories', 'classification', 'taxonomy'))
+    return has_structure_signal and has_of_signal
+
+
+def _canonicalize_topic_if_needed(topic: str) -> str:
+    """Canonicalize known topic shapes to improve retrieval/prompt consistency."""
+    normalized = _normalize_topic_text(topic).lower()
+    if re.search(r'\btypes?\s+of\s+crypto\s+assets?\b', normalized):
+        return (
+            'Types of Crypto Assets: L1, L2, Stablecoins, DeFi Tokens, NFTs, '
+            'Meme Coins, RWA, Liquid Staking Tokens. Include examples.'
+        )
+    return str(topic or '').strip()
+
+
 # ── Production Grounding System ───────────────────────────────────────────────
 
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
@@ -6408,6 +6429,13 @@ def generate_preview():
         else:
             theme = random.choice(neutral_themes)
         
+        theme = _canonicalize_topic_if_needed(theme)
+        classification_mode = _is_classification_topic(theme)
+
+        # Classification topics should not drift; enforce strict grounding when KB is active.
+        if classification_mode and kb_mode != 'no_kb':
+            strict_grounding = True
+
         fmt = random.choice(POST_FORMATS) if POST_FORMATS else 'article'
 
         if user_industry or user_role or topics:
@@ -6808,6 +6836,7 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             structure_rule_text=structure_rule_text,
             format_rule_text=format_rule_text,
             style_clone_compliance_rule=style_clone_compliance_rule,
+            classification_mode=classification_mode,
         )
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
@@ -7318,6 +7347,7 @@ Post:
                 'tone': post_tone,
                 'style_clone_mode': style_clone_mode,
                 'strict_grounding': strict_grounding,
+                'classification_mode': classification_mode,
                 'kb_avg_similarity': round(kb_avg_similarity, 3),
                 'kb_low_confidence': kb_low_confidence,
                 'grounding_level': grounding_level,
