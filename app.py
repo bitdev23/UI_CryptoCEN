@@ -3,7 +3,7 @@ Simple web dashboard for non-technical LinkedIn automation management.
 Run: python app.py
 Then open: http://localhost:5050
 """
-from flask import Flask, render_template, request, jsonify, redirect, url_for, g, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, g, session, send_file
 from typing import Optional
 import os
 import json
@@ -642,6 +642,69 @@ def resolve_local_kb_path(storage_path: str, filename: str, user_id: str) -> str
 
     legacy_candidate = os.path.join(PDF_DIR, filename)
     return legacy_candidate
+
+
+def _is_safe_kb_local_path(path: str) -> bool:
+    try:
+        abs_path = os.path.abspath(path)
+        abs_root = os.path.abspath(PDF_DIR)
+        return abs_path.startswith(abs_root + os.sep) or abs_path == abs_root
+    except Exception:
+        return False
+
+
+def _resolve_user_kb_record_and_path(user_id: str, filename: str):
+    from rag_system_pgvector import RAGStore
+
+    rag = RAGStore(user_id=user_id)
+    rows = rag.db.list_kb_files(user_id)
+    matches = [
+        row for row in rows
+        if str(row.get('filename') or '').strip().lower() == filename.lower()
+    ]
+    if not matches:
+        return None, None, None
+
+    def _parse_created(value):
+        text = str(value or '').strip()
+        if not text:
+            return datetime.min
+        try:
+            return datetime.fromisoformat(text.replace('Z', '+00:00')).replace(tzinfo=None)
+        except Exception:
+            return datetime.min
+
+    record = max(matches, key=lambda row: _parse_created(row.get('created_at')))
+    local_path = resolve_local_kb_path(
+        record.get('storage_path') or '',
+        record.get('filename') or '',
+        user_id
+    )
+    return rag, record, local_path
+
+
+def _extract_text_from_xlsx(path: str) -> str:
+    try:
+        from openpyxl import load_workbook
+    except Exception:
+        return ''
+
+    try:
+        wb = load_workbook(path, read_only=True, data_only=True)
+        lines = []
+        for ws in wb.worksheets[:5]:
+            lines.append(f"--- Sheet: {ws.title} ---")
+            for idx, row in enumerate(ws.iter_rows(min_row=1, max_row=200, values_only=True), start=1):
+                values = [str(v).strip() for v in row if v is not None and str(v).strip()]
+                if not values:
+                    continue
+                lines.append(f"Row {idx}: " + ' | '.join(values))
+            lines.append('')
+        wb.close()
+        return '\n'.join(lines).strip()
+    except Exception:
+        logger.exception('Failed to extract XLSX: %s', path)
+        return ''
 
 
 def _read_feature_store() -> dict:
@@ -8189,6 +8252,116 @@ def list_knowledge_base_files():
     except Exception as e:
         logger.exception("Failed to list files")
         return _safe_api_error('Failed to list knowledge base files', e)
+
+
+@app.route('/api/view-knowledge-base-file', methods=['GET'])
+@require_auth
+def view_knowledge_base_file():
+    try:
+        filename = str(request.args.get('filename') or '').strip()
+        mode = str(request.args.get('mode') or 'inline').strip().lower()
+        if not filename:
+            return jsonify({'success': False, 'message': 'Filename required'}), 400
+        if '/' in filename or '\\' in filename or '..' in filename:
+            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+        user_id = ensure_kb_user_id()
+        if not user_id:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        _rag, record, local_path = _resolve_user_kb_record_and_path(user_id, filename.lower())
+        if not record or not local_path:
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+        if not _is_safe_kb_local_path(local_path) or not os.path.isfile(local_path):
+            return jsonify({'success': False, 'message': 'File is unavailable locally'}), 404
+
+        ext = Path(local_path).suffix.lower()
+        mimetype_map = {
+            '.pdf': 'application/pdf',
+            '.txt': 'text/plain; charset=utf-8',
+            '.md': 'text/markdown; charset=utf-8',
+            '.csv': 'text/csv; charset=utf-8',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }
+        mimetype = mimetype_map.get(ext, 'application/octet-stream')
+        as_attachment = mode == 'download'
+
+        return send_file(
+            local_path,
+            mimetype=mimetype,
+            as_attachment=as_attachment,
+            download_name=record.get('filename') or filename,
+            conditional=True,
+            etag=False,
+            max_age=0,
+            last_modified=None
+        )
+    except Exception as e:
+        logger.exception('Failed to open KB file')
+        return _safe_api_error('Failed to open file', e)
+
+
+@app.route('/api/preview-knowledge-base-file-content', methods=['GET'])
+@require_auth
+def preview_knowledge_base_file_content():
+    try:
+        from pdf_processor import load_document
+
+        filename = str(request.args.get('filename') or '').strip()
+        if not filename:
+            return jsonify({'success': False, 'message': 'Filename required'}), 400
+        if '/' in filename or '\\' in filename or '..' in filename:
+            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+        user_id = ensure_kb_user_id()
+        if not user_id:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+        _rag, record, local_path = _resolve_user_kb_record_and_path(user_id, filename.lower())
+        if not record or not local_path:
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+        if not _is_safe_kb_local_path(local_path) or not os.path.isfile(local_path):
+            return jsonify({'success': False, 'message': 'File is unavailable locally'}), 404
+
+        ext = Path(local_path).suffix.lower()
+        if ext not in {'.docx', '.pptx', '.xlsx'}:
+            return jsonify({'success': False, 'message': 'Extracted preview is only for DOCX/PPTX/XLSX'}), 400
+
+        extracted_text = ''
+        if ext == '.xlsx':
+            extracted_text = _extract_text_from_xlsx(local_path)
+        else:
+            _source, extracted_text = load_document(local_path)
+
+        extracted_text = (extracted_text or '').strip()
+        if not extracted_text:
+            fallback = 'No extractable text found. Download original to review formatting and embedded objects.'
+            return jsonify({
+                'success': True,
+                'filename': record.get('filename') or filename,
+                'file_type': ext.replace('.', '').upper(),
+                'content': fallback,
+                'truncated': False,
+                'download_only': True
+            })
+
+        max_chars = 24000
+        truncated = len(extracted_text) > max_chars
+        preview_text = extracted_text[:max_chars]
+
+        return jsonify({
+            'success': True,
+            'filename': record.get('filename') or filename,
+            'file_type': ext.replace('.', '').upper(),
+            'content': preview_text,
+            'truncated': truncated,
+            'download_only': False
+        })
+    except Exception as e:
+        logger.exception('Failed to preview extracted KB content')
+        return _safe_api_error('Failed to preview extracted content', e)
 
 
 @app.route('/api/kb-file-options', methods=['GET'])
