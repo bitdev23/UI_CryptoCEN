@@ -21475,31 +21475,6 @@
                                 </div>
                             </div>
 
-                            <div class="card settings-v2-card">
-                                <div class="settings-v2-card-head">
-                                    <div class="settings-v2-card-head-left">
-                                        <span class="settings-v2-card-icon"><i class="fas fa-flask"></i></span>
-                                        <div>
-                                            <div class="settings-v2-card-title">Onboarding QA Controls</div>
-                                            <div class="settings-v2-card-sub">Admin/testing only. This does not impact production data.</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="settings-v2-card-body">
-                                    <div class="settings-v2-toggle-row">
-                                        <div>
-                                            <h4>Force first-run onboarding for this account</h4>
-                                            <p id="settings-onboarding-admin-mode-label">When enabled, onboarding always appears even if previously completed.</p>
-                                        </div>
-                                        <button id="settings-toggle-force-onboarding-all" class="settings-v2-toggle" type="button" onclick="toggleSettingSwitch(this)"></button>
-                                    </div>
-                                    <div class="settings-v2-actions">
-                                        <button class="btn btn-primary" type="button" onclick="saveOnboardingAdminSettings()"><i class="fas fa-floppy-disk"></i> Save QA Mode</button>
-                                        <button class="btn btn-secondary" type="button" onclick="openProductSpotlightTour({ force: true, resume: false })"><i class="fas fa-map-signs"></i> Run Spotlight Now</button>
-                                        <button class="btn btn-secondary" type="button" onclick="closeProductSpotlightTour(false); openFirstRunOnboarding()"><i class="fas fa-graduation-cap"></i> Run FTU Wizard Now</button>
-                                    </div>
-                                </div>
-                            </div>
                         </section>
 
                         <section id="settings-pane-notifications" class="settings-v2-pane">
@@ -24168,28 +24143,6 @@
         return mode === 'all';
     }
 
-    function syncOnboardingAdminSettingsUI() {
-        setToggleState('settings-toggle-force-onboarding-all', isFtuForceAllMode());
-        const label = document.getElementById('settings-onboarding-admin-mode-label');
-        if (label) {
-            label.textContent = isFtuForceAllMode()
-                ? 'Enabled: onboarding is forced on every dashboard load for this account.'
-                : 'Disabled: onboarding follows normal first-run behavior.';
-        }
-    }
-
-    function saveOnboardingAdminSettings() {
-        const enabled = isToggleOn('settings-toggle-force-onboarding-all');
-        if (enabled) {
-            localStorage.setItem('ftu_admin_onboarding_mode', 'all');
-        } else {
-            localStorage.removeItem('ftu_admin_onboarding_mode');
-        }
-        syncOnboardingAdminSettingsUI();
-        emitOnboardingAnalyticsEvent('qa_force_mode_toggled', { enabled });
-        showToast('success', enabled ? 'QA mode enabled: onboarding will be forced.' : 'QA mode disabled: onboarding is back to normal.', 'fas fa-check');
-    }
-
     function hasSeenFirstRunOnboarding() {
         if (isFtuForceAllMode()) {
             return false;  // force-all testing mode overrides the seen flag
@@ -24453,6 +24406,48 @@
         popover.style.top = `${Math.round(top)}px`;
     }
 
+    function positionProductSpotlightPopoverCentered() {
+        const popover = document.getElementById('ptour-popover');
+        if (!popover) {
+            return;
+        }
+        const margin = 14;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const popW = popover.offsetWidth || 340;
+        const popH = popover.offsetHeight || 220;
+        const left = Math.max(margin, Math.round((vw - popW) / 2));
+        const top = Math.max(margin, Math.round((vh - popH) / 2));
+        popover.style.left = `${left}px`;
+        popover.style.top = `${top}px`;
+    }
+
+    function resolveProductSpotlightTarget(step, attempt = 0) {
+        if (!productSpotlightActive) {
+            return;
+        }
+        const target = getVisibleSelectorTarget(step?.selectors || []);
+        if (target) {
+            productSpotlightActiveTarget = target;
+            target.classList.add('ptour-target-active');
+            positionProductSpotlightPopover(target);
+            return;
+        }
+
+        const maxAttempts = 10;
+        if (attempt < maxAttempts) {
+            setTimeout(() => resolveProductSpotlightTarget(step, attempt + 1), 140);
+            return;
+        }
+
+        const tabNode = step?.tab ? document.getElementById(step.tab) : null;
+        if (tabNode) {
+            productSpotlightActiveTarget = tabNode;
+            tabNode.classList.add('ptour-target-active');
+        }
+        positionProductSpotlightPopoverCentered();
+    }
+
     function scheduleProductSpotlightReposition() {
         if (!productSpotlightActive) {
             return;
@@ -24566,14 +24561,10 @@
         applyProductSpotlightStepSetup(step.id);
         cleanupProductSpotlightTarget();
 
+        positionProductSpotlightPopoverCentered();
         setTimeout(() => {
-            const target = getVisibleSelectorTarget(step.selectors);
-            if (target) {
-                productSpotlightActiveTarget = target;
-                target.classList.add('ptour-target-active');
-                positionProductSpotlightPopover(target);
-            }
-        }, 160);
+            resolveProductSpotlightTarget(step, 0);
+        }, 120);
     }
 
     function stepProductSpotlightTour(direction = 1) {
@@ -24670,6 +24661,27 @@
             return;
         }
         openProductSpotlightTour({ resume: true });
+    }
+
+    function consumeAdminRequestedOnboardingAction() {
+        let action = '';
+        try {
+            const url = new URL(window.location.href);
+            action = String(url.searchParams.get('admin_onboarding') || '').trim().toLowerCase();
+            if (action) {
+                url.searchParams.delete('admin_onboarding');
+                window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+            }
+        } catch (_) {
+            action = '';
+        }
+        if (action === 'ftu') {
+            return 'ftu';
+        }
+        if (action === 'spotlight') {
+            return 'spotlight';
+        }
+        return '';
     }
 
     function showFirstRunOnboardingFeedback(message = '', type = 'info') {
@@ -29263,7 +29275,6 @@
         setToggleState('settings-toggle-notify-weekly', runtimeConfig.NOTIFY_WEEKLY_SUMMARY === true);
         setToggleState('settings-toggle-notify-expiry', runtimeConfig.NOTIFY_TOKEN_EXPIRY !== false);
         setToggleState('settings-toggle-notify-updates', runtimeConfig.NOTIFY_PRODUCT_UPDATES === true);
-        syncOnboardingAdminSettingsUI();
 
         syncSettingsProfileSummary();
         refreshSettingsBillingUsage();
@@ -33449,6 +33460,8 @@
             switchTab('dashboard', null, true);
         }
 
+        const adminRequestedOnboardingAction = consumeAdminRequestedOnboardingAction();
+
         initializeAppVersionProbe();
         // Remove the synchronous flash-prevention style now that the correct tab is active
         var _preloadFix = document.getElementById('tab-preload-fix');
@@ -33516,6 +33529,18 @@
             }
             refreshKnowledgeBaseStatus();
         }, 8000);
+
+        if (adminRequestedOnboardingAction) {
+            setTimeout(() => {
+                if (adminRequestedOnboardingAction === 'ftu') {
+                    closeProductSpotlightTour(false);
+                    openFirstRunOnboarding();
+                    return;
+                }
+                closeFirstRunOnboarding(false);
+                openProductSpotlightTour({ force: true, resume: false });
+            }, 420);
+        }
 
         setInterval(() => {
             if (document.hidden) {
