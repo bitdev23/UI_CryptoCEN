@@ -1,0 +1,1070 @@
+{
+  "summary": {
+    "suite_name": "global_platform_quality_smoke",
+    "total_cases": 31,
+    "passed_cases": 0,
+    "failed_cases": 31,
+    "pass_rate": 0.0,
+    "avg_score": 49.2
+  },
+  "results": [
+    {
+      "case_id": "crypto_types_strict",
+      "passed": false,
+      "score": 25.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "utility tokens",
+            "security tokens",
+            "stablecoins"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "real estate cap rates",
+            "hospital staffing"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [
+            6.0
+          ],
+          "found": [],
+          "ok": false
+        }
+      }
+    },
+    {
+      "case_id": "crypto_defi_strategy",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "yield",
+            "liquidity",
+            "risk",
+            "strategy"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "guaranteed returns",
+            "no risk",
+            "hospital"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 25,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "crypto_btc_market",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "bitcoin",
+            "cycle",
+            "market"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "guaranteed profit",
+            "medical advice"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 22,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "saas_pricing_balanced",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "activation",
+            "retention",
+            "experiment"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "tokenomics",
+            "decentralized exchange"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 18,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "saas_customer_retention",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "churn",
+            "onboarding",
+            "retention"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "crypto token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "saas_team_scaling",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "team",
+            "scaling",
+            "quality"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "decentralized",
+            "proof-of-work"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "healthcare_ops_creative",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "scheduling",
+            "follow-up",
+            "patient"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "proof-of-work",
+            "liquidity mining"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 18,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "healthcare_staff_retention",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "nurse",
+            "retention",
+            "staff"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "tokenomics",
+            "blockchain"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "healthcare_patient_experience",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "patient",
+            "digital",
+            "experience"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "mining",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "real_estate_roi_intro",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "cash flow",
+            "roi",
+            "neighborhood"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "bitcoin",
+            "staking"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 22,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "real_estate_investment",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "investment",
+            "market",
+            "strategy"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "smart contract",
+            "token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "real_estate_remote_work",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "remote",
+            "commercial",
+            "real estate"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "crypto"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "ecommerce_conversion",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "checkout",
+            "conversion",
+            "test"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "liquidity",
+            "staking"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "ecommerce_personalization",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "personalization",
+            "recommendation",
+            "aov"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "proof-of-work",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "ecommerce_retention",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "loyalty",
+            "retention",
+            "repeat"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "mining",
+            "token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "fintech_compliance",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "compliance",
+            "regulatory",
+            "market"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "unregulated",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 22,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "fintech_api_integration",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "api",
+            "payment",
+            "integration"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "mfg_supply_chain",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "supply chain",
+            "optimization",
+            "visibility"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "crypto",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "mfg_lean_ops",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "lean",
+            "manufacturing",
+            "waste"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "staking",
+            "token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "media_content_strategy",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "content",
+            "audience",
+            "strategy"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "mining"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "media_monetization",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "revenue",
+            "monetization",
+            "diversify"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "token",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "b2b_sales_process",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "sales",
+            "enablement",
+            "cycle"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "proof-of-work",
+            "staking"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "b2b_account_management",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "account management",
+            "enterprise",
+            "growth"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "crypto"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "nonprofit_fundraising",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "donor",
+            "engagement",
+            "fundraising"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "defi",
+            "trading"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "nonprofit_operations",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "impact",
+            "scaling",
+            "operations"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "token",
+            "blockchain"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "edtech_engagement",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "student",
+            "engagement",
+            "learning"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "crypto",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "edtech_outcomes",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "learning",
+            "outcomes",
+            "data"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "staking",
+            "mining"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "travel_personalization",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "personalization",
+            "guest",
+            "experience"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "token"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "travel_sustainability",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "sustainability",
+            "tourism",
+            "environment"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "crypto",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "enterprise_security_strict",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "security",
+            "zero-trust",
+            "framework"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "unencrypted",
+            "outdated"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 22,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    },
+    {
+      "case_id": "enterprise_cloud_migration",
+      "passed": false,
+      "score": 50.0,
+      "checks": {
+        "must_include": {
+          "required": [
+            "cloud",
+            "migration",
+            "strategy"
+          ],
+          "matched": [],
+          "ok": false
+        },
+        "must_not_include": {
+          "required": [
+            "blockchain",
+            "defi"
+          ],
+          "violations": [],
+          "ok": true
+        },
+        "min_word_count": {
+          "required": 20,
+          "actual": 0,
+          "ok": false
+        },
+        "expected_numbers": {
+          "required": [],
+          "found": [],
+          "ok": true
+        }
+      }
+    }
+  ]
+}
