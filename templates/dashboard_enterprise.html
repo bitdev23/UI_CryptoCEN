@@ -20124,6 +20124,11 @@
                                         <input type="checkbox" id="strict-grounding-toggle-visible" onchange="setStrictGroundingEnabled(this.checked)">
                                         <span><i class="fas fa-shield-halved" style="color:#dc2626;margin-right:4px;"></i>Strict</span>
                                     </label>
+                                    <select id="grounding-mode-select-visible" onchange="setGroundingMode(this.value)" style="height:28px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;background:var(--bg-secondary,#fff);color:var(--text-secondary,#334155);font-size:12px;padding:0 8px;">
+                                        <option value="strict">Strict</option>
+                                        <option value="balanced" selected>Balanced</option>
+                                        <option value="creative">Creative</option>
+                                    </select>
                   <span class="cv-topic-sep">|</span>
                   <span class="cv-char-count"><b id="topic-char-count">0</b> / 300</span>
                 </div>
@@ -20186,6 +20191,11 @@
         <details id="kb-advanced-details"></details>
         <div id="kb-workspace-preview-post"></div>
         <div id="kb-post-template-feedback"></div>
+                <select id="grounding-mode-select" style="display:none;">
+                    <option value="strict">Strict</option>
+                    <option value="balanced" selected>Balanced</option>
+                    <option value="creative">Creative</option>
+                </select>
 
         <!-- ── Strict Grounding Toggle ── -->
         <div id="strict-grounding-row" style="margin-top:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bg-secondary, #f8f9fa);border:1px solid var(--border-color, #e2e8f0);">
@@ -22993,6 +23003,7 @@
             workspaceId: document.getElementById('kb-workspace-select-post')?.value || '',
             postText: getEditablePostText(),
             strictGrounding: getStrictGroundingEnabled(),
+            groundingMode: getGroundingMode(),
             timestamp: Date.now()
         };
     }
@@ -23063,6 +23074,9 @@
 
         // Restore strict grounding toggle
         setStrictGroundingEnabled(!!state.strictGrounding);
+        if (state.groundingMode) {
+            setGroundingMode(state.groundingMode);
+        }
 
         if (state.postText) {
             setEditablePostText(state.postText);
@@ -24840,6 +24854,12 @@
             </div>
         `;
 
+        const kbHitsCount = Number(ctx.grounding?.kb_hits_count || 0);
+        const kbAvgSim = Number(ctx.grounding?.avg_similarity || 0);
+        const scopePct = Number(ctx.grounding?.scope_compliance_pct ?? ctx.scope_compliance_pct ?? 0);
+        const numericPct = Number(ctx.grounding?.numeric_accuracy?.score ?? ctx.numeric_accuracy_score ?? 100);
+        const groundingModeLabel = escapeHtml(String(ctx.grounding_mode || 'balanced'));
+
         panel.innerHTML = `
             ${qualityCard}
             ${noMatchWarning}
@@ -24847,6 +24867,7 @@
             <div class="insight-chips">
                 ${_renderGroundingBadge(ctx)}
                 ${ctx.strict_grounding ? '<span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.02s both;background:#fef2f2;color:#dc2626;border:1px solid #dc262630;font-weight:600;"><i class="fas fa-shield-halved" style="margin-right:4px;"></i>Strict Mode ON</span>' : ''}
+                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.03s both;"><strong>Grounding Mode:</strong> ${groundingModeLabel}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.05s both;"><strong>Industry:</strong> ${escapeHtml(ctx.industry || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.1s both;"><strong>Role:</strong> ${escapeHtml(ctx.role || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.15s both;"><strong>Tone:</strong> ${escapeHtml(ctx.tone || 'Professional')}</span>
@@ -24854,10 +24875,15 @@
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.25s both;"><strong>Audience:</strong> ${escapeHtml(ctx.target_audience || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.3s both;"><strong>Template:</strong> ${escapeHtml(templateName)}</span>
                 <span class="insight-chip ${(ctx.kb_no_match && ctx.kb_mode !== 'no_kb') ? 'insight-chip--warn' : ''}" style="animation:insightsFadeIn 0.3s ease 0.35s both;"><strong>Knowledge Source:</strong> ${escapeHtml(kbDetails)}</span>
+                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.4s both;"><strong>Matched Chunks:</strong> ${kbHitsCount}</span>
+                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.45s both;"><strong>Avg Similarity:</strong> ${Math.round(kbAvgSim * 100)}%</span>
+                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.5s both;"><strong>Scope Compliance:</strong> ${scopePct}%</span>
+                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.55s both;"><strong>Numeric Accuracy:</strong> ${numericPct}%</span>
             </div>
             ${_renderSentenceGrounding(ctx)}
             ${_renderSourceTraceability(ctx)}
             ${_renderGapAnalysis(ctx)}
+            ${renderGenerationFeedbackControls()}
         `;
         panel.style.display = 'block';
     }
@@ -25134,6 +25160,54 @@
         `;
         panel.style.display = 'block';
     }
+
+    function renderGenerationFeedbackControls() {
+        return `
+            <div class="insight-detail" style="animation:insightsFadeIn 0.35s ease 0.65s both; padding:10px 12px; border:1px solid rgba(148,163,184,0.25); border-radius:10px; margin-top:10px;">
+                <div style="font-size:0.78rem;font-weight:600;color:var(--text-primary);margin-bottom:8px;">How relevant was this draft?</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="submitGenerationFeedback('up')"><i class="fas fa-thumbs-up"></i> Good</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="submitGenerationFeedback('down')"><i class="fas fa-thumbs-down"></i> Needs Work</button>
+                    <select id="generation-feedback-reason" style="height:30px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;padding:0 8px;">
+                        <option value="">Reason (optional)</option>
+                        <option value="off_topic">Off topic</option>
+                        <option value="not_from_files">Not from selected files</option>
+                        <option value="numbers_incorrect">Numbers look incorrect</option>
+                        <option value="tone_mismatch">Tone mismatch</option>
+                    </select>
+                </div>
+                <div style="margin-top:8px;">
+                    <textarea id="generation-feedback-notes" placeholder="Optional notes (e.g., what to improve)" rows="2" maxlength="1000" style="width:100%;min-height:56px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;padding:8px;font-size:12px;resize:vertical;"></textarea>
+                </div>
+            </div>
+        `;
+    }
+
+    async function submitGenerationFeedback(rating) {
+        try {
+            const reason = document.getElementById('generation-feedback-reason')?.value || '';
+            const notes = document.getElementById('generation-feedback-notes')?.value || '';
+            const response = await authFetch('/api/generation-feedback', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    rating,
+                    reason,
+                    notes,
+                    generation_context: lastGeneratedContext || {},
+                })
+            });
+            const data = await parseJsonResponse(response);
+            if (!data.success) {
+                showToast('error', data.message || 'Unable to save feedback', 'fas fa-exclamation-circle');
+                return;
+            }
+            showToast('success', 'Thanks, feedback captured', 'fas fa-check');
+        } catch (error) {
+            showToast('error', error.message || 'Unable to save feedback', 'fas fa-exclamation-circle');
+        }
+    }
+
     async function ensureGenerationReadiness() {
         try {
             const configRes = await authFetch('/api/config', { headers: getAuthHeaders() });
@@ -25399,12 +25473,49 @@
         return false;
     }
 
+    function getGroundingMode() {
+        const visible = document.getElementById('grounding-mode-select-visible');
+        const hidden = document.getElementById('grounding-mode-select');
+        if (visible && visible.value) return String(visible.value);
+        if (hidden && hidden.value) return String(hidden.value);
+        return getStrictGroundingEnabled() ? 'strict' : 'balanced';
+    }
+
+    function setGroundingMode(value) {
+        const normalized = ['strict', 'balanced', 'creative'].includes(String(value || '').toLowerCase())
+            ? String(value).toLowerCase()
+            : 'balanced';
+        const visible = document.getElementById('grounding-mode-select-visible');
+        const hidden = document.getElementById('grounding-mode-select');
+        if (visible) visible.value = normalized;
+        if (hidden) hidden.value = normalized;
+        if (normalized === 'strict' && !getStrictGroundingEnabled()) {
+            setStrictGroundingEnabled(true);
+        }
+        if (normalized !== 'strict' && getStrictGroundingEnabled() && document.getElementById('strict-grounding-toggle-visible')) {
+            setStrictGroundingEnabled(false);
+        }
+        if (typeof saveCreatorDraftState === 'function') saveCreatorDraftState();
+    }
+
     function setStrictGroundingEnabled(enabled) {
         const value = !!enabled;
         const visible = document.getElementById('strict-grounding-toggle-visible');
         const hidden = document.getElementById('strict-grounding-toggle');
+        const modeVisible = document.getElementById('grounding-mode-select-visible');
+        const modeHidden = document.getElementById('grounding-mode-select');
         if (visible) visible.checked = value;
         if (hidden) hidden.checked = value;
+        if (value) {
+            if (modeVisible) modeVisible.value = 'strict';
+            if (modeHidden) modeHidden.value = 'strict';
+        } else {
+            const currentMode = (modeVisible?.value || modeHidden?.value || 'balanced').toLowerCase();
+            if (currentMode === 'strict') {
+                if (modeVisible) modeVisible.value = 'balanced';
+                if (modeHidden) modeHidden.value = 'balanced';
+            }
+        }
         _syncStrictGroundingVisual();
         if (typeof saveCreatorDraftState === 'function') {
             saveCreatorDraftState();
@@ -25434,6 +25545,7 @@
         const advancedDetails = document.getElementById('kb-advanced-details');
         const strictRow = document.getElementById('strict-grounding-row');
         const strictRowVisible = document.getElementById('strict-grounding-row-visible');
+        const groundingModeVisible = document.getElementById('grounding-mode-select-visible');
         const showAdvanced = false;
 
         if (wsGroup) wsGroup.style.display = showAdvanced ? 'block' : 'none';
@@ -25454,6 +25566,9 @@
         }
         if (strictRowVisible) {
             strictRowVisible.style.display = mode === 'no_kb' ? 'none' : 'inline-flex';
+        }
+        if (groundingModeVisible) {
+            groundingModeVisible.style.display = mode === 'no_kb' ? 'none' : 'inline-flex';
         }
 
         updateKbModeGuidance();
@@ -27021,7 +27136,7 @@
         return ranked[0]?.id ? String(ranked[0].id) : '';
     }
 
-    function applyCryptoTypesGroundingPreset(topicValue, kbModeValue, selectedFileIds) {
+    function applyCryptoTypesGroundingPreset(topicValue, kbModeValue, selectedFileIds, workspaceId = '') {
         if (!isCryptoTypesClassificationTopic(topicValue)) {
             return {
                 topic: String(topicValue || ''),
@@ -27042,30 +27157,41 @@
             setStrictGroundingEnabled(true);
         }
 
-        const kbModeEl = document.getElementById('kb-mode');
-        if (kbModeEl && kbModeEl.value !== 'specific_files') {
-            kbModeEl.value = 'specific_files';
-            if (typeof toggleKbSourceMode === 'function') toggleKbSourceMode();
-            if (typeof syncCreatorReplicaControls === 'function') syncCreatorReplicaControls();
-        }
+        // Contract rule: user-selected template/scope always wins.
+        const userAlreadyScoped = (
+            String(kbModeValue || '').toLowerCase() === 'specific_files'
+            || (Array.isArray(selectedFileIds) && selectedFileIds.length > 0)
+            || !!String(workspaceId || '').trim()
+        );
 
         let normalizedIds = Array.isArray(selectedFileIds)
             ? selectedFileIds.map(v => String(v)).filter(Boolean)
             : [];
 
-        const preferredFileId = pickBestKbFileForCryptoTypes();
-        if (preferredFileId) {
-            normalizedIds = [preferredFileId];
-            if (typeof setSelectedSpecificFileIds === 'function') {
-                setSelectedSpecificFileIds(normalizedIds);
+        let resolvedMode = String(kbModeValue || 'use_kb');
+        if (!userAlreadyScoped) {
+            const kbModeEl = document.getElementById('kb-mode');
+            if (kbModeEl && kbModeEl.value !== 'specific_files') {
+                kbModeEl.value = 'specific_files';
+                if (typeof toggleKbSourceMode === 'function') toggleKbSourceMode();
+                if (typeof syncCreatorReplicaControls === 'function') syncCreatorReplicaControls();
+            }
+            resolvedMode = 'specific_files';
+
+            const preferredFileId = pickBestKbFileForCryptoTypes();
+            if (preferredFileId) {
+                normalizedIds = [preferredFileId];
+                if (typeof setSelectedSpecificFileIds === 'function') {
+                    setSelectedSpecificFileIds(normalizedIds);
+                }
             }
         }
 
         return {
             topic: canonicalTopic,
-            kb_mode: 'specific_files',
+            kb_mode: resolvedMode,
             specific_file_ids: normalizedIds,
-            autoApplied: true,
+            autoApplied: !userAlreadyScoped,
         };
     }
 
@@ -27554,7 +27680,7 @@
         const validatorPanel = document.getElementById('prepublish-validator');
         const futureSuggestionsPanel = document.getElementById('future-suggestions');
 
-        const presetApplied = applyCryptoTypesGroundingPreset(topic, kb_mode, specific_file_ids);
+        const presetApplied = applyCryptoTypesGroundingPreset(topic, kb_mode, specific_file_ids, workspace_id);
         if (presetApplied && presetApplied.autoApplied) {
             topic = presetApplied.topic;
             kb_mode = presetApplied.kb_mode;
@@ -27602,7 +27728,8 @@
         const _scToggle = document.getElementById('sc-enabled-toggle');
         const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
         const style_clone_mode = use_style_clone ? style_clone_mode_ui : 'off';
-        const strict_grounding = getStrictGroundingEnabled() || (presetApplied && presetApplied.autoApplied);
+        const grounding_mode = getGroundingMode();
+        const strict_grounding = (grounding_mode === 'strict') || getStrictGroundingEnabled() || (presetApplied && presetApplied.autoApplied);
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -27613,7 +27740,8 @@
                 audience_type, business_goal,
                 post_goal, target_audience, tone,
                 use_style_clone, style_clone_mode,
-                strict_grounding
+                strict_grounding,
+                grounding_mode
             })
         })
         .then(r => parseJsonResponse(r))
@@ -27653,6 +27781,9 @@
                     grounding: data.grounding || null,
                     gap_analysis: data.gap_analysis || null,
                     strict_grounding: strict_grounding,
+                    grounding_mode: settingsApplied.grounding_mode || grounding_mode || 'balanced',
+                    scope_compliance_pct: settingsApplied.scope_compliance_pct,
+                    numeric_accuracy_score: settingsApplied.numeric_accuracy_score,
                 };
                 renderAppliedSettingsSummary(settingsApplied);
                 renderGenerationInsights(lastGeneratedContext);

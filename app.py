@@ -5759,6 +5759,139 @@ def _canonicalize_topic_if_needed(topic: str) -> str:
     return str(topic or '').strip()
 
 
+def _normalize_grounding_mode(value: str) -> str:
+    raw = str(value or '').strip().lower()
+    if raw in {'strict', 'full', 'hard'}:
+        return 'strict'
+    if raw in {'creative', 'loose', 'open'}:
+        return 'creative'
+    return 'balanced'
+
+
+def _infer_kb_file_metadata(filename: str) -> dict:
+    """Infer lightweight metadata from KB filename for retrieval filtering."""
+    name = str(filename or '')
+    lower = name.lower()
+    ext = ''
+    if '.' in lower:
+        ext = lower.rsplit('.', 1)[-1]
+
+    industry_labels = {
+        'crypto': ['crypto', 'web3', 'blockchain', 'defi', 'token', 'nft'],
+        'real_estate': ['real estate', 'property', 'listing', 'rent', 'mortgage'],
+        'marketing': ['marketing', 'campaign', 'seo', 'content', 'funnel'],
+        'b2b': ['b2b', 'enterprise', 'saas', 'pipeline', 'lead'],
+        'virtual_assistant': ['virtual assistant', 'va', 'outsourcing', 'operations'],
+        'finance': ['finance', 'revenue', 'profit', 'p&l', 'cashflow', 'forecast'],
+    }
+
+    industries = []
+    for label, terms in industry_labels.items():
+        if any(term in lower for term in terms):
+            industries.append(label)
+
+    periods = []
+    for match in re.findall(r'\b(q[1-4]|fy\d{2,4}|\d{4})\b', lower):
+        periods.append(match.upper())
+
+    return {
+        'filename': name,
+        'extension': ext,
+        'industries': sorted(list(set(industries))),
+        'periods': sorted(list(set(periods))),
+        'is_tabular': ext in {'csv', 'xlsx', 'xls'},
+        'is_document': ext in {'pdf', 'docx', 'pptx', 'txt', 'md'},
+    }
+
+
+def _apply_topic_metadata_scope_filter(file_rows: list, topic: str, industry: str) -> list:
+    """Prefer files whose inferred metadata appears relevant to topic/industry.
+
+    Falls back to original rows when no confident match exists.
+    """
+    if not file_rows:
+        return []
+    text = f"{topic or ''} {industry or ''}".lower()
+    if not text.strip():
+        return file_rows
+
+    scored = []
+    for row in file_rows:
+        name = str(row.get('filename') or '').lower()
+        score = 0
+        if any(tok in name for tok in re.findall(r'[a-z0-9]{4,}', text)[:12]):
+            score += 2
+        meta = _infer_kb_file_metadata(row.get('filename') or '')
+        if any(ind in text for ind in meta.get('industries', [])):
+            score += 2
+        if meta.get('is_tabular') and any(k in text for k in ['revenue', 'profit', 'quarter', 'kpi', 'metric']):
+            score += 2
+        scored.append((score, row))
+
+    matched = [row for score, row in scored if score >= 2]
+    return matched if matched else file_rows
+
+
+def _extract_numeric_facts(text: str) -> list:
+    """Extract numeric facts with unit and optional period context."""
+    body = str(text or '')
+    facts = []
+    for match in re.finditer(r'(?P<currency>\$)?(?P<value>\d+(?:,\d{3})*(?:\.\d+)?)(?P<unit>%|k|m|b|bn|mn)?', body, flags=re.IGNORECASE):
+        raw_value = match.group('value') or ''
+        if not raw_value:
+            continue
+        value = raw_value.replace(',', '')
+        unit = (match.group('unit') or '').lower()
+        currency = '$' if match.group('currency') else ''
+        window_start = max(0, match.start() - 35)
+        window_end = min(len(body), match.end() + 35)
+        context = body[window_start:window_end].lower()
+        period_match = re.search(r'\b(q[1-4]|fy\d{2,4}|\d{4})\b', context)
+        facts.append({
+            'value': value,
+            'unit': unit,
+            'currency': currency,
+            'period': period_match.group(1).upper() if period_match else '',
+        })
+    return facts
+
+
+def _compute_numeric_accuracy(post_text: str, kb_context: str) -> dict:
+    """Return numeric agreement score between post and KB excerpts."""
+    post_facts = _extract_numeric_facts(post_text)
+    kb_facts = _extract_numeric_facts(kb_context)
+    if not post_facts:
+        return {
+            'score': 100,
+            'post_numeric_count': 0,
+            'kb_numeric_count': len(kb_facts),
+            'mismatches': [],
+            'checked': False,
+        }
+
+    kb_keys = {
+        (f.get('value', ''), f.get('unit', ''), f.get('currency', ''), f.get('period', ''))
+        for f in kb_facts
+    }
+    matched = 0
+    mismatches = []
+    for f in post_facts:
+        key = (f.get('value', ''), f.get('unit', ''), f.get('currency', ''), f.get('period', ''))
+        if key in kb_keys:
+            matched += 1
+        else:
+            mismatches.append(f)
+
+    score = int(round((matched / max(1, len(post_facts))) * 100))
+    return {
+        'score': score,
+        'post_numeric_count': len(post_facts),
+        'kb_numeric_count': len(kb_facts),
+        'mismatches': mismatches[:6],
+        'checked': True,
+    }
+
+
 # ── Production Grounding System ───────────────────────────────────────────────
 
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
@@ -6430,8 +6563,9 @@ def generate_preview():
         else:
             kb_mode = 'use_kb'
 
-        # ── Strict grounding toggle ───────────────────────────────────────────
-        strict_grounding = bool(req_data.get('strict_grounding', False))
+        # ── Grounding strictness mode ────────────────────────────────────────
+        grounding_mode = _normalize_grounding_mode(req_data.get('grounding_mode') or '')
+        strict_grounding = bool(req_data.get('strict_grounding', False)) or grounding_mode == 'strict'
 
         workspace_id = (req_data.get('workspace_id') or '').strip()
         raw_specific_file_ids = req_data.get('specific_file_ids') or []
@@ -6476,6 +6610,7 @@ def generate_preview():
         # Classification topics should not drift; enforce strict grounding when KB is active.
         if classification_mode and kb_mode != 'no_kb':
             strict_grounding = True
+            grounding_mode = 'strict'
 
         fmt = random.choice(POST_FORMATS) if POST_FORMATS else 'article'
 
@@ -6638,13 +6773,16 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                 kb_no_match = True
             else:
                 user_files = rag.db.list_kb_files(user_id)
+                # Optional metadata-aware narrowing for better retrieval relevance.
+                filtered_user_files = _apply_topic_metadata_scope_filter(user_files, theme, user_industry)
                 user_file_ids = [str(row.get('id')) for row in user_files if row.get('id')]
+                filtered_user_file_ids = [str(row.get('id')) for row in filtered_user_files if row.get('id')]
 
                 if not user_file_ids:
                     kb_state = 'no_files'
                     kb_no_match = True
                 else:
-                    selected_file_ids = list(user_file_ids)
+                    selected_file_ids = list(filtered_user_file_ids or user_file_ids)
 
                     if kb_mode == 'specific_files':
                         selected_file_ids = [fid for fid in specific_file_ids if fid in user_file_ids]
@@ -6664,6 +6802,13 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                     if not selected_file_ids:
                         kb_state = 'no_files'
                         kb_no_match = True
+                        if kb_mode == 'specific_files':
+                            return jsonify({
+                                'success': False,
+                                'message': 'The selected template has no valid files. Choose another template or include at least one indexed file.',
+                                'scope_validation_failed': True,
+                                'scope_reason': 'empty_selected_scope',
+                            }), 422
                     else:
                         filtered = len(selected_file_ids) < len(user_file_ids)
                         file_id_arg = selected_file_ids if filtered else None
@@ -6762,6 +6907,13 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         else:
                             kb_state = 'no_match'
                             kb_no_match = True
+                            if kb_mode == 'specific_files':
+                                return jsonify({
+                                    'success': False,
+                                    'message': 'No relevant content was found in the selected template files for this topic. Choose a better-matching template or files.',
+                                    'scope_validation_failed': True,
+                                    'scope_reason': 'no_match_in_selected_scope',
+                                }), 422
 
         except Exception as kb_error:
             logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
@@ -6786,6 +6938,28 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             logger.debug('KB hits details for grounding: %s hits with avg_sim=%.4f, min=%.4f, max=%.4f',
                         len(sims), kb_avg_similarity, min(sims) if sims else 0, max(sims) if sims else 0)
 
+        # ── Strict/contract grounding gates ───────────────────────────────────
+        min_hits_required = 2 if grounding_mode == 'strict' else (1 if grounding_mode == 'balanced' else 0)
+        min_avg_similarity = 0.56 if grounding_mode == 'strict' else (0.42 if grounding_mode == 'balanced' else 0.0)
+
+        if kb_mode != 'no_kb' and kb_used:
+            if len(kb_hits) < min_hits_required or kb_avg_similarity < min_avg_similarity:
+                return jsonify({
+                    'success': False,
+                    'message': (
+                        f'Grounding contract not met for {grounding_mode} mode. '
+                        f'Need at least {min_hits_required} relevant KB chunks with avg similarity >= {min_avg_similarity:.2f}.'
+                    ),
+                    'grounding_contract_failed': True,
+                    'grounding_contract': {
+                        'mode': grounding_mode,
+                        'required_hits': min_hits_required,
+                        'required_avg_similarity': min_avg_similarity,
+                        'actual_hits': len(kb_hits),
+                        'actual_avg_similarity': round(kb_avg_similarity, 3),
+                    },
+                }), 422
+
         # ── Strict grounding gate ─────────────────────────────────────────────
         if strict_grounding and kb_mode != 'no_kb' and grounding_level == _GROUNDING_NONE:
             gap_data = _analyze_kb_coverage_gaps(
@@ -6798,6 +6972,7 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                     'Strict Grounding is ON: your knowledge base has no relevant content for this topic. '
                     'Upload documents about this topic or turn off Strict Grounding to generate insight-only posts.'
                 ),
+                'grounding_mode': grounding_mode,
                 'grounding': {
                     'level': grounding_level,
                     'label': 'Blocked — No KB Match',
@@ -7236,6 +7411,11 @@ Post:
             if goal_key in {'spark_comments', 'grow_network'} and not str(candidate_body or '').strip().endswith('?'):
                 violations.append('Goal-aligned CTA question missing at the end')
 
+            if grounding_mode == 'strict' and kb_context:
+                numeric_eval = _compute_numeric_accuracy(candidate_body, kb_context)
+                if numeric_eval.get('checked') and numeric_eval.get('post_numeric_count', 0) > 0 and numeric_eval.get('score', 100) < 60:
+                    violations.append(f"Numeric accuracy below threshold ({numeric_eval.get('score', 0)}%)")
+
             return violations
 
         final_violations = _quality_violations(body)
@@ -7338,6 +7518,30 @@ Post:
         # ── Source traceability (author-side) ─────────────────────────────────
         source_traceability = _build_source_traceability(kb_hits, body)
 
+        # ── Scope compliance and citations ─────────────────────────────────────
+        allowed_scope_ids = set(str(fid) for fid in (kb_selected_file_ids or []))
+        scope_hits_total = 0
+        scope_hits_in_scope = 0
+        for hit in kb_hits:
+            fid = str(hit.get('file_id') or '')
+            if not fid:
+                continue
+            scope_hits_total += 1
+            if not allowed_scope_ids or fid in allowed_scope_ids:
+                scope_hits_in_scope += 1
+        scope_compliance_pct = int(round((scope_hits_in_scope / max(1, scope_hits_total)) * 100)) if scope_hits_total else 100
+        citations = [
+            {
+                'file': src.get('file', ''),
+                'snippet': src.get('chunk_preview', ''),
+                'similarity': src.get('similarity', 0),
+                'file_id': src.get('file_id', ''),
+            }
+            for src in source_traceability[:4]
+        ]
+
+        numeric_accuracy = _compute_numeric_accuracy(body, kb_context)
+
         # ── KB gap analysis ───────────────────────────────────────────────────
         gap_analysis = _analyze_kb_coverage_gaps(
             theme or topic_hint, user_industry, user_role, kb_hits, grounding_level
@@ -7399,6 +7603,9 @@ Post:
                 },
                 'sentence_scores': sentence_grounding,
                 'source_traceability': source_traceability,
+                'citations': citations,
+                'scope_compliance_pct': scope_compliance_pct,
+                'numeric_accuracy': numeric_accuracy,
             },
             'gap_analysis': gap_analysis,
             'settings_applied': {
@@ -7423,11 +7630,14 @@ Post:
                 'tone': post_tone,
                 'style_clone_mode': style_clone_mode,
                 'strict_grounding': strict_grounding,
+                'grounding_mode': grounding_mode,
                 'classification_mode': classification_mode,
                 'kb_avg_similarity': round(kb_avg_similarity, 3),
                 'kb_low_confidence': kb_low_confidence,
                 'grounding_level': grounding_level,
                 'grounding_rewrite_applied': grounding_rewrite_applied,
+                'scope_compliance_pct': scope_compliance_pct,
+                'numeric_accuracy_score': numeric_accuracy.get('score', 100),
                 'quality_score': evaluation.get('score', 0),
                 'quality_threshold': quality_threshold,
                 'quality_retry_allowed': retry_allowed,
@@ -8570,16 +8780,52 @@ def kb_file_options():
             filename = row.get('filename')
             if not file_id or not filename:
                 continue
+            inferred_meta = _infer_kb_file_metadata(filename)
             options.append({
                 'id': file_id,
                 'name': filename,
-                'indexed': (row.get('upload_status') == 'indexed')
+                'indexed': (row.get('upload_status') == 'indexed'),
+                'metadata': inferred_meta,
             })
 
         return jsonify({'success': True, 'files': options, 'count': len(options)})
     except Exception as e:
         logger.exception('Failed to list KB file options')
         return _safe_api_error('An unexpected error occurred', e)
+
+
+@app.route('/api/generation-feedback', methods=['POST'])
+@require_auth
+def generation_feedback():
+    """Capture post quality feedback from the dashboard for continuous tuning."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        rating = str(payload.get('rating') or '').strip().lower()
+        if rating not in {'up', 'down'}:
+            return jsonify({'success': False, 'message': 'rating must be "up" or "down"'}), 400
+
+        reason = str(payload.get('reason') or '').strip()[:160]
+        notes = str(payload.get('notes') or '').strip()[:1000]
+        context = payload.get('generation_context') if isinstance(payload.get('generation_context'), dict) else {}
+
+        from database.db_helper import get_db
+        db = get_db()
+        db.log(
+            'info',
+            'generation_feedback',
+            user_id=get_current_user_id(),
+            metadata={
+                'rating': rating,
+                'reason': reason,
+                'notes': notes,
+                'context': context,
+                'created_at': datetime.utcnow().isoformat(),
+            },
+        )
+        return jsonify({'success': True, 'message': 'Feedback saved'})
+    except Exception as e:
+        logger.exception('Failed to save generation feedback')
+        return _safe_api_error('Failed to save feedback', e)
 
 
 @app.route('/api/kb-workspaces', methods=['GET'])

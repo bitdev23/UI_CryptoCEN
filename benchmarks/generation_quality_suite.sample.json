@@ -1,0 +1,412 @@
+{
+  "suite_name": "global_platform_quality_smoke",
+  "version": "2.0",
+  "description": "Comprehensive multi-industry benchmark suite for content generation quality across key verticals.",
+  "cases": [
+    {
+      "id": "crypto_types_strict",
+      "industry": "Crypto",
+      "topic": "6. Types of Crypto Assets",
+      "template_id": "educational-post",
+      "kb_mode": "specific_files",
+      "grounding_mode": "strict",
+      "specific_file_ids": ["crypto_types_reference"],
+      "expectations": {
+        "must_include": ["utility tokens", "security tokens", "stablecoins"],
+        "must_not_include": ["real estate cap rates", "hospital staffing"],
+        "min_word_count": 20,
+        "expected_numbers": [6]
+      }
+    },
+    {
+      "id": "crypto_defi_strategy",
+      "industry": "Crypto",
+      "topic": "DeFi Yield Farming Strategy for 2026",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["yield", "liquidity", "risk", "strategy"],
+        "must_not_include": ["guaranteed returns", "no risk", "hospital"],
+        "min_word_count": 25
+      }
+    },
+    {
+      "id": "crypto_btc_market",
+      "industry": "Crypto",
+      "topic": "Bitcoin Market Cycles and Entry Points",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "strict",
+      "expectations": {
+        "must_include": ["bitcoin", "cycle", "market"],
+        "must_not_include": ["guaranteed profit", "medical advice"],
+        "min_word_count": 22
+      }
+    },
+    {
+      "id": "saas_pricing_balanced",
+      "industry": "SaaS",
+      "topic": "Product-Led Growth Pricing Tests",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["activation", "retention", "experiment"],
+        "must_not_include": ["tokenomics", "decentralized exchange"],
+        "min_word_count": 18
+      }
+    },
+    {
+      "id": "saas_customer_retention",
+      "industry": "SaaS",
+      "topic": "Reducing Customer Churn Through Onboarding",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["churn", "onboarding", "retention"],
+        "must_not_include": ["blockchain", "crypto token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "saas_team_scaling",
+      "industry": "SaaS",
+      "topic": "Scaling Engineering Teams Without Quality Loss",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["team", "scaling", "quality"],
+        "must_not_include": ["decentralized", "proof-of-work"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "healthcare_ops_creative",
+      "industry": "Healthcare",
+      "topic": "Reducing Patient No-Show Rates",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["scheduling", "follow-up", "patient"],
+        "must_not_include": ["proof-of-work", "liquidity mining"],
+        "min_word_count": 18
+      }
+    },
+    {
+      "id": "healthcare_staff_retention",
+      "industry": "Healthcare",
+      "topic": "Improving Nurse Staff Retention Strategies",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["nurse", "retention", "staff"],
+        "must_not_include": ["tokenomics", "blockchain"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "healthcare_patient_experience",
+      "industry": "Healthcare",
+      "topic": "Digital Transformation of Patient Experience",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["patient", "digital", "experience"],
+        "must_not_include": ["mining", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "real_estate_roi_intro",
+      "industry": "Real Estate",
+      "topic": "How First-Time Buyers Can Evaluate Neighborhood ROI",
+      "template_id": "educational-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["cash flow", "roi", "neighborhood"],
+        "must_not_include": ["bitcoin", "staking"],
+        "min_word_count": 22
+      }
+    },
+    {
+      "id": "real_estate_investment",
+      "industry": "Real Estate",
+      "topic": "Multi-Family Investment Strategy in Rising Markets",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["investment", "market", "strategy"],
+        "must_not_include": ["smart contract", "token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "real_estate_remote_work",
+      "industry": "Real Estate",
+      "topic": "Remote Work Impact on Commercial Real Estate",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["remote", "commercial", "real estate"],
+        "must_not_include": ["blockchain", "crypto"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "ecommerce_conversion",
+      "industry": "E-Commerce",
+      "topic": "A/B Testing Checkout Flow for Conversion Lift",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["checkout", "conversion", "test"],
+        "must_not_include": ["liquidity", "staking"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "ecommerce_personalization",
+      "industry": "E-Commerce",
+      "topic": "Personalization Engine: Boosting AOV Through Recommendations",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["personalization", "recommendation", "aov"],
+        "must_not_include": ["proof-of-work", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "ecommerce_retention",
+      "industry": "E-Commerce",
+      "topic": "Building Loyalty Programs That Actually Drive Repeat Purchase",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["loyalty", "retention", "repeat"],
+        "must_not_include": ["mining", "token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "fintech_compliance",
+      "industry": "FinTech",
+      "topic": "Navigating Regulatory Compliance in Emerging Markets",
+      "template_id": "educational-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "strict",
+      "expectations": {
+        "must_include": ["compliance", "regulatory", "market"],
+        "must_not_include": ["unregulated", "defi"],
+        "min_word_count": 22
+      }
+    },
+    {
+      "id": "fintech_api_integration",
+      "industry": "FinTech",
+      "topic": "Seamless API Integration for Payment Processing",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["api", "payment", "integration"],
+        "must_not_include": ["blockchain", "token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "mfg_supply_chain",
+      "industry": "Manufacturing",
+      "topic": "Optimizing Supply Chain with Real-Time Visibility",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["supply chain", "optimization", "visibility"],
+        "must_not_include": ["crypto", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "mfg_lean_ops",
+      "industry": "Manufacturing",
+      "topic": "Lean Manufacturing: Eliminating Waste Without Compromise",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["lean", "manufacturing", "waste"],
+        "must_not_include": ["staking", "token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "media_content_strategy",
+      "industry": "Media & Publishing",
+      "topic": "Building Sustainable Audience Growth Through Content Atomization",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["content", "audience", "strategy"],
+        "must_not_include": ["blockchain", "mining"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "media_monetization",
+      "industry": "Media & Publishing",
+      "topic": "Diversifying Revenue: Beyond Traditional Advertising",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["revenue", "monetization", "diversify"],
+        "must_not_include": ["token", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "b2b_sales_process",
+      "industry": "B2B Sales",
+      "topic": "Shortening Sales Cycles Through Sales Enablement",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["sales", "enablement", "cycle"],
+        "must_not_include": ["proof-of-work", "staking"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "b2b_account_management",
+      "industry": "B2B Sales",
+      "topic": "Strategic Account Management for Enterprise Growth",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["account management", "enterprise", "growth"],
+        "must_not_include": ["blockchain", "crypto"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "nonprofit_fundraising",
+      "industry": "Non-Profit",
+      "topic": "Modern Donor Engagement Strategies for Millennials",
+      "template_id": "educational-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["donor", "engagement", "fundraising"],
+        "must_not_include": ["defi", "trading"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "nonprofit_operations",
+      "industry": "Non-Profit",
+      "topic": "Scaling Impact Without Scaling Overhead",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["impact", "scaling", "operations"],
+        "must_not_include": ["token", "blockchain"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "edtech_engagement",
+      "industry": "EdTech",
+      "topic": "Improving Student Engagement in Hybrid Learning Models",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["student", "engagement", "learning"],
+        "must_not_include": ["crypto", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "edtech_outcomes",
+      "industry": "EdTech",
+      "topic": "Measuring Learning Outcomes with Data-Driven Insights",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["learning", "outcomes", "data"],
+        "must_not_include": ["staking", "mining"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "travel_personalization",
+      "industry": "Travel & Hospitality",
+      "topic": "Hyper-Personalization: The Future of Guest Experience",
+      "template_id": "thought-leadership",
+      "kb_mode": "use_kb",
+      "grounding_mode": "creative",
+      "expectations": {
+        "must_include": ["personalization", "guest", "experience"],
+        "must_not_include": ["blockchain", "token"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "travel_sustainability",
+      "industry": "Travel & Hospitality",
+      "topic": "Sustainable Tourism: Balancing Growth with Environmental Impact",
+      "template_id": "insight-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["sustainability", "tourism", "environment"],
+        "must_not_include": ["crypto", "defi"],
+        "min_word_count": 20
+      }
+    },
+    {
+      "id": "enterprise_security_strict",
+      "industry": "Enterprise Tech",
+      "topic": "Zero-Trust Security Framework for Modern Enterprises",
+      "template_id": "educational-post",
+      "kb_mode": "use_kb",
+      "grounding_mode": "strict",
+      "expectations": {
+        "must_include": ["security", "zero-trust", "framework"],
+        "must_not_include": ["unencrypted", "outdated"],
+        "min_word_count": 22
+      }
+    },
+    {
+      "id": "enterprise_cloud_migration",
+      "industry": "Enterprise Tech",
+      "topic": "Cloud-First Strategy: Making the Leap Without Disruption",
+      "template_id": "case-study",
+      "kb_mode": "use_kb",
+      "grounding_mode": "balanced",
+      "expectations": {
+        "must_include": ["cloud", "migration", "strategy"],
+        "must_not_include": ["blockchain", "defi"],
+        "min_word_count": 20
+      }
+    }
+  ]
+}
