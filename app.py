@@ -5487,11 +5487,21 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
     lower_text = text.lower()
     lower_first_line = first_line.lower()
     theme_tokens = [
-        token for token in re.findall(r'[a-zA-Z0-9]+', str(theme or '').lower())
+        token for token in re.findall(r'[a-zA-Z0-9]+', _normalize_topic_text(str(theme or '')).lower())
         if len(token) >= 4
     ]
-    hook_topic_match = any(token in lower_first_line for token in theme_tokens[:6]) if theme_tokens else True
+    core_theme_tokens = _extract_topic_keywords(theme)
+    anchor_tokens = core_theme_tokens[:4] if core_theme_tokens else theme_tokens[:6]
+    hook_topic_match = any(token in lower_first_line for token in anchor_tokens) if anchor_tokens else True
     hook_length_ok = len(first_line) <= 120
+
+    topic_coverage_tokens = core_theme_tokens[:6] if core_theme_tokens else theme_tokens[:8]
+    topic_token_hits = sum(1 for token in topic_coverage_tokens if token in lower_text)
+    topic_coverage_ok = (
+        topic_token_hits >= min(2, len(topic_coverage_tokens))
+        if topic_coverage_tokens
+        else True
+    )
 
     cta_markers = [
         'what\'s your take', 'what do you think', 'curious', 'share your', 'drop a comment',
@@ -5512,6 +5522,9 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
     novelty = max(0, min(100, 76 - (banned_hits * 12) + (8 if 'but' in lower_text or 'however' in lower_text else 0)))
     specificity = max(0, min(100, 44 + min(40, specificity_terms * 7)))
     hook = max(0, min(100, (55 if hook_length_ok else 25) + (35 if hook_topic_match else 0)))
+    if not topic_coverage_ok:
+        hook = max(0, hook - 25)
+        specificity = max(0, specificity - 18)
     cta = 88 if has_cta else 32
 
     if goal_key in {'spark_comments', 'grow_network'} and not text.strip().endswith('?'):
@@ -5522,6 +5535,8 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
         issues.append('Hook line exceeds 120 characters')
     if not hook_topic_match:
         issues.append('Opening line is not clearly anchored to the requested topic')
+    if not topic_coverage_ok:
+        issues.append('Body does not stay focused on the requested topic')
     if len(paragraphs) < 2:
         issues.append('Needs clearer paragraph structure (2+ short paragraphs)')
     if not has_cta:
@@ -5637,6 +5652,51 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
     return sorted(list(set(hits)))
 
 
+def _normalize_topic_text(raw_topic: str) -> str:
+    """Normalize user topic text for retrieval and scoring.
+
+    Strips list prefixes like "6.", "2)", "01 -" so KB queries focus on
+    the semantic topic phrase.
+    """
+    text = str(raw_topic or '').strip()
+    if not text:
+        return ''
+    text = re.sub(r'^\s*\d+\s*[\.)\-:]\s*', '', text)
+    text = re.sub(r'^\s*chapter\s*\d+\s*[:\-]\s*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _extract_topic_keywords(topic: str) -> list:
+    """Return meaningful topic tokens, excluding broad generic domain words."""
+    normalized = _normalize_topic_text(topic).lower()
+    tokens = re.findall(r'[a-zA-Z0-9]+', normalized)
+    if not tokens:
+        return []
+
+    stop = {
+        'about', 'from', 'with', 'this', 'that', 'your', 'their', 'into', 'what', 'when',
+        'where', 'which', 'while', 'there', 'here', 'topic', 'guide', 'intro', 'overview',
+        'types', 'type', 'basics', 'insights', 'practical', 'lessons', 'strategies',
+        'framework', 'professional', 'industry', 'general', 'engagement', 'post',
+    }
+    broad_domain = {
+        'crypto', 'cryptocurrency', 'web3', 'blockchain', 'fintech', 'technology', 'business',
+    }
+
+    keywords = []
+    seen = set()
+    for token in tokens:
+        if len(token) < 4:
+            continue
+        if token in stop or token in broad_domain:
+            continue
+        if token not in seen:
+            seen.add(token)
+            keywords.append(token)
+    return keywords
+
+
 # ── Production Grounding System ───────────────────────────────────────────────
 
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
@@ -5650,20 +5710,34 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     """
     queries = []
     topic = (topic or '').strip()
+    normalized_topic = _normalize_topic_text(topic)
+    topic_for_queries = normalized_topic or topic
     industry = (industry or '').strip()
     role = (role or '').strip()
 
     # Q1 — the user's exact topic (highest priority)
-    if topic:
+    if topic_for_queries:
+        queries.append(topic_for_queries)
+    if topic and normalized_topic and topic.lower() != normalized_topic.lower():
         queries.append(topic)
 
+    # Q1b — add classification-oriented variants for numbered headings
+    if topic_for_queries:
+        lower_topic = topic_for_queries.lower()
+        if re.search(r'\btypes?\s+of\b', lower_topic):
+            entity = re.sub(r'^.*\btypes?\s+of\s+', '', lower_topic).strip()
+            if entity:
+                queries.append(f"categories of {entity}")
+                queries.append(f"{entity} classification")
+                queries.append(f"{entity} examples and definitions")
+
     # Q2 — topic contextualised with industry
-    if topic and industry:
-        queries.append(f"{topic} in {industry}")
+    if topic_for_queries and industry:
+        queries.append(f"{topic_for_queries} in {industry}")
 
     # Q3 — topic contextualised with role perspective
-    if topic and role:
-        queries.append(f"{topic} from {role} perspective")
+    if topic_for_queries and role:
+        queries.append(f"{topic_for_queries} from {role} perspective")
     
     # Q4 — just the main industry/role keywords (broader catch-all for any content in that domain)
     if industry or role:
@@ -5673,12 +5747,12 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     
     # Q5 — goal + topic combination (often KB is organized by use case)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
-    if topic and goal_label:
-        queries.append(f"{topic} for {goal_label}")
+    if topic_for_queries and goal_label:
+        queries.append(f"{topic_for_queries} for {goal_label}")
     
     # Q6 — broader industry + role + goal combo (catch-all)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
-    broad_parts = [p for p in [industry, role, goal_label, topic] if p]
+    broad_parts = [p for p in [industry, role, goal_label, topic_for_queries] if p]
     if broad_parts and ' '.join(broad_parts) not in [q for q in queries]:
         queries.append(' '.join(broad_parts))
 
@@ -5690,7 +5764,7 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
         if q_lower and q_lower not in seen:
             seen.add(q_lower)
             unique.append(q)
-    return unique or [topic or industry or 'general knowledge']
+    return unique or [topic_for_queries or industry or 'general knowledge']
 
 
 def _multi_query_kb_search(rag, queries: list, file_id_arg, k_per_query: int = 4,
@@ -6963,12 +7037,16 @@ Post:
             'Opening line is not clearly anchored to the requested topic' in str(issue)
             for issue in (heuristics.get('issues') or [])
         )
+        needs_topic_focus_retry = any(
+            'Body does not stay focused on the requested topic' in str(issue)
+            for issue in (heuristics.get('issues') or [])
+        )
         needs_length_retry = (
             word_count_mode == 'custom_range'
             and (words_count(body) < min_words or words_count(body) > max_words)
         )
 
-        if (evaluation.get('score', 0) < quality_threshold or needs_topic_anchor_retry or needs_length_retry) and retry_allowed and _has_budget(20):
+        if (evaluation.get('score', 0) < quality_threshold or needs_topic_anchor_retry or needs_topic_focus_retry or needs_length_retry) and retry_allowed and _has_budget(20):
             retry_attempted = True
             feedback_issues = list(evaluation.get('issues') or [
                 'Improve hook specificity and topic anchoring',
@@ -6977,6 +7055,8 @@ Post:
             ])
             if needs_topic_anchor_retry:
                 feedback_issues.append('Opening line must be directly anchored to the requested topic')
+            if needs_topic_focus_retry:
+                feedback_issues.append('Body must stay focused on the requested topic and avoid generic tangents')
             if needs_length_retry:
                 feedback_issues.append(f'Keep output strictly between {min_words} and {max_words} words')
             retry_prompt = _PromptBuilder.build_retry_prompt(
@@ -7070,6 +7150,8 @@ Post:
 
             if any('Opening line is not clearly anchored to the requested topic' in str(issue) for issue in (heur.get('issues') or [])):
                 violations.append('Opening line is not anchored to topic')
+            if any('Body does not stay focused on the requested topic' in str(issue) for issue in (heur.get('issues') or [])):
+                violations.append('Body is not focused on the requested topic')
 
             if goal_key in {'spark_comments', 'grow_network'} and not str(candidate_body or '').strip().endswith('?'):
                 violations.append('Goal-aligned CTA question missing at the end')
