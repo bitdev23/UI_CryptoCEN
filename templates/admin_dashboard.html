@@ -3644,6 +3644,8 @@
 
         function adminLaunchOnboardingInUserApp(kind = 'spotlight') {
             const mode = String(kind || '').toLowerCase() === 'ftu' ? 'ftu' : 'spotlight';
+            localStorage.setItem('admin_pending_onboarding_action', mode);
+            localStorage.setItem('admin_pending_onboarding_action_ts', String(Date.now()));
             const url = `/?admin_onboarding=${encodeURIComponent(mode)}`;
             window.open(url, '_blank', 'noopener');
             showToast(

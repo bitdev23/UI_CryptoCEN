@@ -6,9 +6,8 @@
     <title>Velank AI</title>
     <!-- ═══ Immediate auth gate: redirect before any HTML renders ═══ -->
     <script>
-        // ── Token storage: use sessionStorage for tokens (XSS-safe) ──
-        // Non-sensitive profile data (user_id, email, name) stays in localStorage.
-        var _tokenStore = sessionStorage;
+        // ── Token storage: use localStorage so auth persists across tabs in same browser ──
+        var _tokenStore = localStorage;
         (function () {
             try {
                 // If Supabase redirected to / with #access_token= in the hash
@@ -20,6 +19,13 @@
                     return;
                 }
                 if (!_tokenStore.getItem('access_token')) {
+                    // Persist admin onboarding action across login redirect.
+                    var q = new URL(window.location.href).searchParams;
+                    var pending = String(q.get('admin_onboarding') || '').trim().toLowerCase();
+                    if (pending === 'spotlight' || pending === 'ftu') {
+                        localStorage.setItem('admin_pending_onboarding_action', pending);
+                        localStorage.setItem('admin_pending_onboarding_action_ts', String(Date.now()));
+                    }
                     window.location.replace('/login');
                 }
             } catch (_) {}
@@ -24675,6 +24681,16 @@
         } catch (_) {
             action = '';
         }
+        if (!action) {
+            const pending = String(localStorage.getItem('admin_pending_onboarding_action') || '').trim().toLowerCase();
+            const ts = Number(localStorage.getItem('admin_pending_onboarding_action_ts') || '0');
+            const fresh = Number.isFinite(ts) && ts > 0 && (Date.now() - ts) < (10 * 60 * 1000);
+            if (fresh && (pending === 'ftu' || pending === 'spotlight')) {
+                action = pending;
+            }
+        }
+        localStorage.removeItem('admin_pending_onboarding_action');
+        localStorage.removeItem('admin_pending_onboarding_action_ts');
         if (action === 'ftu') {
             return 'ftu';
         }
