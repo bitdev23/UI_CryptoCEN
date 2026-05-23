@@ -8773,6 +8773,134 @@
             .creator-v4 .cv-topic-gen-actions { width: 100%; justify-content: flex-end }
             .creator-v4 .cv-topic-chips { gap: 4px }
             .creator-v4 .cv-topic-chip { font-size: 0.72rem; padding: 4px 8px }
+
+        /* Spotlight onboarding tour */
+        #ptour-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 13000;
+            display: none;
+            pointer-events: none;
+        }
+        #ptour-overlay.is-open {
+            display: block;
+        }
+        .ptour-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.55);
+            backdrop-filter: blur(2px);
+            pointer-events: auto;
+        }
+        .ptour-popover {
+            position: absolute;
+            width: min(360px, calc(100vw - 28px));
+            max-height: calc(100vh - 24px);
+            overflow: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+            box-shadow: 0 22px 48px rgba(2, 6, 23, 0.55);
+            color: #e2e8f0;
+            pointer-events: auto;
+            padding: 14px 14px 12px;
+        }
+        .ptour-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #a5b4fc;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .ptour-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .ptour-copy {
+            font-size: 0.86rem;
+            line-height: 1.5;
+            color: rgba(226, 232, 240, 0.92);
+        }
+        .ptour-progress {
+            margin: 11px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.73rem;
+            color: #cbd5e1;
+            font-weight: 700;
+        }
+        .ptour-progress-track {
+            flex: 1;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.25);
+            overflow: hidden;
+        }
+        .ptour-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #818cf8, #6366f1);
+            transition: width 220ms ease;
+        }
+        .ptour-dots {
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap;
+        }
+        .ptour-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            border: 0;
+            background: rgba(148, 163, 184, 0.45);
+            cursor: pointer;
+            transition: transform 160ms ease, background 180ms ease;
+            padding: 0;
+        }
+        .ptour-dot:hover {
+            background: rgba(165, 180, 252, 0.8);
+            transform: scale(1.08);
+        }
+        .ptour-dot.is-active {
+            background: #818cf8;
+            transform: scale(1.12);
+        }
+        .ptour-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .ptour-actions .btn {
+            border-radius: 9px;
+        }
+        .ptour-target-active {
+            position: relative !important;
+            z-index: 12995 !important;
+            border-radius: 10px;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.95), 0 0 0 8px rgba(129, 140, 248, 0.2), 0 18px 34px rgba(30, 41, 59, 0.45) !important;
+            transition: box-shadow 0.2s ease;
+        }
+        @media (max-width: 860px) {
+            .ptour-popover {
+                width: min(94vw, 360px);
+            }
+            .ptour-actions {
+                flex-wrap: wrap;
+            }
+        }
             .creator-v4 .cv-idle-features { grid-template-columns: 1fr }
             .creator-v4 .cv-pv-footer { flex-wrap: wrap }
             .creator-v4 .cv-pv-btn { flex: 1 1 calc(50% - 4px) }
@@ -20895,7 +21023,7 @@
                         </div>
                         <button class="btn btn-primary" style="font-size:12px; padding:7px 16px;" onclick="trainKnowledgeBase()">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-                            Retrain Database
+                            Retrain AI
                         </button>
                     </div>
 
@@ -21268,6 +21396,7 @@
                                         <div class="settings-v2-profile-actions">
                                             <button class="btn btn-secondary btn-sm" type="button" onclick="openProfileAvatarPicker()"><i class="fas fa-image"></i> Upload Profile Image</button>
                                             <button class="btn btn-secondary btn-sm" type="button" onclick="removeProfileAvatar()"><i class="fas fa-trash-alt"></i> Remove Photo</button>
+                                            <button class="btn btn-secondary btn-sm" type="button" onclick="openProductSpotlightTour({ force: true, resume: false })"><i class="fas fa-map-signs"></i> Replay Spotlight Tour</button>
                                         </div>
                                     </div>
                                 </div>
@@ -21343,6 +21472,32 @@
                                         <button class="btn btn-secondary" onclick="copyReferralLink()"><i class="fas fa-copy"></i> Copy</button>
                                     </div>
                                     <div id="settings-referral-count" style="font-size:0.77rem; color:#64748b; margin-top:0.55rem;"></div>
+                                </div>
+                            </div>
+
+                            <div class="card settings-v2-card">
+                                <div class="settings-v2-card-head">
+                                    <div class="settings-v2-card-head-left">
+                                        <span class="settings-v2-card-icon"><i class="fas fa-flask"></i></span>
+                                        <div>
+                                            <div class="settings-v2-card-title">Onboarding QA Controls</div>
+                                            <div class="settings-v2-card-sub">Admin/testing only. This does not impact production data.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-v2-card-body">
+                                    <div class="settings-v2-toggle-row">
+                                        <div>
+                                            <h4>Force first-run onboarding for this account</h4>
+                                            <p id="settings-onboarding-admin-mode-label">When enabled, onboarding always appears even if previously completed.</p>
+                                        </div>
+                                        <button id="settings-toggle-force-onboarding-all" class="settings-v2-toggle" type="button" onclick="toggleSettingSwitch(this)"></button>
+                                    </div>
+                                    <div class="settings-v2-actions">
+                                        <button class="btn btn-primary" type="button" onclick="saveOnboardingAdminSettings()"><i class="fas fa-floppy-disk"></i> Save QA Mode</button>
+                                        <button class="btn btn-secondary" type="button" onclick="openProductSpotlightTour({ force: true, resume: false })"><i class="fas fa-map-signs"></i> Run Spotlight Now</button>
+                                        <button class="btn btn-secondary" type="button" onclick="closeProductSpotlightTour(false); openFirstRunOnboarding()"><i class="fas fa-graduation-cap"></i> Run FTU Wizard Now</button>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -24013,6 +24168,28 @@
         return mode === 'all';
     }
 
+    function syncOnboardingAdminSettingsUI() {
+        setToggleState('settings-toggle-force-onboarding-all', isFtuForceAllMode());
+        const label = document.getElementById('settings-onboarding-admin-mode-label');
+        if (label) {
+            label.textContent = isFtuForceAllMode()
+                ? 'Enabled: onboarding is forced on every dashboard load for this account.'
+                : 'Disabled: onboarding follows normal first-run behavior.';
+        }
+    }
+
+    function saveOnboardingAdminSettings() {
+        const enabled = isToggleOn('settings-toggle-force-onboarding-all');
+        if (enabled) {
+            localStorage.setItem('ftu_admin_onboarding_mode', 'all');
+        } else {
+            localStorage.removeItem('ftu_admin_onboarding_mode');
+        }
+        syncOnboardingAdminSettingsUI();
+        emitOnboardingAnalyticsEvent('qa_force_mode_toggled', { enabled });
+        showToast('success', enabled ? 'QA mode enabled: onboarding will be forced.' : 'QA mode disabled: onboarding is back to normal.', 'fas fa-check');
+    }
+
     function hasSeenFirstRunOnboarding() {
         if (isFtuForceAllMode()) {
             return false;  // force-all testing mode overrides the seen flag
@@ -24030,6 +24207,469 @@
             return;
         }
         localStorage.setItem(key, '1');
+    }
+
+    let productSpotlightStepIndex = 0;
+    let productSpotlightActive = false;
+    let productSpotlightActiveTarget = null;
+    let productSpotlightRepositionRaf = null;
+    let productSpotlightWorkspaceSnapshot = null;
+    let productSpotlightLastTrackedStepId = '';
+
+    function emitOnboardingAnalyticsEvent(eventName, payload = {}) {
+        const normalized = String(eventName || '').trim();
+        if (!normalized) {
+            return;
+        }
+        const detail = {
+            event: normalized,
+            source: 'onboarding',
+            ts: Date.now(),
+            user_id: String(localStorage.getItem('user_id') || '').trim() || null,
+            user_email: String(localStorage.getItem('user_email') || '').trim().toLowerCase() || null,
+            ...payload
+        };
+
+        try {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: `onboarding_${normalized}`,
+                ...detail
+            });
+        } catch (_) {}
+
+        try {
+            if (window.posthog && typeof window.posthog.capture === 'function') {
+                window.posthog.capture(`onboarding_${normalized}`, detail);
+            }
+        } catch (_) {}
+
+        try {
+            if (typeof window.gtag === 'function') {
+                window.gtag('event', `onboarding_${normalized}`, detail);
+            }
+        } catch (_) {}
+
+        try {
+            document.dispatchEvent(new CustomEvent('velank:onboarding-analytics', { detail }));
+        } catch (_) {}
+    }
+
+    function getProductSpotlightIdentity() {
+        let identity = (
+            localStorage.getItem('user_id')
+            || localStorage.getItem('user_email')
+            || ''
+        ).trim();
+        if (identity.includes('@')) {
+            identity = identity.toLowerCase();
+        }
+        return identity;
+    }
+
+    function getProductSpotlightSeenKey() {
+        const identity = getProductSpotlightIdentity();
+        return identity ? `product_spotlight_seen_${identity}` : '';
+    }
+
+    function getProductSpotlightProgressKey() {
+        const identity = getProductSpotlightIdentity();
+        return identity ? `product_spotlight_progress_${identity}` : '';
+    }
+
+    function hasSeenProductSpotlightTour() {
+        const key = getProductSpotlightSeenKey();
+        return Boolean(key && localStorage.getItem(key) === '1');
+    }
+
+    function markProductSpotlightTourSeen() {
+        const key = getProductSpotlightSeenKey();
+        if (key) {
+            localStorage.setItem(key, '1');
+        }
+        const progressKey = getProductSpotlightProgressKey();
+        if (progressKey) {
+            localStorage.removeItem(progressKey);
+        }
+    }
+
+    function getSavedProductSpotlightStep() {
+        const key = getProductSpotlightProgressKey();
+        if (!key) return 0;
+        const parsed = Number(localStorage.getItem(key) || '0');
+        return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    }
+
+    function saveProductSpotlightStep(index) {
+        const key = getProductSpotlightProgressKey();
+        if (!key) return;
+        localStorage.setItem(key, String(Math.max(0, Number(index) || 0)));
+    }
+
+    function clearProductSpotlightStep() {
+        const key = getProductSpotlightProgressKey();
+        if (key) {
+            localStorage.removeItem(key);
+        }
+    }
+
+    function getProductSpotlightRole() {
+        const rawRole = String(
+            getRoleValue()
+            || document.getElementById('role-select')?.value
+            || ''
+        ).trim();
+        if (!rawRole) {
+            return 'your role';
+        }
+        return rawRole.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function getProductSpotlightSteps() {
+        const role = getProductSpotlightRole();
+        return [
+            {
+                id: 'upload-files',
+                tab: 'knowledge-base',
+                selectors: ['#knowledge-base .kb4-upload-drop', '#knowledge-base .kb-upload-drop', '#knowledge-base #kb-file'],
+                title: 'Upload Files first',
+                copy: `Start by adding your own PDFs, docs, and notes. This keeps every generated post grounded in your ${role} context.`
+            },
+            {
+                id: 'create-post',
+                tab: 'content-creator',
+                selectors: ['#content-creator #topic-input', '#content-creator #generate-button'],
+                title: 'Create Post from one topic',
+                copy: 'Write one clear topic, keep goal + tone selected, and click Generate. This is your fastest path from idea to first draft.'
+            },
+            {
+                id: 'quality-insights',
+                tab: 'content-creator',
+                selectors: ['#content-creator [data-side-pane-btn="insights"]', '#content-creator #generation-insights'],
+                title: 'Check quality before publishing',
+                copy: 'Open Insights to review the Post Quality Score, hook strength, CTA, and hashtag quality so you ship high-performing posts.'
+            },
+            {
+                id: 'schedule-post',
+                tab: 'scheduler',
+                selectors: ['#scheduler .sc2-hero-btn-primary', '#scheduler #schedule-post-btn'],
+                title: 'Schedule and stay consistent',
+                copy: 'Queue your approved draft for the best posting window. Consistency beats intensity on LinkedIn.'
+            }
+        ];
+    }
+
+    function getVisibleSelectorTarget(selectors) {
+        if (!Array.isArray(selectors)) {
+            return null;
+        }
+        for (const selector of selectors) {
+            const node = document.querySelector(selector);
+            if (!node) continue;
+            const rect = node.getBoundingClientRect();
+            const visible = rect.width > 2 && rect.height > 2;
+            if (visible) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    function cleanupProductSpotlightTarget() {
+        if (productSpotlightActiveTarget) {
+            productSpotlightActiveTarget.classList.remove('ptour-target-active');
+        }
+        productSpotlightActiveTarget = null;
+        const workspace = document.getElementById('cv-workspace');
+        if (workspace && productSpotlightWorkspaceSnapshot) {
+            workspace.classList.toggle('cv-workspace-generated', Boolean(productSpotlightWorkspaceSnapshot.generated));
+            workspace.classList.toggle('cv-side-insights', Boolean(productSpotlightWorkspaceSnapshot.insights));
+            productSpotlightWorkspaceSnapshot = null;
+        }
+        if (typeof syncCreatorWorkspaceLayout === 'function') {
+            syncCreatorWorkspaceLayout();
+        }
+    }
+
+    function jumpProductSpotlightStep(index) {
+        if (!productSpotlightActive) {
+            return;
+        }
+        const steps = getProductSpotlightSteps();
+        const targetIndex = Number(index);
+        if (!Number.isFinite(targetIndex) || targetIndex < 0 || targetIndex >= steps.length) {
+            return;
+        }
+        const from = productSpotlightStepIndex;
+        productSpotlightStepIndex = targetIndex;
+        saveProductSpotlightStep(productSpotlightStepIndex);
+        emitOnboardingAnalyticsEvent('spotlight_step_jump', {
+            from_step: from + 1,
+            to_step: productSpotlightStepIndex + 1,
+            to_step_id: steps[productSpotlightStepIndex]?.id || ''
+        });
+        renderProductSpotlightStep();
+    }
+
+    function renderProductSpotlightDots(totalSteps, activeIndex) {
+        const dotsWrap = document.getElementById('ptour-dots');
+        if (!dotsWrap) {
+            return;
+        }
+        const total = Math.max(0, Number(totalSteps) || 0);
+        const safeActive = Math.max(0, Math.min(total - 1, Number(activeIndex) || 0));
+        const nodes = [];
+        for (let i = 0; i < total; i += 1) {
+            const isActive = i === safeActive;
+            nodes.push(`<button type="button" class="ptour-dot ${isActive ? 'is-active' : ''}" aria-label="Go to step ${i + 1}" aria-current="${isActive ? 'step' : 'false'}" onclick="jumpProductSpotlightStep(${i})"></button>`);
+        }
+        dotsWrap.innerHTML = nodes.join('');
+    }
+
+    function positionProductSpotlightPopover(targetEl) {
+        const popover = document.getElementById('ptour-popover');
+        if (!popover || !targetEl) {
+            return;
+        }
+        const margin = 14;
+        const rect = targetEl.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const popW = popover.offsetWidth || 340;
+        const popH = popover.offsetHeight || 220;
+
+        let left = rect.right + margin;
+        if (left + popW > vw - margin) {
+            left = rect.left - popW - margin;
+        }
+        if (left < margin) {
+            left = Math.max(margin, Math.min(vw - popW - margin, rect.left));
+        }
+
+        let top = rect.top + (rect.height / 2) - (popH / 2);
+        top = Math.max(margin, Math.min(vh - popH - margin, top));
+
+        popover.style.left = `${Math.round(left)}px`;
+        popover.style.top = `${Math.round(top)}px`;
+    }
+
+    function scheduleProductSpotlightReposition() {
+        if (!productSpotlightActive) {
+            return;
+        }
+        if (productSpotlightRepositionRaf) {
+            cancelAnimationFrame(productSpotlightRepositionRaf);
+        }
+        productSpotlightRepositionRaf = requestAnimationFrame(() => {
+            productSpotlightRepositionRaf = null;
+            if (productSpotlightActiveTarget) {
+                positionProductSpotlightPopover(productSpotlightActiveTarget);
+            }
+        });
+    }
+
+    function handleProductSpotlightKeydown(event) {
+        if (!productSpotlightActive) {
+            return;
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeProductSpotlightTour(false);
+            return;
+        }
+        if (event.key === 'ArrowRight' || event.key === 'Enter') {
+            event.preventDefault();
+            stepProductSpotlightTour(1);
+            return;
+        }
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            stepProductSpotlightTour(-1);
+        }
+    }
+
+    function attachProductSpotlightListeners() {
+        window.addEventListener('resize', scheduleProductSpotlightReposition);
+        window.addEventListener('scroll', scheduleProductSpotlightReposition, true);
+        document.addEventListener('keydown', handleProductSpotlightKeydown);
+    }
+
+    function detachProductSpotlightListeners() {
+        window.removeEventListener('resize', scheduleProductSpotlightReposition);
+        window.removeEventListener('scroll', scheduleProductSpotlightReposition, true);
+        document.removeEventListener('keydown', handleProductSpotlightKeydown);
+        if (productSpotlightRepositionRaf) {
+            cancelAnimationFrame(productSpotlightRepositionRaf);
+            productSpotlightRepositionRaf = null;
+        }
+    }
+
+    function applyProductSpotlightStepSetup(stepId) {
+        if (stepId !== 'quality-insights') {
+            return;
+        }
+        const workspace = document.getElementById('cv-workspace');
+        if (workspace) {
+            productSpotlightWorkspaceSnapshot = {
+                generated: workspace.classList.contains('cv-workspace-generated'),
+                insights: workspace.classList.contains('cv-side-insights')
+            };
+            workspace.classList.remove('cv-workspace-focus');
+            workspace.classList.add('cv-workspace-generated');
+            workspace.classList.add('cv-side-insights');
+        }
+        if (typeof setCreatorSidePane === 'function') {
+            setCreatorSidePane('insights');
+        }
+    }
+
+    function renderProductSpotlightStep() {
+        const steps = getProductSpotlightSteps();
+        const step = steps[productSpotlightStepIndex];
+        if (!step) {
+            closeProductSpotlightTour(true);
+            return;
+        }
+
+        const titleEl = document.getElementById('ptour-title');
+        const copyEl = document.getElementById('ptour-copy');
+        const countEl = document.getElementById('ptour-step-count');
+        const fillEl = document.getElementById('ptour-progress-fill');
+        const prevBtn = document.getElementById('ptour-prev-btn');
+        const nextBtn = document.getElementById('ptour-next-btn');
+
+        if (titleEl) titleEl.textContent = step.title;
+        if (copyEl) copyEl.textContent = step.copy;
+        if (countEl) countEl.textContent = `${productSpotlightStepIndex + 1} / ${steps.length}`;
+        if (fillEl) fillEl.style.width = `${((productSpotlightStepIndex + 1) / steps.length) * 100}%`;
+        renderProductSpotlightDots(steps.length, productSpotlightStepIndex);
+        if (prevBtn) prevBtn.disabled = productSpotlightStepIndex === 0;
+        if (nextBtn) {
+            const isLastStep = productSpotlightStepIndex >= steps.length - 1;
+            nextBtn.innerHTML = isLastStep
+                ? 'Finish <i class="fas fa-check"></i>'
+                : 'Next <i class="fas fa-arrow-right"></i>';
+        }
+
+        if (productSpotlightLastTrackedStepId !== String(step.id || '')) {
+            productSpotlightLastTrackedStepId = String(step.id || '');
+            emitOnboardingAnalyticsEvent('spotlight_step_viewed', {
+                step_index: productSpotlightStepIndex + 1,
+                step_id: step.id,
+                step_title: step.title
+            });
+        }
+
+        if (step.tab) {
+            switchTab(step.tab, null, true);
+        }
+        applyProductSpotlightStepSetup(step.id);
+        cleanupProductSpotlightTarget();
+
+        setTimeout(() => {
+            const target = getVisibleSelectorTarget(step.selectors);
+            if (target) {
+                productSpotlightActiveTarget = target;
+                target.classList.add('ptour-target-active');
+                positionProductSpotlightPopover(target);
+            }
+        }, 160);
+    }
+
+    function stepProductSpotlightTour(direction = 1) {
+        if (!productSpotlightActive) {
+            return;
+        }
+        const steps = getProductSpotlightSteps();
+        const delta = Number(direction) < 0 ? -1 : 1;
+        const candidate = productSpotlightStepIndex + delta;
+        if (candidate < 0) {
+            return;
+        }
+        if (candidate >= steps.length) {
+            closeProductSpotlightTour(true);
+            return;
+        }
+        emitOnboardingAnalyticsEvent(delta < 0 ? 'spotlight_step_back' : 'spotlight_step_next', {
+            from_step: productSpotlightStepIndex + 1,
+            to_step: candidate + 1,
+            to_step_id: steps[candidate]?.id || ''
+        });
+        productSpotlightStepIndex = candidate;
+        saveProductSpotlightStep(productSpotlightStepIndex);
+        renderProductSpotlightStep();
+    }
+
+    function closeProductSpotlightTour(markSeen = false) {
+        const overlay = document.getElementById('ptour-overlay');
+        if (!overlay) {
+            return;
+        }
+        overlay.classList.remove('is-open');
+        detachProductSpotlightListeners();
+        cleanupProductSpotlightTarget();
+        productSpotlightActive = false;
+        const steps = getProductSpotlightSteps();
+        if (markSeen) {
+            markProductSpotlightTourSeen();
+            emitOnboardingAnalyticsEvent('spotlight_completed', {
+                completed_steps: steps.length
+            });
+        } else {
+            saveProductSpotlightStep(productSpotlightStepIndex);
+            emitOnboardingAnalyticsEvent('spotlight_skipped', {
+                step_index: productSpotlightStepIndex + 1,
+                step_id: steps[productSpotlightStepIndex]?.id || ''
+            });
+        }
+        productSpotlightLastTrackedStepId = '';
+        document.body.style.overflow = '';
+    }
+
+    function openProductSpotlightTour(options = {}) {
+        const opts = options && typeof options === 'object' ? options : {};
+        const force = Boolean(opts.force);
+        const resume = opts.resume !== false;
+        if (!force && hasSeenProductSpotlightTour()) {
+            return;
+        }
+        const overlay = document.getElementById('ptour-overlay');
+        if (!overlay) {
+            return;
+        }
+        const ftuOverlay = document.getElementById('ftu-onboarding-overlay');
+        if (ftuOverlay && ftuOverlay.classList.contains('is-open')) {
+            return;
+        }
+
+        const totalSteps = getProductSpotlightSteps().length;
+        const savedStep = resume ? getSavedProductSpotlightStep() : 0;
+        productSpotlightStepIndex = Math.max(0, Math.min(totalSteps - 1, savedStep));
+        productSpotlightLastTrackedStepId = '';
+        productSpotlightActive = true;
+        overlay.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        attachProductSpotlightListeners();
+        emitOnboardingAnalyticsEvent('spotlight_started', {
+            force,
+            resume,
+            start_step: productSpotlightStepIndex + 1
+        });
+        renderProductSpotlightStep();
+    }
+
+    function maybeShowProductSpotlightTour() {
+        if (!postHistoryLoaded || !userProfileLoaded) {
+            return;
+        }
+        if (productSpotlightActive || hasSeenProductSpotlightTour()) {
+            return;
+        }
+        const ftuOverlay = document.getElementById('ftu-onboarding-overlay');
+        if (ftuOverlay && ftuOverlay.classList.contains('is-open')) {
+            return;
+        }
+        openProductSpotlightTour({ resume: true });
     }
 
     function showFirstRunOnboardingFeedback(message = '', type = 'info') {
@@ -24609,6 +25249,9 @@
         showFirstRunOnboardingFeedback('', 'info');
         if (markSeen) {
             markFirstRunOnboardingSeen();
+            if (!hasSeenProductSpotlightTour()) {
+                setTimeout(() => maybeShowProductSpotlightTour(), 280);
+            }
         }
     }
 
@@ -24624,6 +25267,7 @@
         const bypassChecks = isFtuForceAllMode();
         if (!bypassChecks && (hasPreviousPosts || hasSeenFirstRunOnboarding())) {
             hasAttemptedFirstTimeOnboarding = true;
+            maybeShowProductSpotlightTour();
             return;
         }
         hasAttemptedFirstTimeOnboarding = true;
@@ -28619,6 +29263,7 @@
         setToggleState('settings-toggle-notify-weekly', runtimeConfig.NOTIFY_WEEKLY_SUMMARY === true);
         setToggleState('settings-toggle-notify-expiry', runtimeConfig.NOTIFY_TOKEN_EXPIRY !== false);
         setToggleState('settings-toggle-notify-updates', runtimeConfig.NOTIFY_PRODUCT_UPDATES === true);
+        syncOnboardingAdminSettingsUI();
 
         syncSettingsProfileSummary();
         refreshSettingsBillingUsage();
@@ -34898,6 +35543,27 @@
                     <button id="ftu-editor-action" class="btn btn-secondary" type="button" onclick="startOnboardingPostFlow(false)"><i class="fas fa-pen-fancy"></i> Open Editor First</button>
                     <button id="ftu-next-btn" class="btn btn-primary" type="button"><i class="fas fa-arrow-right"></i> Next</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="ptour-overlay" role="dialog" aria-modal="true" aria-label="Guided product tour">
+    <div class="ptour-backdrop" onclick="closeProductSpotlightTour(false)"></div>
+    <div class="ptour-popover" id="ptour-popover">
+        <div class="ptour-kicker"><i class="fas fa-map-signs"></i> Guided Walkthrough</div>
+        <div class="ptour-title" id="ptour-title">Welcome to Velank</div>
+        <div class="ptour-copy" id="ptour-copy">We will quickly walk through the core workflow.</div>
+        <div class="ptour-progress">
+            <span id="ptour-step-count">1 / 4</span>
+            <div class="ptour-progress-track"><div id="ptour-progress-fill" class="ptour-progress-fill"></div></div>
+        </div>
+        <div class="ptour-dots" id="ptour-dots" aria-label="Tour steps"></div>
+        <div class="ptour-actions">
+            <button id="ptour-skip-btn" class="btn btn-secondary btn-sm" type="button" onclick="closeProductSpotlightTour(false)">Skip for now</button>
+            <div style="display:flex; gap:8px; margin-left:auto;">
+                <button id="ptour-prev-btn" class="btn btn-secondary btn-sm" type="button" onclick="stepProductSpotlightTour(-1)"><i class="fas fa-arrow-left"></i> Back</button>
+                <button id="ptour-next-btn" class="btn btn-primary btn-sm" type="button" onclick="stepProductSpotlightTour(1)">Next <i class="fas fa-arrow-right"></i></button>
             </div>
         </div>
     </div>
