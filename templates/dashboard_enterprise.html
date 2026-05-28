@@ -6,21 +6,11 @@
     <title>Velank AI</title>
     <!-- ═══ Immediate auth gate: redirect before any HTML renders ═══ -->
     <script>
-        // ── Token storage: use localStorage so auth persists across tabs in same browser ──
-        var _tokenStore = localStorage;
+        // ── Token storage: use sessionStorage for tokens (XSS-safe) ──
+        // Non-sensitive profile data (user_id, email, name) stays in localStorage.
+        var _tokenStore = sessionStorage;
         (function () {
             try {
-                // Back-compat migration: promote existing sessionStorage tokens from old builds.
-                if (!_tokenStore.getItem('access_token')) {
-                    var legacyAccess = sessionStorage.getItem('access_token');
-                    var legacyRefresh = sessionStorage.getItem('refresh_token');
-                    if (legacyAccess) {
-                        _tokenStore.setItem('access_token', legacyAccess);
-                    }
-                    if (legacyRefresh) {
-                        _tokenStore.setItem('refresh_token', legacyRefresh);
-                    }
-                }
                 // If Supabase redirected to / with #access_token= in the hash
                 // (happens when redirect_to URL isn't in Supabase allowlist),
                 // forward to /auth/callback so the token handler can process it.
@@ -2825,35 +2815,6 @@
             gap: 1rem;
             justify-content: flex-end;
         }
-        .kb-file-preview-modal .modal-content {
-            max-width: 860px;
-        }
-        .kb-file-preview-head {
-            display: flex;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
-        .kb-file-preview-meta {
-            font-size: 0.8rem;
-            color: #64748b;
-        }
-        .kb-file-preview-content {
-            white-space: pre-wrap;
-            background: #0f172a;
-            color: #e2e8f0;
-            border-radius: 10px;
-            padding: 0.95rem;
-            font-size: 0.82rem;
-            line-height: 1.5;
-            border: 1px solid rgba(100, 116, 139, 0.35);
-            max-height: 60vh;
-            overflow: auto;
-        }
-        .kb-file-preview-note {
-            font-size: 0.77rem;
-            color: #64748b;
-            margin-top: 0.55rem;
-        }
         .li-connect-modal .modal-content {
             max-width: 640px;
             border-radius: 18px;
@@ -4521,98 +4482,6 @@
             z-index: 1;
             overflow: visible;
         }
-        .creator-v4 .cv-workspace .cv-form-scroll,
-        .creator-v4 .cv-workspace .cv-preview-col,
-        .creator-v4 .cv-workspace .cv-insights-col {
-            transition: all 0.34s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .creator-v4 .cv-workspace.cv-pane-switching .cv-preview-col,
-        .creator-v4 .cv-workspace.cv-pane-switching .cv-insights-col {
-            transform: translateY(1px);
-            opacity: 0.96;
-            filter: saturate(0.95);
-        }
-        .creator-v4 .cv-pane-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px;
-            border-radius: 10px;
-            background: rgba(30,41,59,0.2);
-            border: 1px solid rgba(79,70,229,0.28);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-        }
-        .creator-v4 .cv-pane-toggle-btn {
-            border: 0;
-            border-radius: 8px;
-            background: transparent;
-            color: rgba(71,85,105,0.85);
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 6px 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            opacity: 0.82;
-        }
-        .creator-v4 .cv-pane-toggle-btn.is-active,
-        .creator-v4 .cv-pane-toggle-btn[aria-pressed="true"] {
-            background: linear-gradient(135deg, #5b67f4, #4f46e5);
-            color: #ffffff;
-            opacity: 1;
-            box-shadow: 0 2px 12px rgba(79,70,229,0.48), inset 0 0 0 1px rgba(255,255,255,0.2);
-            text-shadow: 0 1px 2px rgba(15,23,42,0.42);
-        }
-        .creator-v4 .cv-pane-toggle-btn:hover {
-            color: #ffffff;
-            background: rgba(79,70,229,0.3);
-            opacity: 1;
-        }
-        .creator-v4 .cv-pane-toggle-btn:focus-visible {
-            outline: 2px solid rgba(165,180,252,0.8);
-            outline-offset: 1px;
-        }
-        .creator-v4 .cv-workspace.cv-workspace-focus .cv-form-scroll {
-            flex: 1 1 100%;
-            min-width: 0;
-            max-width: 100%;
-        }
-        .creator-v4 .cv-workspace.cv-workspace-focus .cv-preview-col,
-        .creator-v4 .cv-workspace.cv-workspace-focus .cv-insights-col {
-            width: 0 !important;
-            min-width: 0 !important;
-            max-width: 0 !important;
-            opacity: 0;
-            transform: translateX(20px);
-            pointer-events: none;
-            overflow: hidden;
-            border-width: 0;
-            margin: 0;
-        }
-        .creator-v4 .cv-workspace.cv-workspace-generated .cv-preview-col,
-        .creator-v4 .cv-workspace.cv-workspace-generated .cv-insights-col {
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
-        }
-        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col,
-        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col {
-            width: clamp(340px, 34vw, 560px);
-            min-width: 300px;
-            max-width: 560px;
-        }
-        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
-        .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
-            width: 0 !important;
-            min-width: 0 !important;
-            max-width: 0 !important;
-            opacity: 0;
-            transform: translateX(20px);
-            pointer-events: none;
-            overflow: hidden;
-            border-width: 0;
-            margin: 0;
-        }
 
         /* ---------- Topbar ---------- */
         .creator-v4 .cv-topbar {
@@ -6233,11 +6102,6 @@
             margin-top: 3px;
             letter-spacing: 0.01em;
         }
-        .creator-v4 .cv-insights-top-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
         .creator-v4 .cv-insights-brain-icon {
             width: clamp(26px, 2vw, 32px); height: clamp(26px, 2vw, 32px);
             border-radius: 10px;
@@ -7326,44 +7190,18 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            padding: clamp(8px, 0.75vw, 11px) clamp(12px, 1.1vw, 17px) clamp(6px, 0.6vw, 9px);
+            padding: clamp(8px, 0.8vw, 13px) clamp(12px, 1.1vw, 17px) clamp(8px, 0.75vw, 12px);
             border-bottom: 1px solid var(--cv-border);
             flex-shrink: 0;
             transition: opacity 0.3s;
         }
         .creator-v4 .cv-pv-topbar.generating { opacity: 0.45 }
         .creator-v4 .cv-pv-title {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
             font-size: clamp(0.78rem, 0.55vw + 0.42rem, 0.92rem);
             font-weight: 800;
             color: var(--cv-text);
             letter-spacing: -0.01em;
             white-space: nowrap;
-        }
-        .creator-v4 .cv-pv-title-icon {
-            width: 22px;
-            height: 22px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, rgba(99,102,241,0.24), rgba(79,70,229,0.2));
-            color: #4f46e5;
-            box-shadow: 0 0 0 1px rgba(79,70,229,0.16), 0 0 10px rgba(99,102,241,0.35);
-            animation: cvTitleGlow 2.1s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-        @keyframes cvTitleGlow {
-            0%, 100% {
-                box-shadow: 0 0 0 1px rgba(79,70,229,0.16), 0 0 10px rgba(99,102,241,0.3);
-                transform: translateY(0);
-            }
-            50% {
-                box-shadow: 0 0 0 1px rgba(79,70,229,0.22), 0 0 16px rgba(99,102,241,0.5);
-                transform: translateY(-1px);
-            }
         }
         .creator-v4 .cv-pv-meta-hidden {
             display: none;
@@ -7417,27 +7255,6 @@
         .creator-v4 .cv-pv-actions {
             display: flex; gap: 4px;
             margin-left: auto;
-            align-items: center;
-        }
-        .creator-v4 .cv-focus-toggle {
-            width: auto !important;
-            height: clamp(30px, 2vw, 36px) !important;
-            min-width: 108px;
-            padding: 0 10px;
-            gap: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
-            flex: 0 0 auto;
-        }
-        .creator-v4 .cv-focus-toggle.is-on {
-            background: linear-gradient(135deg, rgba(79,70,229,0.16), rgba(99,102,241,0.22));
-            color: #312e81;
-            border-color: rgba(79,70,229,0.42);
         }
         .creator-v4 .cv-pv-action-btn {
             width: clamp(22px, 1.7vw, 26px); height: clamp(22px, 1.7vw, 26px);
@@ -7458,7 +7275,7 @@
         .creator-v4 .cv-pv-body {
             flex: 0 1 auto;
             overflow-y: auto;
-            padding: clamp(5px, 0.65vw, 9px) clamp(12px, 1.1vw, 17px) clamp(10px, 1vw, 15px);
+            padding: clamp(10px, 1vw, 15px) clamp(12px, 1.1vw, 17px);
             scrollbar-width: none;
         }
         .creator-v4 .cv-pv-body::-webkit-scrollbar { display: none }
@@ -7472,7 +7289,7 @@
         }
         .creator-v4 .li-mockup-header {
             display: flex; align-items: flex-start; gap: clamp(6px, 0.6vw, 10px);
-            padding: clamp(8px, 0.85vw, 12px) clamp(10px, 1vw, 16px) 0;
+            padding: clamp(10px, 1vw, 16px) clamp(10px, 1vw, 16px) 0;
         }
         .creator-v4 .li-mockup-avatar {
             width: clamp(34px, 2.8vw, 44px); height: clamp(34px, 2.8vw, 44px);
@@ -7515,31 +7332,29 @@
         .creator-v4 .li-mockup-headline { font-size: clamp(10px, 0.7vw + 2px, 11.5px); color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
         .creator-v4 .li-mockup-time { font-size: 11px; color: #999; margin-top: 1px }
         .creator-v4 .li-mockup-body {
-            padding: clamp(6px, 0.6vw, 10px) clamp(10px, 1vw, 16px) clamp(10px, 0.9vw, 14px);
-            min-height: 62px;
-            position: relative;
+            padding: clamp(10px, 0.9vw, 14px) clamp(10px, 1vw, 16px); min-height: 80px; position: relative;
         }
         .creator-v4 .li-mockup-body #post-text {
             font-size: clamp(12px, 0.85vw + 2px, 13.5px); line-height: 1.65;
             color: #1a1a1a; white-space: pre-wrap;
             word-break: break-word; outline: none;
-            margin: 0;
         }
         .creator-v4 .li-mockup-body .li-empty-state {
-            display: none;
+            text-align: center; padding: 32px 20px 28px; color: #aaa;
+            animation: fadeIn 0.5s ease both;
         }
         .creator-v4 .li-empty-icon {
-            font-size: 18px;
-            width: 40px; height: 40px;
-            margin: 0 auto 4px;
+            font-size: 24px;
+            width: 52px; height: 52px;
+            margin: 0 auto 8px;
             border-radius: 14px;
             display: flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, rgba(79,144,255,0.1), rgba(118,75,162,0.08));
             color: var(--cv-accent, #4f90ff);
             box-shadow: 0 4px 12px rgba(79,144,255,0.08);
         }
-        .creator-v4 .li-empty-state h5 { font-size: 14px; font-weight: 700; color: #333; margin: 6px 0 3px; letter-spacing: -0.01em; }
-        .creator-v4 .li-empty-state p { font-size: 12.2px; line-height: 1.45; color: #777; margin: 0; max-width: 320px; margin-left: auto; margin-right: auto; }
+        .creator-v4 .li-empty-state h5 { font-size: 14.5px; font-weight: 700; color: #333; margin: 10px 0 6px; letter-spacing: -0.01em; }
+        .creator-v4 .li-empty-state p { font-size: 12.5px; line-height: 1.6; color: #777; margin: 0; max-width: 260px; margin-left: auto; margin-right: auto; }
         .creator-v4 .li-mockup-body .creator-preview-loading {
             text-align: center; padding: 24px 16px; color: #888; font-size: 13px;
             display: none;
@@ -7605,138 +7420,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             gap: 6px;
-        }
-        .creator-v4 .cv-generation-status {
-            margin: 6px 12px 0;
-            padding: 6px 9px;
-            border-radius: 9px;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 0.68rem;
-            font-weight: 700;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            color: #475569;
-            transition: all 0.2s ease;
-        }
-        .creator-v4 .cv-generation-status i { font-size: 0.7rem; }
-        .creator-v4 .cv-generation-status.state-generating {
-            border-color: rgba(99,102,241,0.34);
-            background: rgba(224,231,255,0.7);
-            color: #3730a3;
-        }
-        .creator-v4 .cv-generation-status.state-ready {
-            border-color: rgba(16,185,129,0.34);
-            background: rgba(209,250,229,0.7);
-            color: #065f46;
-            animation: cvReadyPulse 0.9s ease;
-        }
-        @keyframes cvReadyPulse {
-            0% { transform: scale(0.98); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .creator-v4 .cv-mini-toolbar {
-            position: sticky;
-            top: 6px;
-            z-index: 4;
-            margin-bottom: 8px;
-            padding: 6px;
-            border-radius: 10px;
-            background: rgba(248,250,252,0.95);
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 6px 18px rgba(15,23,42,0.08);
-            backdrop-filter: blur(4px);
-        }
-        .creator-v4 .cv-mini-toolbar button {
-            font-size: 10.5px;
-            font-weight: 700;
-            padding: 7px 8px;
-        }
-        .creator-v4.cv-reading-focus .cv-pv-char-row,
-        .creator-v4.cv-reading-focus .cv-pv-reactions,
-        .creator-v4.cv-reading-focus .cv-pv-footer,
-        .creator-v4.cv-reading-focus #creator-quick-actions,
-        .creator-v4.cv-reading-focus .li-mockup-reactions,
-        .creator-v4.cv-reading-focus .li-mockup-actions {
-            display: none !important;
-        }
-        .creator-v4.cv-reading-focus .cv-pv-body {
-            padding-top: 4px;
-        }
-        .creator-v4.cv-reading-focus .li-mockup {
-            border-radius: 14px;
-        }
-        .creator-v4.cv-reading-focus .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
-            width: clamp(420px, 46vw, 760px) !important;
-            max-width: 760px !important;
-        }
-        .creator-v4 .cv-preview-col.cv-just-generated {
-            animation: cvPreviewReadyFlash 0.65s ease;
-        }
-        @keyframes cvPreviewReadyFlash {
-            0% { box-shadow: 0 0 0 rgba(79,70,229,0); }
-            45% { box-shadow: 0 0 0 3px rgba(79,70,229,0.14), 0 0 28px rgba(99,102,241,0.22); }
-            100% { box-shadow: none; }
-        }
-
-        .creator-v4 .cv-insight-score-card {
-            border: 1px solid rgba(129,140,248,0.18);
-            border-radius: 12px;
-            background: linear-gradient(145deg, rgba(99,102,241,0.12), rgba(15,23,42,0.08));
-            padding: 10px 11px;
-            margin-bottom: 10px;
-        }
-        .creator-v4 .cv-insight-score-card.cv-score-bump {
-            animation: cvScoreBump 0.38s ease;
-        }
-        @keyframes cvScoreBump {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.01); }
-            100% { transform: scale(1); }
-        }
-        .creator-v4 .cv-insight-score-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-        .creator-v4 .cv-insight-score-title {
-            font-size: 0.72rem;
-            color: rgba(224,231,255,0.92);
-            font-weight: 800;
-            letter-spacing: 0.01em;
-        }
-        .creator-v4 .cv-insight-score-pill {
-            font-size: 0.68rem;
-            color: #fff;
-            font-weight: 800;
-            padding: 4px 8px;
-            border-radius: 999px;
-            background: rgba(79,70,229,0.72);
-            border: 1px solid rgba(165,180,252,0.42);
-        }
-        .creator-v4 .cv-insight-score-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-        .creator-v4 .cv-insight-score-metric {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            font-size: 0.66rem;
-            color: rgba(226,232,240,0.85);
-            padding: 5px 6px;
-            border-radius: 8px;
-            background: rgba(15,23,42,0.28);
-            border: 1px solid rgba(148,163,184,0.2);
-        }
-        .creator-v4 .cv-insight-score-metric strong {
-            color: rgba(191,219,254,0.98);
-            font-weight: 800;
         }
         .creator-v4 .creator-quick-actions button {
             padding: 7px 10px;
@@ -8819,20 +8502,10 @@
 
         /* ── 1024px: Drop insights, 2-column (form + preview) ── */
         @media (max-width: 1024px) {
+            .creator-v4 .cv-insights-col { display: none }
             .creator-v4 .cv-preview-col {
                 width: clamp(320px, 32vw, 400px);
                 position: sticky; top: 12px;
-            }
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
-                display: none !important;
-            }
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col,
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
-                display: flex !important;
-                width: clamp(320px, 38vw, 460px) !important;
-                min-width: 300px !important;
-                max-width: 460px !important;
             }
             .creator-v4 .cv-form-inner { padding: 0 18px }
             .creator-v4 .cv-sec-title { font-size: 1.02rem }
@@ -8847,18 +8520,6 @@
                 flex-direction: column;
                 gap: 16px;
                 padding: 0 16px 20px;
-            }
-            .creator-v4 .cv-workspace.cv-workspace-focus .cv-preview-col,
-            .creator-v4 .cv-workspace.cv-workspace-focus .cv-insights-col {
-                display: none !important;
-            }
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-insights-col,
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-preview-col {
-                display: none !important;
-            }
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-insights .cv-insights-col,
-            .creator-v4 .cv-workspace.cv-workspace-generated.cv-side-preview .cv-preview-col {
-                display: flex !important;
             }
             .creator-v4 .cv-hero {
                 margin: 12px 16px;
@@ -17202,42 +16863,6 @@
             border-color: rgba(255,255,255,0.07) !important;
             color: var(--text-2) !important;
         }
-        body.dark-mode .creator-v4 .cv-focus-toggle.is-on {
-            background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(79,70,229,0.42)) !important;
-            color: #ffffff !important;
-            border-color: rgba(129,140,248,0.52) !important;
-        }
-        body.dark-mode .creator-v4 .cv-pane-toggle {
-            background: rgba(15,23,42,0.6) !important;
-            border-color: rgba(99,102,241,0.45) !important;
-        }
-        body.dark-mode .creator-v4 .cv-pane-toggle-btn {
-            color: rgba(199,210,254,0.86) !important;
-        }
-        body.dark-mode .creator-v4 .cv-pane-toggle-btn.is-active,
-        body.dark-mode .creator-v4 .cv-pane-toggle-btn[aria-pressed="true"] {
-            background: linear-gradient(135deg, #6d78ff, #4f46e5) !important;
-            color: #fff !important;
-        }
-        body.dark-mode .creator-v4 .cv-mini-toolbar {
-            background: rgba(15,23,42,0.82) !important;
-            border-color: rgba(129,140,248,0.28) !important;
-        }
-        body.dark-mode .creator-v4 .cv-generation-status {
-            background: rgba(15,23,42,0.72) !important;
-            border-color: rgba(148,163,184,0.2) !important;
-            color: rgba(203,213,225,0.9) !important;
-        }
-        body.dark-mode .creator-v4 .cv-generation-status.state-generating {
-            background: rgba(55,48,163,0.25) !important;
-            border-color: rgba(129,140,248,0.45) !important;
-            color: rgba(199,210,254,0.96) !important;
-        }
-        body.dark-mode .creator-v4 .cv-generation-status.state-ready {
-            background: rgba(6,95,70,0.35) !important;
-            border-color: rgba(16,185,129,0.45) !important;
-            color: rgba(167,243,208,0.98) !important;
-        }
         body.dark-mode .creator-v4 .creator-quick-actions button:hover {
             background: var(--surface-2) !important;
             border-color: rgba(255,255,255,0.12) !important;
@@ -20074,7 +19699,7 @@
 </div>
 
 <!-- Workspace -->
-<div class="cv-workspace cv-workspace-focus" id="cv-workspace">
+<div class="cv-workspace">
 
   <!-- Form scroll area -->
   <div class="cv-form-scroll" id="cv-form-scroll">
@@ -20120,15 +19745,6 @@
                     </select>
                                         <i class="fas fa-chevron-down cv-kb-pop-icon"></i>
                   </div>
-                                    <label id="strict-grounding-row-visible" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary, #64748b);cursor:pointer;">
-                                        <input type="checkbox" id="strict-grounding-toggle-visible" onchange="setStrictGroundingEnabled(this.checked)">
-                                        <span><i class="fas fa-shield-halved" style="color:#dc2626;margin-right:4px;"></i>Strict</span>
-                                    </label>
-                                    <select id="grounding-mode-select-visible" onchange="setGroundingMode(this.value)" style="height:28px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;background:var(--bg-secondary,#fff);color:var(--text-secondary,#334155);font-size:12px;padding:0 8px;">
-                                        <option value="strict">Strict</option>
-                                        <option value="balanced" selected>Balanced</option>
-                                        <option value="creative">Creative</option>
-                                    </select>
                   <span class="cv-topic-sep">|</span>
                   <span class="cv-char-count"><b id="topic-char-count">0</b> / 300</span>
                 </div>
@@ -20191,16 +19807,11 @@
         <details id="kb-advanced-details"></details>
         <div id="kb-workspace-preview-post"></div>
         <div id="kb-post-template-feedback"></div>
-                <select id="grounding-mode-select" style="display:none;">
-                    <option value="strict">Strict</option>
-                    <option value="balanced" selected>Balanced</option>
-                    <option value="creative">Creative</option>
-                </select>
 
         <!-- ── Strict Grounding Toggle ── -->
         <div id="strict-grounding-row" style="margin-top:10px;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bg-secondary, #f8f9fa);border:1px solid var(--border-color, #e2e8f0);">
           <label class="toggle-switch" style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer;">
-            <input type="checkbox" id="strict-grounding-toggle" checked style="opacity:0;width:0;height:0;" onchange="_syncStrictGroundingVisual();saveCreatorDraftState();">
+            <input type="checkbox" id="strict-grounding-toggle" style="opacity:0;width:0;height:0;" onchange="_syncStrictGroundingVisual();saveCreatorDraftState();">
             <span id="strict-grounding-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;border-radius:20px;transition:0.3s;" onclick="var cb=document.getElementById('strict-grounding-toggle');cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));"><span id="strict-grounding-thumb" style="position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:white;border-radius:50%;transition:0.3s;display:block;"></span></span>
           </label>
           <div style="flex:1;">
@@ -20476,34 +20087,18 @@
   <!-- Preview Column -->
   <div class="cv-preview-col">
     <div class="cv-pv-topbar" id="pvBar">
-                        <div class="cv-pv-title"><span class="cv-pv-title-icon" aria-hidden="true"><i class="fas fa-wand-magic-sparkles"></i></span>Preview &amp; Publish</div>
+            <div class="cv-pv-title">Preview &amp; Publish</div>
             <div class="cv-pv-meta-hidden" aria-hidden="true">
                 <span id="cv-pv-avatar">Y</span>
                 <span id="cv-pv-name">Your Name</span>
                 <span id="pvTime">—</span>
             </div>
       <div class="cv-pv-actions">
-                <div class="cv-pane-toggle" role="tablist" aria-label="Creator side panel">
-                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="preview" aria-pressed="true" onclick="setCreatorSidePane('preview')">Preview</button>
-                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="insights" aria-pressed="false" onclick="setCreatorSidePane('insights')">Insights</button>
-                </div>
-        <button id="cv-focus-mode-btn" class="cv-pv-action-btn cv-focus-toggle" type="button" onclick="toggleCreatorFocusMode()" title="Focus mode"><i class="fas fa-expand"></i> Focus</button>
         <button class="cv-pv-action-btn" onclick="copyPost()" title="Copy"><i class="far fa-copy"></i></button>
       </div>
     </div>
 
-    <div id="cv-generation-status" class="cv-generation-status state-idle" aria-live="polite">
-      <i class="fas fa-circle-dot"></i>
-      <span id="cv-generation-status-text">Idle</span>
-    </div>
-
     <div class="cv-pv-body" id="pvBody">
-            <div id="creator-quick-actions" class="creator-quick-actions cv-mini-toolbar" style="display:none;">
-                <button type="button" onclick="copyPost()"><i class="far fa-copy"></i> Copy</button>
-                <button type="button" onclick="regeneratePost()"><i class="fas fa-arrows-rotate"></i> Regenerate</button>
-                <button type="button" onclick="openScheduleModal()"><i class="fas fa-calendar"></i> Schedule</button>
-                <button type="button" onclick="postNow()" title="Shortcuts: ⌘/Ctrl + Shift + Enter Publish" aria-label="Publish (⌘/Ctrl + Shift + Enter)"><i class="fas fa-paper-plane"></i> Publish</button>
-            </div>
       <div id="post-preview">
 
         <!-- LinkedIn Mockup Card -->
@@ -20522,7 +20117,11 @@
           </div>
                     <input id="profile-avatar-file-input" type="file" accept="image/*" style="display:none;" onchange="handleProfileAvatarUpload(event)">
           <div class="li-mockup-body" id="li-mockup-body">
-                        <div class="li-empty-state" id="li-empty-state"></div>
+            <div class="li-empty-state" id="li-empty-state">
+              <div class="li-empty-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+              <h5>Your post preview</h5>
+              <p>Configure settings on the left, then hit Generate to see your AI-crafted LinkedIn post appear right here.</p>
+            </div>
             <div class="creator-preview-loading" id="li-loading-state">
               <div class="cv-skeleton-lines">
                 <div class="cv-skeleton-line"></div>
@@ -20586,12 +20185,8 @@
                 <div class="cv-insights-title">Post Insights</div>
                 <div class="cv-insights-sub">Generation rationale and publish readiness</div>
             </div>
-            <div class="cv-insights-top-actions">
-                <div class="cv-pane-toggle" role="tablist" aria-label="Creator side panel">
-                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="preview" aria-pressed="true" onclick="setCreatorSidePane('preview')">Preview</button>
-                    <button type="button" class="cv-pane-toggle-btn" data-side-pane-btn="insights" aria-pressed="false" onclick="setCreatorSidePane('insights')">Insights</button>
-                </div>
-                <div class="cv-insights-brain-icon"><i class="fas fa-brain" style="color:rgba(165,180,252,0.75);font-size:0.72rem;"></i></div>
+            <div class="cv-insights-brain-icon">
+                <i class="fas fa-brain" style="color:rgba(165,180,252,0.75);font-size:0.72rem;"></i>
             </div>
         </div>
         <div class="cv-insights-body">
@@ -20948,7 +20543,7 @@
                         </div>
                         <button class="btn btn-primary" style="font-size:12px; padding:7px 16px;" onclick="trainKnowledgeBase()">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-                            Retrain AI
+                            Retrain Database
                         </button>
                     </div>
 
@@ -21398,7 +20993,6 @@
                                     <div id="settings-referral-count" style="font-size:0.77rem; color:#64748b; margin-top:0.55rem;"></div>
                                 </div>
                             </div>
-
                         </section>
 
                         <section id="settings-pane-notifications" class="settings-v2-pane">
@@ -22456,6 +22050,24 @@
             navTarget.classList.add('active');
         }
 
+        // ── Auto-collapse sidebar for LinkedIn Post tab ──
+        const appContainer = document.querySelector('.app-container');
+        if (appContainer && window.innerWidth > 768) {
+            if (tabId === 'content-creator') {
+                // Remember if sidebar was already collapsed by user before we auto-collapse
+                if (!appContainer.classList.contains('sidebar-collapsed')) {
+                    window._sidebarAutoCollapsed = true;
+                    applySidebarState(true);
+                }
+            } else {
+                // Leaving LinkedIn Post: restore sidebar only if we auto-collapsed it
+                if (window._sidebarAutoCollapsed) {
+                    window._sidebarAutoCollapsed = false;
+                    applySidebarState(false);
+                }
+            }
+        }
+        
         // Update page title
         const titles = {
             'dashboard': 'Dashboard',
@@ -23002,8 +22614,7 @@
             kbMode: document.getElementById('kb-mode')?.value || 'use_kb',
             workspaceId: document.getElementById('kb-workspace-select-post')?.value || '',
             postText: getEditablePostText(),
-            strictGrounding: getStrictGroundingEnabled(),
-            groundingMode: getGroundingMode(),
+            strictGrounding: document.getElementById('strict-grounding-toggle')?.checked || false,
             timestamp: Date.now()
         };
     }
@@ -23073,9 +22684,10 @@
         }
 
         // Restore strict grounding toggle
-        setStrictGroundingEnabled(!!state.strictGrounding);
-        if (state.groundingMode) {
-            setGroundingMode(state.groundingMode);
+        const sgToggle = document.getElementById('strict-grounding-toggle');
+        if (sgToggle && state.strictGrounding) {
+            sgToggle.checked = true;
+            _syncStrictGroundingVisual();
         }
 
         if (state.postText) {
@@ -24835,39 +24447,12 @@
             ? `<div class="insight-kb-nomatch"><i class="fas fa-triangle-exclamation"></i><div>${kbWarnMsg}</div></div>`
             : '';
 
-        const qualityValidation = buildPrePublishValidation(getEditablePostText(), lastGeneratedHashtags || []);
-        const qualityScore = Math.max(0, Math.min(100, Number(qualityValidation.score || 0)));
-        const qualityLabel = escapeHtml(qualityValidation.scoreLabel || 'Scored');
-        const qualityBreakdown = qualityValidation.scoreBreakdown || {};
-        const qualityCard = `
-            <div class="cv-insight-score-card" style="animation:insightsFadeIn 0.32s ease both;">
-                <div class="cv-insight-score-head">
-                    <div class="cv-insight-score-title"><i class="fas fa-gauge-high"></i> Post Quality Score</div>
-                    <div class="cv-insight-score-pill">${qualityScore}/100 · ${qualityLabel}</div>
-                </div>
-                <div class="cv-insight-score-grid">
-                    <div class="cv-insight-score-metric"><span>Clarity</span><strong>${Math.max(0, Math.min(100, Number(qualityBreakdown.clarity || 0)))}</strong></div>
-                    <div class="cv-insight-score-metric"><span>CTA</span><strong>${Math.max(0, Math.min(100, Number(qualityBreakdown.cta || 0)))}</strong></div>
-                    <div class="cv-insight-score-metric"><span>Readability</span><strong>${Math.max(0, Math.min(100, Number(qualityBreakdown.readability || 0)))}</strong></div>
-                    <div class="cv-insight-score-metric"><span>Hashtags</span><strong>${Math.max(0, Math.min(100, Number(qualityBreakdown.hashtags || 0)))}</strong></div>
-                </div>
-            </div>
-        `;
-
-        const kbHitsCount = Number(ctx.grounding?.kb_hits_count || 0);
-        const kbAvgSim = Number(ctx.grounding?.avg_similarity || 0);
-        const scopePct = Number(ctx.grounding?.scope_compliance_pct ?? ctx.scope_compliance_pct ?? 0);
-        const numericPct = Number(ctx.grounding?.numeric_accuracy?.score ?? ctx.numeric_accuracy_score ?? 100);
-        const groundingModeLabel = escapeHtml(String(ctx.grounding_mode || 'balanced'));
-
         panel.innerHTML = `
-            ${qualityCard}
             ${noMatchWarning}
             <div class="insight-title" style="animation:insightsFadeIn 0.3s ease both;"><i class="fas fa-circle-info"></i> Why this post was generated this way</div>
             <div class="insight-chips">
                 ${_renderGroundingBadge(ctx)}
                 ${ctx.strict_grounding ? '<span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.02s both;background:#fef2f2;color:#dc2626;border:1px solid #dc262630;font-weight:600;"><i class="fas fa-shield-halved" style="margin-right:4px;"></i>Strict Mode ON</span>' : ''}
-                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.03s both;"><strong>Grounding Mode:</strong> ${groundingModeLabel}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.05s both;"><strong>Industry:</strong> ${escapeHtml(ctx.industry || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.1s both;"><strong>Role:</strong> ${escapeHtml(ctx.role || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.15s both;"><strong>Tone:</strong> ${escapeHtml(ctx.tone || 'Professional')}</span>
@@ -24875,15 +24460,10 @@
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.25s both;"><strong>Audience:</strong> ${escapeHtml(ctx.target_audience || 'Not set')}</span>
                 <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.3s both;"><strong>Template:</strong> ${escapeHtml(templateName)}</span>
                 <span class="insight-chip ${(ctx.kb_no_match && ctx.kb_mode !== 'no_kb') ? 'insight-chip--warn' : ''}" style="animation:insightsFadeIn 0.3s ease 0.35s both;"><strong>Knowledge Source:</strong> ${escapeHtml(kbDetails)}</span>
-                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.4s both;"><strong>Matched Chunks:</strong> ${kbHitsCount}</span>
-                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.45s both;"><strong>Avg Similarity:</strong> ${Math.round(kbAvgSim * 100)}%</span>
-                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.5s both;"><strong>Scope Compliance:</strong> ${scopePct}%</span>
-                <span class="insight-chip" style="animation:insightsFadeIn 0.3s ease 0.55s both;"><strong>Numeric Accuracy:</strong> ${numericPct}%</span>
             </div>
             ${_renderSentenceGrounding(ctx)}
             ${_renderSourceTraceability(ctx)}
             ${_renderGapAnalysis(ctx)}
-            ${renderGenerationFeedbackControls()}
         `;
         panel.style.display = 'block';
     }
@@ -25160,54 +24740,6 @@
         `;
         panel.style.display = 'block';
     }
-
-    function renderGenerationFeedbackControls() {
-        return `
-            <div class="insight-detail" style="animation:insightsFadeIn 0.35s ease 0.65s both; padding:10px 12px; border:1px solid rgba(148,163,184,0.25); border-radius:10px; margin-top:10px;">
-                <div style="font-size:0.78rem;font-weight:600;color:var(--text-primary);margin-bottom:8px;">How relevant was this draft?</div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="submitGenerationFeedback('up')"><i class="fas fa-thumbs-up"></i> Good</button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="submitGenerationFeedback('down')"><i class="fas fa-thumbs-down"></i> Needs Work</button>
-                    <select id="generation-feedback-reason" style="height:30px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;padding:0 8px;">
-                        <option value="">Reason (optional)</option>
-                        <option value="off_topic">Off topic</option>
-                        <option value="not_from_files">Not from selected files</option>
-                        <option value="numbers_incorrect">Numbers look incorrect</option>
-                        <option value="tone_mismatch">Tone mismatch</option>
-                    </select>
-                </div>
-                <div style="margin-top:8px;">
-                    <textarea id="generation-feedback-notes" placeholder="Optional notes (e.g., what to improve)" rows="2" maxlength="1000" style="width:100%;min-height:56px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;padding:8px;font-size:12px;resize:vertical;"></textarea>
-                </div>
-            </div>
-        `;
-    }
-
-    async function submitGenerationFeedback(rating) {
-        try {
-            const reason = document.getElementById('generation-feedback-reason')?.value || '';
-            const notes = document.getElementById('generation-feedback-notes')?.value || '';
-            const response = await authFetch('/api/generation-feedback', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    rating,
-                    reason,
-                    notes,
-                    generation_context: lastGeneratedContext || {},
-                })
-            });
-            const data = await parseJsonResponse(response);
-            if (!data.success) {
-                showToast('error', data.message || 'Unable to save feedback', 'fas fa-exclamation-circle');
-                return;
-            }
-            showToast('success', 'Thanks, feedback captured', 'fas fa-check');
-        } catch (error) {
-            showToast('error', error.message || 'Unable to save feedback', 'fas fa-exclamation-circle');
-        }
-    }
-
     async function ensureGenerationReadiness() {
         try {
             const configRes = await authFetch('/api/config', { headers: getAuthHeaders() });
@@ -25465,72 +24997,8 @@
         }
     }
 
-    function getStrictGroundingEnabled() {
-        const visible = document.getElementById('strict-grounding-toggle-visible');
-        const hidden = document.getElementById('strict-grounding-toggle');
-        if (visible) return !!visible.checked;
-        if (hidden) return !!hidden.checked;
-        return false;
-    }
-
-    function getGroundingMode() {
-        const visible = document.getElementById('grounding-mode-select-visible');
-        const hidden = document.getElementById('grounding-mode-select');
-        if (visible && visible.value) return String(visible.value);
-        if (hidden && hidden.value) return String(hidden.value);
-        return getStrictGroundingEnabled() ? 'strict' : 'balanced';
-    }
-
-    function setGroundingMode(value) {
-        const normalized = ['strict', 'balanced', 'creative'].includes(String(value || '').toLowerCase())
-            ? String(value).toLowerCase()
-            : 'balanced';
-        const visible = document.getElementById('grounding-mode-select-visible');
-        const hidden = document.getElementById('grounding-mode-select');
-        if (visible) visible.value = normalized;
-        if (hidden) hidden.value = normalized;
-        if (normalized === 'strict' && !getStrictGroundingEnabled()) {
-            setStrictGroundingEnabled(true);
-        }
-        if (normalized !== 'strict' && getStrictGroundingEnabled() && document.getElementById('strict-grounding-toggle-visible')) {
-            setStrictGroundingEnabled(false);
-        }
-        if (typeof saveCreatorDraftState === 'function') saveCreatorDraftState();
-    }
-
-    function setStrictGroundingEnabled(enabled) {
-        const value = !!enabled;
-        const visible = document.getElementById('strict-grounding-toggle-visible');
-        const hidden = document.getElementById('strict-grounding-toggle');
-        const modeVisible = document.getElementById('grounding-mode-select-visible');
-        const modeHidden = document.getElementById('grounding-mode-select');
-        if (visible) visible.checked = value;
-        if (hidden) hidden.checked = value;
-        if (value) {
-            if (modeVisible) modeVisible.value = 'strict';
-            if (modeHidden) modeHidden.value = 'strict';
-        } else {
-            const currentMode = (modeVisible?.value || modeHidden?.value || 'balanced').toLowerCase();
-            if (currentMode === 'strict') {
-                if (modeVisible) modeVisible.value = 'balanced';
-                if (modeHidden) modeHidden.value = 'balanced';
-            }
-        }
-        _syncStrictGroundingVisual();
-        if (typeof saveCreatorDraftState === 'function') {
-            saveCreatorDraftState();
-        }
-    }
-
     function _syncStrictGroundingVisual() {
         const cb = document.getElementById('strict-grounding-toggle');
-        const visible = document.getElementById('strict-grounding-toggle-visible');
-        if (cb && visible) {
-            visible.checked = !!cb.checked;
-        } else if (visible && !cb) {
-            // No hidden checkbox present, keep visible state as source of truth.
-            visible.checked = !!visible.checked;
-        }
         const track = document.getElementById('strict-grounding-track');
         const thumb = document.getElementById('strict-grounding-thumb');
         if (!cb || !track || !thumb) return;
@@ -25544,8 +25012,6 @@
         const fileGroup = document.getElementById('kb-specific-files-group');
         const advancedDetails = document.getElementById('kb-advanced-details');
         const strictRow = document.getElementById('strict-grounding-row');
-        const strictRowVisible = document.getElementById('strict-grounding-row-visible');
-        const groundingModeVisible = document.getElementById('grounding-mode-select-visible');
         const showAdvanced = false;
 
         if (wsGroup) wsGroup.style.display = showAdvanced ? 'block' : 'none';
@@ -25563,12 +25029,6 @@
         // Hide strict grounding toggle when KB is disabled — it only makes sense with KB
         if (strictRow) {
             strictRow.style.display = mode === 'no_kb' ? 'none' : 'flex';
-        }
-        if (strictRowVisible) {
-            strictRowVisible.style.display = mode === 'no_kb' ? 'none' : 'inline-flex';
-        }
-        if (groundingModeVisible) {
-            groundingModeVisible.style.display = mode === 'no_kb' ? 'none' : 'inline-flex';
         }
 
         updateKbModeGuidance();
@@ -26589,88 +26049,6 @@
     /* ─── LinkedIn Mockup + Progress Bar helpers ─── */
     let cvGenerateProgressTimer = null;
     let cvGenerateInFlight = false;
-    let cvHasGeneratedResult = false;
-    let cvActiveSidePane = 'preview';
-    let cvFocusMode = false;
-
-    function syncCreatorSidePaneToggle() {
-        document.querySelectorAll('#content-creator [data-side-pane-btn]').forEach(btn => {
-            const mode = String(btn.dataset.sidePaneBtn || '').trim();
-            const isActive = mode === cvActiveSidePane;
-            btn.classList.toggle('is-active', isActive);
-            btn.setAttribute('aria-pressed', String(isActive));
-        });
-    }
-
-    function setCreatorSidePane(mode = 'preview') {
-        cvActiveSidePane = mode === 'insights' ? 'insights' : 'preview';
-        const workspace = document.getElementById('cv-workspace');
-        if (workspace) {
-            workspace.classList.add('cv-pane-switching');
-            window.setTimeout(() => workspace.classList.remove('cv-pane-switching'), 180);
-        }
-        syncCreatorWorkspaceLayout();
-    }
-
-    function setCreatorGenerationStatus(state = 'idle') {
-        const banner = document.getElementById('cv-generation-status');
-        const text = document.getElementById('cv-generation-status-text');
-        if (!banner || !text) return;
-
-        const safe = state === 'generating' || state === 'ready' ? state : 'idle';
-        banner.classList.remove('state-idle', 'state-generating', 'state-ready');
-        banner.classList.add(`state-${safe}`);
-
-        const icon = banner.querySelector('i');
-        if (safe === 'generating') {
-            text.textContent = 'Generating';
-            if (icon) icon.className = 'fas fa-spinner fa-spin';
-        } else if (safe === 'ready') {
-            text.textContent = 'Ready to review';
-            if (icon) icon.className = 'fas fa-circle-check';
-        } else {
-            text.textContent = 'Idle';
-            if (icon) icon.className = 'fas fa-circle-dot';
-        }
-    }
-
-    function syncCreatorFocusMode() {
-        const creator = document.getElementById('content-creator');
-        const btn = document.getElementById('cv-focus-mode-btn');
-        if (creator) {
-            creator.classList.toggle('cv-reading-focus', cvFocusMode);
-        }
-        if (btn) {
-            btn.classList.toggle('is-on', cvFocusMode);
-            btn.innerHTML = cvFocusMode
-                ? '<i class="fas fa-compress"></i> Exit Focus'
-                : '<i class="fas fa-expand"></i> Focus';
-            btn.setAttribute('aria-pressed', String(cvFocusMode));
-            btn.title = cvFocusMode ? 'Exit focus mode' : 'Focus mode';
-        }
-    }
-
-    function toggleCreatorFocusMode(force = null) {
-        cvFocusMode = force === null ? !cvFocusMode : Boolean(force);
-        if (cvFocusMode) {
-            setCreatorSidePane('preview');
-        }
-        syncCreatorFocusMode();
-    }
-
-    function syncCreatorWorkspaceLayout() {
-        const workspace = document.getElementById('cv-workspace');
-        if (!workspace) {
-            return;
-        }
-        const hasGeneratedContent = Boolean((document.getElementById('post-text')?.textContent || '').trim());
-        const revealAuxColumns = cvGenerateInFlight || cvHasGeneratedResult || hasGeneratedContent;
-        workspace.classList.toggle('cv-workspace-focus', !revealAuxColumns);
-        workspace.classList.toggle('cv-workspace-generated', revealAuxColumns);
-        workspace.classList.toggle('cv-side-preview', cvActiveSidePane !== 'insights');
-        workspace.classList.toggle('cv-side-insights', cvActiveSidePane === 'insights');
-        syncCreatorSidePaneToggle();
-    }
 
     function setCreatorGenerateButtonsLoading(isLoading) {
         document.querySelectorAll('#content-creator button.cv-btn-gen[onclick*="generatePost"]').forEach(btn => {
@@ -26759,12 +26137,6 @@
         if (fill) fill.style.width = '100%';
         if (pct) pct.textContent = '100%';
         setCreatorGenerateProgressStep('done');
-        setCreatorGenerationStatus('ready');
-        const previewCol = document.querySelector('#content-creator .cv-preview-col');
-        if (previewCol) {
-            previewCol.classList.add('cv-just-generated');
-            window.setTimeout(() => previewCol.classList.remove('cv-just-generated'), 700);
-        }
         setTimeout(() => {
             if (wrap) wrap.style.display = 'none';
         }, 900);
@@ -26795,8 +26167,6 @@
             futureSuggestions.style.display = 'none';
             futureSuggestions.innerHTML = '';
         }
-        setCreatorGenerationStatus('generating');
-        syncCreatorWorkspaceLayout();
     }
     function showMockupResult(content) {
         const emptyState = document.getElementById('li-empty-state');
@@ -26809,9 +26179,6 @@
         if (postText) { postText.style.display = 'block'; }
         if (reactions) reactions.style.display = 'flex';
         if (insightsPlaceholder) insightsPlaceholder.style.display = 'none';
-        cvHasGeneratedResult = true;
-        setCreatorGenerationStatus('ready');
-        syncCreatorWorkspaceLayout();
     }
     function showMockupEmpty() {
         const emptyState = document.getElementById('li-empty-state');
@@ -26820,7 +26187,7 @@
         const reactions = document.getElementById('li-mockup-reactions');
         const insightsPlaceholder = document.querySelector('.cv-insights-placeholder');
         const futureSuggestions = document.getElementById('future-suggestions');
-        if (emptyState) emptyState.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'block';
         if (loadingState) loadingState.style.display = 'none';
         if (postText) postText.style.display = 'none';
         if (reactions) reactions.style.display = 'none';
@@ -26829,9 +26196,6 @@
             futureSuggestions.style.display = 'none';
             futureSuggestions.innerHTML = '';
         }
-        cvHasGeneratedResult = false;
-        setCreatorGenerationStatus('idle');
-        syncCreatorWorkspaceLayout();
     }
     let cvProgressHint = 'what';
     let cvConfigInteracted = false;
@@ -26964,8 +26328,6 @@
         setConfigUxMode('quick');
         renderCreatorStyleSuggestion();
         updateQuickQualityMeter();
-        syncCreatorFocusMode();
-        setCreatorGenerationStatus('idle');
         refreshPreviewIdentity();
     });
 
@@ -27100,99 +26462,6 @@
         topic.setSelectionRange(topic.value.length, topic.value.length);
         updateProgressBar('what');
         saveCreatorDraftState();
-    }
-
-    function isCryptoTypesClassificationTopic(text) {
-        const value = String(text || '').trim().toLowerCase();
-        if (!value) return false;
-        const normalized = value.replace(/^\s*\d+\s*[\.)\-:]\s*/, '').trim();
-        const hasTypesSignal = /(types?|categories?|classification|taxonomy)\s+of/.test(normalized);
-        const hasCryptoSignal = /(crypto|cryptocurrency|web3|blockchain)\s+assets?/.test(normalized);
-        return hasTypesSignal && hasCryptoSignal;
-    }
-
-    function getCryptoTypesCanonicalTopic() {
-        return 'Types of Crypto Assets: L1, L2, Stablecoins, DeFi Tokens, NFTs, Meme Coins, RWA, Liquid Staking Tokens. Include examples.';
-    }
-
-    function pickBestKbFileForCryptoTypes() {
-        const files = Array.isArray(kbFileOptionsCache) ? kbFileOptionsCache : [];
-        if (!files.length) return '';
-
-        const scoreFile = (file) => {
-            const name = String(file?.name || '').toLowerCase();
-            let score = 0;
-            if (file?.indexed) score += 8;
-            if (name.includes('crypto')) score += 5;
-            if (name.includes('web3')) score += 4;
-            if (name.includes('knowledge')) score += 4;
-            if (name.includes('asset')) score += 3;
-            if (name.includes('type') || name.includes('category') || name.includes('classification')) score += 3;
-            if (name.includes('table')) score += 2;
-            return score;
-        };
-
-        const ranked = [...files].sort((a, b) => scoreFile(b) - scoreFile(a));
-        return ranked[0]?.id ? String(ranked[0].id) : '';
-    }
-
-    function applyCryptoTypesGroundingPreset(topicValue, kbModeValue, selectedFileIds, workspaceId = '') {
-        if (!isCryptoTypesClassificationTopic(topicValue)) {
-            return {
-                topic: String(topicValue || ''),
-                kb_mode: String(kbModeValue || 'use_kb'),
-                specific_file_ids: Array.isArray(selectedFileIds) ? selectedFileIds : [],
-                autoApplied: false,
-            };
-        }
-
-        const canonicalTopic = getCryptoTypesCanonicalTopic();
-        const topicInput = document.getElementById('topic-input');
-        if (topicInput && String(topicInput.value || '').trim() !== canonicalTopic) {
-            topicInput.value = canonicalTopic;
-            if (typeof updateTopicCounter === 'function') updateTopicCounter();
-        }
-
-        if (!getStrictGroundingEnabled()) {
-            setStrictGroundingEnabled(true);
-        }
-
-        // Contract rule: user-selected template/scope always wins.
-        const userAlreadyScoped = (
-            String(kbModeValue || '').toLowerCase() === 'specific_files'
-            || (Array.isArray(selectedFileIds) && selectedFileIds.length > 0)
-            || !!String(workspaceId || '').trim()
-        );
-
-        let normalizedIds = Array.isArray(selectedFileIds)
-            ? selectedFileIds.map(v => String(v)).filter(Boolean)
-            : [];
-
-        let resolvedMode = String(kbModeValue || 'use_kb');
-        if (!userAlreadyScoped) {
-            const kbModeEl = document.getElementById('kb-mode');
-            if (kbModeEl && kbModeEl.value !== 'specific_files') {
-                kbModeEl.value = 'specific_files';
-                if (typeof toggleKbSourceMode === 'function') toggleKbSourceMode();
-                if (typeof syncCreatorReplicaControls === 'function') syncCreatorReplicaControls();
-            }
-            resolvedMode = 'specific_files';
-
-            const preferredFileId = pickBestKbFileForCryptoTypes();
-            if (preferredFileId) {
-                normalizedIds = [preferredFileId];
-                if (typeof setSelectedSpecificFileIds === 'function') {
-                    setSelectedSpecificFileIds(normalizedIds);
-                }
-            }
-        }
-
-        return {
-            topic: canonicalTopic,
-            kb_mode: resolvedMode,
-            specific_file_ids: normalizedIds,
-            autoApplied: !userAlreadyScoped,
-        };
     }
 
     function applyWritingPreset(preset, triggerBtn = null) {
@@ -27369,7 +26638,6 @@
     function updateQuickQualityMeter(text = null) {
         const meter = document.getElementById('cv-quality-meter');
         const scoreEl = document.getElementById('cv-qm-score');
-        const insightScoreCard = document.querySelector('#generation-insights .cv-insight-score-card');
         const content = String(text == null ? (document.getElementById('post-text')?.innerText || '') : text).trim();
         if (!meter) return;
         if (!content) {
@@ -27397,12 +26665,6 @@
         const a = setQualityMetric('cta', ctaScore);
         const total = Math.round((h + c + r + a) / 4);
         if (scoreEl) scoreEl.textContent = `${total}/100`;
-        if (insightScoreCard) {
-            insightScoreCard.classList.remove('cv-score-bump');
-            void insightScoreCard.offsetWidth;
-            insightScoreCard.classList.add('cv-score-bump');
-            window.setTimeout(() => insightScoreCard.classList.remove('cv-score-bump'), 420);
-        }
     }
 
     const CREATOR_STYLE_PROFILE_STORAGE_KEY = 'creator_style_profile_v1';
@@ -27654,7 +26916,7 @@
             return;
         }
 
-        let topic = document.getElementById('topic-input')?.value || '';
+        const topic = document.getElementById('topic-input')?.value || '';
         const industry = getIndustryValue();
         const role = getRoleValue();
         const audience_type = document.getElementById('audience-type')?.value || 'individual';
@@ -27669,23 +26931,16 @@
         const word_count_mode = document.getElementById('word-count-mode')?.value || 'custom_range';
         const min_words = parseInt(document.getElementById('min-words')?.value || '120', 10);
         const max_words = parseInt(document.getElementById('max-words')?.value || '220', 10);
-        let kb_mode = document.getElementById('kb-mode')?.value || 'use_kb';
+        const kb_mode = document.getElementById('kb-mode')?.value || 'use_kb';
         const workspaceValue = document.getElementById('kb-workspace-select-post')?.value || '';
         const workspace_id = workspaceValue === KB_CREATE_TEMPLATE_VALUE ? '' : workspaceValue;
-        let specific_file_ids = getSelectedSpecificFileIds();
+        const specific_file_ids = getSelectedSpecificFileIds();
         const postPreview = document.getElementById('post-preview');
         const postText = document.getElementById('post-text');
         const postPlaceholder = document.getElementById('post-placeholder');
         const insightsPanel = document.getElementById('generation-insights');
         const validatorPanel = document.getElementById('prepublish-validator');
         const futureSuggestionsPanel = document.getElementById('future-suggestions');
-
-        const presetApplied = applyCryptoTypesGroundingPreset(topic, kb_mode, specific_file_ids, workspace_id);
-        if (presetApplied && presetApplied.autoApplied) {
-            topic = presetApplied.topic;
-            kb_mode = presetApplied.kb_mode;
-            specific_file_ids = presetApplied.specific_file_ids;
-        }
 
         if (kb_mode === 'specific_files' && specific_file_ids.length === 0) {
             showToast('error', 'Select at least one file for this mode', 'fas fa-exclamation-circle');
@@ -27728,8 +26983,7 @@
         const _scToggle = document.getElementById('sc-enabled-toggle');
         const use_style_clone = _scToggle ? (_scToggle.checked && !_scToggle.disabled) : (window._styleCloneEnabled || false);
         const style_clone_mode = use_style_clone ? style_clone_mode_ui : 'off';
-        const grounding_mode = getGroundingMode();
-        const strict_grounding = (grounding_mode === 'strict') || getStrictGroundingEnabled() || (presetApplied && presetApplied.autoApplied);
+        const strict_grounding = document.getElementById('strict-grounding-toggle')?.checked || false;
         authFetch('/api/generate-preview', {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -27740,8 +26994,7 @@
                 audience_type, business_goal,
                 post_goal, target_audience, tone,
                 use_style_clone, style_clone_mode,
-                strict_grounding,
-                grounding_mode
+                strict_grounding
             })
         })
         .then(r => parseJsonResponse(r))
@@ -27750,6 +27003,7 @@
             if (data.success && content) {
                 cvGenerateInFlight = false;
                 setCreatorGenerateButtonsLoading(false);
+                completeCreatorGenerateProgress('Post ready to review');
                 postText.classList.remove('skeleton');
                 postText.style.display = 'block';
                 postText.removeAttribute('contenteditable');
@@ -27781,9 +27035,6 @@
                     grounding: data.grounding || null,
                     gap_analysis: data.gap_analysis || null,
                     strict_grounding: strict_grounding,
-                    grounding_mode: settingsApplied.grounding_mode || grounding_mode || 'balanced',
-                    scope_compliance_pct: settingsApplied.scope_compliance_pct,
-                    numeric_accuracy_score: settingsApplied.numeric_accuracy_score,
                 };
                 renderAppliedSettingsSummary(settingsApplied);
                 renderGenerationInsights(lastGeneratedContext);
@@ -27798,8 +27049,6 @@
                 toggleCreatorQuickActions(true);
                 saveCreatorDraftState();
                 saveCreatorStyleProfile();
-                setCreatorSidePane('preview');
-                completeCreatorGenerateProgress('Post ready to review');
                 showMockupResult(content);
                 updateQuickQualityMeter(content);
                 refreshCvStepperState();
@@ -29387,7 +28636,6 @@
         preview.style.display = 'block';
 
         if (hasGeneratedContent) {
-            cvHasGeneratedResult = true;
             preview.classList.add('has-generated');
             postText.style.display = 'block';
             postText.classList.remove('skeleton');
@@ -29399,13 +28647,10 @@
             updateQuickQualityMeter(postText.textContent || '');
             refreshCvStepperState();
             if (previewState) previewState.textContent = 'Generated';
-            setCreatorGenerationStatus('ready');
-            syncCreatorWorkspaceLayout();
             return;
         }
 
         preview.classList.remove('has-generated');
-        cvHasGeneratedResult = false;
         postText.textContent = '';
         postText.style.display = 'none';
         postText.classList.remove('skeleton');
@@ -29416,8 +28661,6 @@
         updateQuickQualityMeter('');
         refreshCvStepperState();
         if (previewState) previewState.textContent = 'Not generated yet';
-        setCreatorGenerationStatus('idle');
-        syncCreatorWorkspaceLayout();
     }
 
     function setCreatorChipActive(groupSelector, activeValue) {
@@ -30032,119 +29275,6 @@
         }, 3000);
     }
 
-    function isKbOfficePreviewType(fileType) {
-        const t = String(fileType || '').trim().toLowerCase();
-        return t === 'docx' || t === 'pptx' || t === 'xlsx';
-    }
-
-    async function openKbFileOriginal(fileName, mode = 'inline') {
-        const normalizedName = String(fileName || '').trim();
-        if (!normalizedName) {
-            showToast('error', 'Invalid filename', 'fas fa-exclamation-circle');
-            return;
-        }
-
-        try {
-            const response = await authFetch(`/api/view-knowledge-base-file?filename=${encodeURIComponent(normalizedName)}&mode=${encodeURIComponent(mode)}`, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) {
-                const data = await parseJsonResponse(response);
-                throw new Error(data.message || 'Unable to open file');
-            }
-
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            if (mode === 'download') {
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = normalizedName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
-                return;
-            }
-
-            const win = window.open(blobUrl, '_blank', 'noopener');
-            if (!win) {
-                showToast('warning', 'Pop-up blocked. Allow pop-ups to open file preview.', 'fas fa-circle-info');
-            }
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-        } catch (error) {
-            showToast('error', error.message || 'Unable to open file', 'fas fa-exclamation-circle');
-        }
-    }
-
-    function closeKbFilePreviewModal() {
-        const modal = document.getElementById('kb-file-preview-modal');
-        if (!modal) {
-            return;
-        }
-        modal.classList.remove('active');
-        modal.setAttribute('aria-hidden', 'true');
-    }
-
-    async function previewKbExtractedContent(fileName, fileType) {
-        const normalizedName = String(fileName || '').trim();
-        if (!normalizedName) {
-            showToast('error', 'Invalid filename', 'fas fa-exclamation-circle');
-            return;
-        }
-
-        const modal = document.getElementById('kb-file-preview-modal');
-        const titleEl = document.getElementById('kb-file-preview-title');
-        const metaEl = document.getElementById('kb-file-preview-meta');
-        const contentEl = document.getElementById('kb-file-preview-content');
-        const noteEl = document.getElementById('kb-file-preview-note');
-        const downloadBtn = document.getElementById('kb-file-preview-download-btn');
-
-        if (!modal || !titleEl || !metaEl || !contentEl || !noteEl || !downloadBtn) {
-            return;
-        }
-
-        titleEl.textContent = 'Preview Extracted Content';
-        metaEl.textContent = `${normalizedName} · ${String(fileType || '').toUpperCase() || 'OFFICE'}`;
-        contentEl.textContent = 'Loading preview...';
-        noteEl.textContent = 'Extracted text preview. Layout, charts, and images may not appear exactly like the original file.';
-        downloadBtn.onclick = () => openKbFileOriginal(normalizedName, 'download');
-
-        modal.classList.add('active');
-        modal.setAttribute('aria-hidden', 'false');
-
-        try {
-            const response = await authFetch(`/api/preview-knowledge-base-file-content?filename=${encodeURIComponent(normalizedName)}`, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-            const data = await parseJsonResponse(response);
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Unable to load extracted preview');
-            }
-
-            contentEl.textContent = String(data.content || '').trim() || 'No extractable text found in this file.';
-            if (data.truncated) {
-                noteEl.textContent = `${noteEl.textContent} Showing first part of large file content.`;
-            }
-            if (data.download_only) {
-                noteEl.textContent = 'This file has little or no extractable text. Download original for full fidelity.';
-            }
-        } catch (error) {
-            contentEl.textContent = error.message || 'Unable to load preview';
-            noteEl.textContent = 'Try Download Original to inspect the file directly.';
-        }
-    }
-
-    function handleKbFilePrimaryAction(fileName, fileType) {
-        if (isKbOfficePreviewType(fileType)) {
-            previewKbExtractedContent(fileName, fileType);
-            return;
-        }
-        openKbFileOriginal(fileName, 'inline');
-    }
-
     function renderKbUploadedFilesList() {
         const listEl = document.getElementById('kb-files-list');
         const countPill = document.getElementById('kb-files-count-pill');
@@ -30195,12 +29325,11 @@
         }
 
         listEl.innerHTML = files.map(file => {
-            const normalizedType = String(file.type || '').toLowerCase();
-            const typeClass = normalizedType === 'docx' ? 'docx' : 'pdf';
+            const typeClass = (file.type || '').toLowerCase() === 'docx' ? 'docx' : 'pdf';
             const rawName = file.name || '';
             const safeName = escapeHtml(rawName);
             const encodedName = encodeURIComponent(rawName);
-            const extensionLabel = (normalizedType || typeClass).toUpperCase();
+            const extensionLabel = typeClass.toUpperCase();
             const sizeLabel = Number.isFinite(Number(file.size)) ? `${Number(file.size).toFixed(2)} MB` : `${file.size || '--'} MB`;
             const chunkCount = Number.isFinite(Number(file.chunks)) ? Number(file.chunks) : 0;
             const totalChunksForFile = chunkCount; /* treated as max */
@@ -30213,7 +29342,6 @@
             const stripeClass = typeClass === 'docx' ? 'stripe-docx' : 'stripe-pdf';
             const progressPct = isIndexed ? 100 : (isQueued ? 30 : (isFailed ? 0 : 10));
             const uploadDate = file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString() : 'Uploaded today';
-            const officePreview = normalizedType === 'docx' || normalizedType === 'pptx' || normalizedType === 'xlsx';
 
             return `
                 <div class="file-card">
@@ -30245,10 +29373,9 @@
                                 <span class="sdot ${dotClass}"></span>
                                 <span class="status-text">${statusLabel}</span>
                             </div>
-                            <div class="file-action-btn" title="${officePreview ? 'Preview extracted content' : 'View file'}" onclick="event.stopPropagation(); handleKbFilePrimaryAction(decodeURIComponent('${encodedName}'), '${normalizedType}')">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <div class="file-action-btn" title="Rename" onclick="event.stopPropagation();">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </div>
-                            ${officePreview ? `<div class="file-action-btn" title="Download original" onclick="event.stopPropagation(); openKbFileOriginal(decodeURIComponent('${encodedName}'), 'download')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>` : ''}
                             <div class="file-action-btn danger" title="Delete" onclick="event.stopPropagation(); showKbInlineDeleteConfirm(this, decodeURIComponent('${encodedName}'))">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                             </div>
@@ -33146,14 +32273,6 @@
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', async function() {
-        // Back-compat migration in case this tab still carries legacy session-scoped tokens.
-        if (!_tokenStore.getItem('access_token') && sessionStorage.getItem('access_token')) {
-            _tokenStore.setItem('access_token', sessionStorage.getItem('access_token'));
-            if (sessionStorage.getItem('refresh_token')) {
-                _tokenStore.setItem('refresh_token', sessionStorage.getItem('refresh_token'));
-            }
-        }
-
         // ══ Auth pre-check: verify (or refresh) the token BEFORE firing any API calls.
         //    This prevents the "flash of dashboard → session expired" for stale/missing tokens.
         const _preToken = _tokenStore.getItem('access_token');
@@ -33235,7 +32354,14 @@
         refreshBillingStatus(false);
 
         const savedCollapsedState = localStorage.getItem('sidebarCollapsed') === '1';
-        applySidebarState(savedCollapsedState);
+        // If LinkedIn Post tab is active, keep sidebar collapsed (auto-collapse took effect in switchTab)
+        const activeTabId = localStorage.getItem('activeTab') || '';
+        if (activeTabId === 'content-creator') {
+            applySidebarState(true);
+            if (!savedCollapsedState) window._sidebarAutoCollapsed = true;
+        } else {
+            applySidebarState(savedCollapsedState);
+        }
 
         document.querySelectorAll('.sidebar .nav-item').forEach(item => {
             const label = item.querySelector('span');
@@ -35314,26 +34440,6 @@
                     <button id="ftu-next-btn" class="btn btn-primary" type="button"><i class="fas fa-arrow-right"></i> Next</button>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<div id="kb-file-preview-modal" class="modal kb-file-preview-modal" aria-hidden="true">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="kb-file-preview-title">
-        <div class="modal-header">
-            <div class="kb-file-preview-head">
-                <h2 id="kb-file-preview-title">File Preview</h2>
-                <div id="kb-file-preview-meta" class="kb-file-preview-meta"></div>
-            </div>
-            <button class="modal-close" type="button" aria-label="Close" onclick="closeKbFilePreviewModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div id="kb-file-preview-content" class="kb-file-preview-content">Loading preview...</div>
-            <div id="kb-file-preview-note" class="kb-file-preview-note"></div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" type="button" onclick="closeKbFilePreviewModal()">Close</button>
-            <button id="kb-file-preview-download-btn" class="btn btn-primary" type="button">Download Original</button>
         </div>
     </div>
 </div>

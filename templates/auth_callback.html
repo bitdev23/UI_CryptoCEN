@@ -325,15 +325,7 @@
             var progressFillEl = document.getElementById('progressFill');
             var step1El = document.getElementById('st1');
             var step2El = document.getElementById('st2');
-            var _tokenStore = localStorage;   // tokens shared across tabs in same browser
-            try {
-                if (!_tokenStore.getItem('access_token') && sessionStorage.getItem('access_token')) {
-                    _tokenStore.setItem('access_token', sessionStorage.getItem('access_token'));
-                }
-                if (!_tokenStore.getItem('refresh_token') && sessionStorage.getItem('refresh_token')) {
-                    _tokenStore.setItem('refresh_token', sessionStorage.getItem('refresh_token'));
-                }
-            } catch (_) {}
+            var _tokenStore = sessionStorage;   // tokens in sessionStorage (XSS-safe)
 
             function setStage(mode, title, msg, badge, progress) {
                 document.body.classList.remove('state-success', 'state-error');

@@ -165,7 +165,6 @@ class PromptBuilder:
         structure_rule_text: str,
         format_rule_text: str,
         style_clone_compliance_rule: str,
-        classification_mode: bool = False,
     ) -> str:
         """Build the main LinkedIn post generation prompt."""
 
@@ -219,14 +218,8 @@ STRICT RULES — every rule applies without exception:
 11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
 12. TOPIC ANCHOR + HOOK: The very first sentence MUST be directly about "{theme}" AND must be under 120 characters. Short, punchy, curiosity-driven. Do not open with a generic industry question or a hook about your role/team. The post is about the topic, not about you.
 13. NO PROMPT ECHO: Never copy or paraphrase any instruction label from this prompt into the post. Do not use the reader description (WHO WILL READ THIS) as post copy.
-14. OUTPUT CONTRACT: {
-    'CLASSIFICATION MODE: Structure must be (a) Hook line, (b) category-by-category body using KB category labels, (c) CTA/question line. Include at least 4 category entries. For each category include: category name, short description, and at least one example from KB when available. Do not merge or rename KB categories.' if classification_mode else
-    'Structure must be: (a) Hook line, (b) 2-3 short body paragraphs, (c) final CTA/question line aligned to goal. Keep each paragraph 1-2 sentences.'
-}
-15. QUALITY CONTRACT: {
-    'Every category claim must map to KB excerpts. If KB does not contain an example for a category, state that clearly instead of inventing one.' if classification_mode else
-    'Include at least one concrete detail (specific scenario, metric range, or named mechanism). Avoid vague generic claims.'
-}
+14. OUTPUT CONTRACT: Structure must be: (a) Hook line, (b) 2-3 short body paragraphs, (c) final CTA/question line aligned to goal. Keep each paragraph 1-2 sentences.
+15. QUALITY CONTRACT: Include at least one concrete detail (specific scenario, metric range, or named mechanism). Avoid vague generic claims.
 16. GROUNDING MODE: {
     'GROUNDED — all factual claims must trace to KB excerpts above. If a point is not in the excerpts, phrase it as opinion.' if grounding_level == GROUNDING_FULL else
     'PARTIAL — some KB excerpts available. Supported points can be specific; unsupported points must use insight-only framing (no invented facts).' if grounding_level == GROUNDING_PARTIAL else

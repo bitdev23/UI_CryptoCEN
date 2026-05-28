@@ -3,7 +3,7 @@ Simple web dashboard for non-technical LinkedIn automation management.
 Run: python app.py
 Then open: http://localhost:5050
 """
-from flask import Flask, render_template, request, jsonify, redirect, url_for, g, session, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, g, session
 from typing import Optional
 import os
 import json
@@ -642,69 +642,6 @@ def resolve_local_kb_path(storage_path: str, filename: str, user_id: str) -> str
 
     legacy_candidate = os.path.join(PDF_DIR, filename)
     return legacy_candidate
-
-
-def _is_safe_kb_local_path(path: str) -> bool:
-    try:
-        abs_path = os.path.abspath(path)
-        abs_root = os.path.abspath(PDF_DIR)
-        return abs_path.startswith(abs_root + os.sep) or abs_path == abs_root
-    except Exception:
-        return False
-
-
-def _resolve_user_kb_record_and_path(user_id: str, filename: str):
-    from rag_system_pgvector import RAGStore
-
-    rag = RAGStore(user_id=user_id)
-    rows = rag.db.list_kb_files(user_id)
-    matches = [
-        row for row in rows
-        if str(row.get('filename') or '').strip().lower() == filename.lower()
-    ]
-    if not matches:
-        return None, None, None
-
-    def _parse_created(value):
-        text = str(value or '').strip()
-        if not text:
-            return datetime.min
-        try:
-            return datetime.fromisoformat(text.replace('Z', '+00:00')).replace(tzinfo=None)
-        except Exception:
-            return datetime.min
-
-    record = max(matches, key=lambda row: _parse_created(row.get('created_at')))
-    local_path = resolve_local_kb_path(
-        record.get('storage_path') or '',
-        record.get('filename') or '',
-        user_id
-    )
-    return rag, record, local_path
-
-
-def _extract_text_from_xlsx(path: str) -> str:
-    try:
-        from openpyxl import load_workbook
-    except Exception:
-        return ''
-
-    try:
-        wb = load_workbook(path, read_only=True, data_only=True)
-        lines = []
-        for ws in wb.worksheets[:5]:
-            lines.append(f"--- Sheet: {ws.title} ---")
-            for idx, row in enumerate(ws.iter_rows(min_row=1, max_row=200, values_only=True), start=1):
-                values = [str(v).strip() for v in row if v is not None and str(v).strip()]
-                if not values:
-                    continue
-                lines.append(f"Row {idx}: " + ' | '.join(values))
-            lines.append('')
-        wb.close()
-        return '\n'.join(lines).strip()
-    except Exception:
-        logger.exception('Failed to extract XLSX: %s', path)
-        return ''
 
 
 def _read_feature_store() -> dict:
@@ -5295,7 +5232,7 @@ def normalize_hashtags(tags: list) -> list:
 
 
 def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list) -> list:
-    """Generate readable hashtags from theme/industry/role/topics."""
+    """Generate meaningful compound hashtags from theme/industry/role/topics."""
     candidates = []
 
     # Build compound hashtags from multi-word phrases (e.g. 'CEX vs DEX' → 'CEXvsDEX')
@@ -5316,14 +5253,9 @@ def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list
             words = re.findall(r'[A-Za-z0-9]+', phrase)
             significant = [w for w in words if w.lower() not in noise and len(w) >= 2]
             if len(significant) >= 2:
-                # Prefer clean standalone tags first to avoid awkward fused tags.
-                for token in significant[:3]:
-                    if len(token) >= 3:
-                        candidates.append(token)
-                # Add one compact compound only for short 2-word phrases.
-                if len(significant) == 2 and all(len(token) <= 12 for token in significant[:2]):
-                    compound = ''.join(token.capitalize() if token.islower() else token for token in significant[:2])
-                    candidates.append(compound)
+                # CamelCase compound: 'custodial model' → 'CustodialModel'
+                compound = ''.join(w.capitalize() if w.islower() else w for w in significant[:4])
+                candidates.append(compound)
             elif significant:
                 candidates.append(significant[0])
 
@@ -5334,7 +5266,7 @@ def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list
             if len(clean) >= 3:
                 candidates.append(clean)
 
-    # Standard fallback tags as low priority.
+    # Standard LinkedIn hashtags as low-priority fallback
     candidates.extend(['LinkedIn', 'ProfessionalGrowth'])
     return normalize_hashtags(candidates)
 
@@ -5487,21 +5419,11 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
     lower_text = text.lower()
     lower_first_line = first_line.lower()
     theme_tokens = [
-        token for token in re.findall(r'[a-zA-Z0-9]+', _normalize_topic_text(str(theme or '')).lower())
+        token for token in re.findall(r'[a-zA-Z0-9]+', str(theme or '').lower())
         if len(token) >= 4
     ]
-    core_theme_tokens = _extract_topic_keywords(theme)
-    anchor_tokens = core_theme_tokens[:4] if core_theme_tokens else theme_tokens[:6]
-    hook_topic_match = any(token in lower_first_line for token in anchor_tokens) if anchor_tokens else True
+    hook_topic_match = any(token in lower_first_line for token in theme_tokens[:6]) if theme_tokens else True
     hook_length_ok = len(first_line) <= 120
-
-    topic_coverage_tokens = core_theme_tokens[:6] if core_theme_tokens else theme_tokens[:8]
-    topic_token_hits = sum(1 for token in topic_coverage_tokens if token in lower_text)
-    topic_coverage_ok = (
-        topic_token_hits >= min(2, len(topic_coverage_tokens))
-        if topic_coverage_tokens
-        else True
-    )
 
     cta_markers = [
         'what\'s your take', 'what do you think', 'curious', 'share your', 'drop a comment',
@@ -5522,9 +5444,6 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
     novelty = max(0, min(100, 76 - (banned_hits * 12) + (8 if 'but' in lower_text or 'however' in lower_text else 0)))
     specificity = max(0, min(100, 44 + min(40, specificity_terms * 7)))
     hook = max(0, min(100, (55 if hook_length_ok else 25) + (35 if hook_topic_match else 0)))
-    if not topic_coverage_ok:
-        hook = max(0, hook - 25)
-        specificity = max(0, specificity - 18)
     cta = 88 if has_cta else 32
 
     if goal_key in {'spark_comments', 'grow_network'} and not text.strip().endswith('?'):
@@ -5535,8 +5454,6 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
         issues.append('Hook line exceeds 120 characters')
     if not hook_topic_match:
         issues.append('Opening line is not clearly anchored to the requested topic')
-    if not topic_coverage_ok:
-        issues.append('Body does not stay focused on the requested topic')
     if len(paragraphs) < 2:
         issues.append('Needs clearer paragraph structure (2+ short paragraphs)')
     if not has_cta:
@@ -5557,47 +5474,6 @@ def _post_contract_heuristics(body: str, theme: str, goal_key: str) -> dict:
         'issues': issues,
         'first_line': first_line,
     }
-
-
-def _build_kb_grounded_fallback_post(theme: str, kb_context: str, goal_key: str) -> str:
-    """Build a deterministic fallback post grounded in retrieved KB context.
-
-    Used only as a last-resort rescue when model output is degenerate (topic echo
-    or extremely short). This avoids hard-failing generation when KB evidence exists.
-    """
-    normalized_theme = _normalize_topic_text(theme) or str(theme or '').strip() or 'this topic'
-    theme_lower = normalized_theme.lower()
-    kb_text = str(kb_context or '')
-
-    category_focus = ''
-    if 'crypto' in theme_lower and 'asset' in theme_lower and _is_classification_topic(normalized_theme):
-        category_focus = (
-            'A practical map from the KB is to separate assets into Layer 1, Layer 2, '
-            'stablecoins, DeFi tokens, NFTs, meme coins, real-world assets (RWA), and '
-            'liquid staking tokens.'
-        )
-    else:
-        category_focus = 'The KB excerpts point to clear categories, each with different utility and risk trade-offs.'
-
-    ticker_candidates = []
-    for token in re.findall(r'\b[A-Z]{2,6}\b', kb_text):
-        if token not in ticker_candidates and token not in {'KB', 'USD'}:
-            ticker_candidates.append(token)
-    example_suffix = ''
-    if ticker_candidates:
-        example_suffix = f" Examples from your files include {', '.join(ticker_candidates[:8])}."
-
-    cta_line = "What category are you prioritizing right now, and why?"
-    if goal_key in {'spark_comments', 'grow_network'}:
-        cta_line = "Which category do you trust most in this cycle, and what is your reasoning?"
-
-    paragraphs = [
-        f"{normalized_theme} becomes clearer when you classify assets by function, not hype.",
-        f"{category_focus}{example_suffix}",
-        "The useful test is simple: define what each category is designed to do, then evaluate value accrual, liquidity profile, and risk before comparing them.",
-        cta_line,
-    ]
-    return '\n\n'.join(paragraphs).strip()
 
 
 def _evaluate_post_quality(ai, body: str, theme: str, goal_key: str) -> dict:
@@ -5693,205 +5569,6 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
     return sorted(list(set(hits)))
 
 
-def _normalize_topic_text(raw_topic: str) -> str:
-    """Normalize user topic text for retrieval and scoring.
-
-    Strips list prefixes like "6.", "2)", "01 -" so KB queries focus on
-    the semantic topic phrase.
-    """
-    text = str(raw_topic or '').strip()
-    if not text:
-        return ''
-    text = re.sub(r'^\s*\d+\s*[\.)\-:]\s*', '', text)
-    text = re.sub(r'^\s*chapter\s*\d+\s*[:\-]\s*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
-
-
-def _extract_topic_keywords(topic: str) -> list:
-    """Return meaningful topic tokens, excluding broad generic domain words."""
-    normalized = _normalize_topic_text(topic).lower()
-    tokens = re.findall(r'[a-zA-Z0-9]+', normalized)
-    if not tokens:
-        return []
-
-    stop = {
-        'about', 'from', 'with', 'this', 'that', 'your', 'their', 'into', 'what', 'when',
-        'where', 'which', 'while', 'there', 'here', 'topic', 'guide', 'intro', 'overview',
-        'types', 'type', 'basics', 'insights', 'practical', 'lessons', 'strategies',
-        'framework', 'professional', 'industry', 'general', 'engagement', 'post',
-    }
-    broad_domain = {
-        'crypto', 'cryptocurrency', 'web3', 'blockchain', 'fintech', 'technology', 'business',
-    }
-
-    keywords = []
-    seen = set()
-    for token in tokens:
-        if len(token) < 4:
-            continue
-        if token in stop or token in broad_domain:
-            continue
-        if token not in seen:
-            seen.add(token)
-            keywords.append(token)
-    return keywords
-
-
-def _is_classification_topic(topic: str) -> bool:
-    """Detect classification intent (types/categories/taxonomy style topics)."""
-    normalized = _normalize_topic_text(topic).lower()
-    if not normalized:
-        return False
-    has_structure_signal = bool(re.search(r'\b(types?|categories?|classification|taxonomy)\b', normalized))
-    has_of_signal = ' of ' in normalized or normalized.startswith(('types', 'categories', 'classification', 'taxonomy'))
-    return has_structure_signal and has_of_signal
-
-
-def _canonicalize_topic_if_needed(topic: str) -> str:
-    """Canonicalize known topic shapes to improve retrieval/prompt consistency."""
-    normalized = _normalize_topic_text(topic).lower()
-    if re.search(r'\btypes?\s+of\s+crypto\s+assets?\b', normalized):
-        return (
-            'Types of Crypto Assets: L1, L2, Stablecoins, DeFi Tokens, NFTs, '
-            'Meme Coins, RWA, Liquid Staking Tokens. Include examples.'
-        )
-    return str(topic or '').strip()
-
-
-def _normalize_grounding_mode(value: str) -> str:
-    raw = str(value or '').strip().lower()
-    if raw in {'strict', 'full', 'hard'}:
-        return 'strict'
-    if raw in {'creative', 'loose', 'open'}:
-        return 'creative'
-    return 'balanced'
-
-
-def _infer_kb_file_metadata(filename: str) -> dict:
-    """Infer lightweight metadata from KB filename for retrieval filtering."""
-    name = str(filename or '')
-    lower = name.lower()
-    ext = ''
-    if '.' in lower:
-        ext = lower.rsplit('.', 1)[-1]
-
-    industry_labels = {
-        'crypto': ['crypto', 'web3', 'blockchain', 'defi', 'token', 'nft'],
-        'real_estate': ['real estate', 'property', 'listing', 'rent', 'mortgage'],
-        'marketing': ['marketing', 'campaign', 'seo', 'content', 'funnel'],
-        'b2b': ['b2b', 'enterprise', 'saas', 'pipeline', 'lead'],
-        'virtual_assistant': ['virtual assistant', 'va', 'outsourcing', 'operations'],
-        'finance': ['finance', 'revenue', 'profit', 'p&l', 'cashflow', 'forecast'],
-    }
-
-    industries = []
-    for label, terms in industry_labels.items():
-        if any(term in lower for term in terms):
-            industries.append(label)
-
-    periods = []
-    for match in re.findall(r'\b(q[1-4]|fy\d{2,4}|\d{4})\b', lower):
-        periods.append(match.upper())
-
-    return {
-        'filename': name,
-        'extension': ext,
-        'industries': sorted(list(set(industries))),
-        'periods': sorted(list(set(periods))),
-        'is_tabular': ext in {'csv', 'xlsx', 'xls'},
-        'is_document': ext in {'pdf', 'docx', 'pptx', 'txt', 'md'},
-    }
-
-
-def _apply_topic_metadata_scope_filter(file_rows: list, topic: str, industry: str) -> list:
-    """Prefer files whose inferred metadata appears relevant to topic/industry.
-
-    Falls back to original rows when no confident match exists.
-    """
-    if not file_rows:
-        return []
-    text = f"{topic or ''} {industry or ''}".lower()
-    if not text.strip():
-        return file_rows
-
-    scored = []
-    for row in file_rows:
-        name = str(row.get('filename') or '').lower()
-        score = 0
-        if any(tok in name for tok in re.findall(r'[a-z0-9]{4,}', text)[:12]):
-            score += 2
-        meta = _infer_kb_file_metadata(row.get('filename') or '')
-        if any(ind in text for ind in meta.get('industries', [])):
-            score += 2
-        if meta.get('is_tabular') and any(k in text for k in ['revenue', 'profit', 'quarter', 'kpi', 'metric']):
-            score += 2
-        scored.append((score, row))
-
-    matched = [row for score, row in scored if score >= 2]
-    return matched if matched else file_rows
-
-
-def _extract_numeric_facts(text: str) -> list:
-    """Extract numeric facts with unit and optional period context."""
-    body = str(text or '')
-    facts = []
-    for match in re.finditer(r'(?P<currency>\$)?(?P<value>\d+(?:,\d{3})*(?:\.\d+)?)(?P<unit>%|k|m|b|bn|mn)?', body, flags=re.IGNORECASE):
-        raw_value = match.group('value') or ''
-        if not raw_value:
-            continue
-        value = raw_value.replace(',', '')
-        unit = (match.group('unit') or '').lower()
-        currency = '$' if match.group('currency') else ''
-        window_start = max(0, match.start() - 35)
-        window_end = min(len(body), match.end() + 35)
-        context = body[window_start:window_end].lower()
-        period_match = re.search(r'\b(q[1-4]|fy\d{2,4}|\d{4})\b', context)
-        facts.append({
-            'value': value,
-            'unit': unit,
-            'currency': currency,
-            'period': period_match.group(1).upper() if period_match else '',
-        })
-    return facts
-
-
-def _compute_numeric_accuracy(post_text: str, kb_context: str) -> dict:
-    """Return numeric agreement score between post and KB excerpts."""
-    post_facts = _extract_numeric_facts(post_text)
-    kb_facts = _extract_numeric_facts(kb_context)
-    if not post_facts:
-        return {
-            'score': 100,
-            'post_numeric_count': 0,
-            'kb_numeric_count': len(kb_facts),
-            'mismatches': [],
-            'checked': False,
-        }
-
-    kb_keys = {
-        (f.get('value', ''), f.get('unit', ''), f.get('currency', ''), f.get('period', ''))
-        for f in kb_facts
-    }
-    matched = 0
-    mismatches = []
-    for f in post_facts:
-        key = (f.get('value', ''), f.get('unit', ''), f.get('currency', ''), f.get('period', ''))
-        if key in kb_keys:
-            matched += 1
-        else:
-            mismatches.append(f)
-
-    score = int(round((matched / max(1, len(post_facts))) * 100))
-    return {
-        'score': score,
-        'post_numeric_count': len(post_facts),
-        'kb_numeric_count': len(kb_facts),
-        'mismatches': mismatches[:6],
-        'checked': True,
-    }
-
-
 # ── Production Grounding System ───────────────────────────────────────────────
 
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
@@ -5905,34 +5582,20 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     """
     queries = []
     topic = (topic or '').strip()
-    normalized_topic = _normalize_topic_text(topic)
-    topic_for_queries = normalized_topic or topic
     industry = (industry or '').strip()
     role = (role or '').strip()
 
     # Q1 — the user's exact topic (highest priority)
-    if topic_for_queries:
-        queries.append(topic_for_queries)
-    if topic and normalized_topic and topic.lower() != normalized_topic.lower():
+    if topic:
         queries.append(topic)
 
-    # Q1b — add classification-oriented variants for numbered headings
-    if topic_for_queries:
-        lower_topic = topic_for_queries.lower()
-        if re.search(r'\btypes?\s+of\b', lower_topic):
-            entity = re.sub(r'^.*\btypes?\s+of\s+', '', lower_topic).strip()
-            if entity:
-                queries.append(f"categories of {entity}")
-                queries.append(f"{entity} classification")
-                queries.append(f"{entity} examples and definitions")
-
     # Q2 — topic contextualised with industry
-    if topic_for_queries and industry:
-        queries.append(f"{topic_for_queries} in {industry}")
+    if topic and industry:
+        queries.append(f"{topic} in {industry}")
 
     # Q3 — topic contextualised with role perspective
-    if topic_for_queries and role:
-        queries.append(f"{topic_for_queries} from {role} perspective")
+    if topic and role:
+        queries.append(f"{topic} from {role} perspective")
     
     # Q4 — just the main industry/role keywords (broader catch-all for any content in that domain)
     if industry or role:
@@ -5942,12 +5605,12 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     
     # Q5 — goal + topic combination (often KB is organized by use case)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
-    if topic_for_queries and goal_label:
-        queries.append(f"{topic_for_queries} for {goal_label}")
+    if topic and goal_label:
+        queries.append(f"{topic} for {goal_label}")
     
     # Q6 — broader industry + role + goal combo (catch-all)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
-    broad_parts = [p for p in [industry, role, goal_label, topic_for_queries] if p]
+    broad_parts = [p for p in [industry, role, goal_label, topic] if p]
     if broad_parts and ' '.join(broad_parts) not in [q for q in queries]:
         queries.append(' '.join(broad_parts))
 
@@ -5959,7 +5622,7 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
         if q_lower and q_lower not in seen:
             seen.add(q_lower)
             unique.append(q)
-    return unique or [topic_for_queries or industry or 'general knowledge']
+    return unique or [topic or industry or 'general knowledge']
 
 
 def _multi_query_kb_search(rag, queries: list, file_id_arg, k_per_query: int = 4,
@@ -6563,9 +6226,8 @@ def generate_preview():
         else:
             kb_mode = 'use_kb'
 
-        # ── Grounding strictness mode ────────────────────────────────────────
-        grounding_mode = _normalize_grounding_mode(req_data.get('grounding_mode') or '')
-        strict_grounding = bool(req_data.get('strict_grounding', False)) or grounding_mode == 'strict'
+        # ── Strict grounding toggle ───────────────────────────────────────────
+        strict_grounding = bool(req_data.get('strict_grounding', False))
 
         workspace_id = (req_data.get('workspace_id') or '').strip()
         raw_specific_file_ids = req_data.get('specific_file_ids') or []
@@ -6604,14 +6266,6 @@ def generate_preview():
         else:
             theme = random.choice(neutral_themes)
         
-        theme = _canonicalize_topic_if_needed(theme)
-        classification_mode = _is_classification_topic(theme)
-
-        # Classification topics should not drift; enforce strict grounding when KB is active.
-        if classification_mode and kb_mode != 'no_kb':
-            strict_grounding = True
-            grounding_mode = 'strict'
-
         fmt = random.choice(POST_FORMATS) if POST_FORMATS else 'article'
 
         if user_industry or user_role or topics:
@@ -6773,16 +6427,13 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                 kb_no_match = True
             else:
                 user_files = rag.db.list_kb_files(user_id)
-                # Optional metadata-aware narrowing for better retrieval relevance.
-                filtered_user_files = _apply_topic_metadata_scope_filter(user_files, theme, user_industry)
                 user_file_ids = [str(row.get('id')) for row in user_files if row.get('id')]
-                filtered_user_file_ids = [str(row.get('id')) for row in filtered_user_files if row.get('id')]
 
                 if not user_file_ids:
                     kb_state = 'no_files'
                     kb_no_match = True
                 else:
-                    selected_file_ids = list(filtered_user_file_ids or user_file_ids)
+                    selected_file_ids = list(user_file_ids)
 
                     if kb_mode == 'specific_files':
                         selected_file_ids = [fid for fid in specific_file_ids if fid in user_file_ids]
@@ -6802,13 +6453,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                     if not selected_file_ids:
                         kb_state = 'no_files'
                         kb_no_match = True
-                        if kb_mode == 'specific_files':
-                            return jsonify({
-                                'success': False,
-                                'message': 'The selected template has no valid files. Choose another template or include at least one indexed file.',
-                                'scope_validation_failed': True,
-                                'scope_reason': 'empty_selected_scope',
-                            }), 422
                     else:
                         filtered = len(selected_file_ids) < len(user_file_ids)
                         file_id_arg = selected_file_ids if filtered else None
@@ -6819,15 +6463,13 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         )
 
                         # Phase 1: hybrid search (vector + keyword) per query
-                        # FIX: Lowered threshold from 0.50 to 0.30 to ensure retrieval for grounding contract
-                        # With 75% vector weight, match_threshold=0.30 becomes 0.225 hybrid baseline
-                        # This ensures we get hits that meet grounding requirements (0.42-0.56)
-                        # Higher k=8 ensures we have enough candidates for filtering and reranking
+                        # IMPROVED: Lowered threshold from 0.68 to 0.50 to capture more relevant KB content
+                        # Higher k=6 ensures we have enough candidates for filtering later
                         all_hybrid_hits = {}
                         for rq in retrieval_queries:
                             hits = rag.hybrid_search(
-                                rq, k=8,
-                                match_threshold=0.30,
+                                rq, k=6,
+                                match_threshold=0.50,
                                 file_ids=file_id_arg,
                                 vector_weight=0.75,
                                 keyword_weight=0.25,
@@ -6909,13 +6551,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         else:
                             kb_state = 'no_match'
                             kb_no_match = True
-                            if kb_mode == 'specific_files':
-                                return jsonify({
-                                    'success': False,
-                                    'message': 'No relevant content was found in the selected template files for this topic. Choose a better-matching template or files.',
-                                    'scope_validation_failed': True,
-                                    'scope_reason': 'no_match_in_selected_scope',
-                                }), 422
 
         except Exception as kb_error:
             logger.warning("KB retrieval unavailable, falling back to LLM context: %s", kb_error)
@@ -6940,33 +6575,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             logger.debug('KB hits details for grounding: %s hits with avg_sim=%.4f, min=%.4f, max=%.4f',
                         len(sims), kb_avg_similarity, min(sims) if sims else 0, max(sims) if sims else 0)
 
-        # ── Strict/contract grounding gates ───────────────────────────────────
-        # ADJUSTED: Lowered thresholds to account for hybrid scoring with lower match_threshold
-        # Old: strict=0.56 (2 hits), balanced=0.42 (1 hit)
-        # New: strict=0.45 (2 hits), balanced=0.35 (1 hit)
-        # Rationale: With match_threshold=0.30 and 75/25 vector/keyword weighting,
-        # reasonable hits need lower thresholds. Full keyword match can add 0.25 to score.
-        min_hits_required = 2 if grounding_mode == 'strict' else (1 if grounding_mode == 'balanced' else 0)
-        min_avg_similarity = 0.45 if grounding_mode == 'strict' else (0.35 if grounding_mode == 'balanced' else 0.0)
-
-        if kb_mode != 'no_kb' and kb_used:
-            if len(kb_hits) < min_hits_required or kb_avg_similarity < min_avg_similarity:
-                return jsonify({
-                    'success': False,
-                    'message': (
-                        f'Grounding contract not met for {grounding_mode} mode. '
-                        f'Need at least {min_hits_required} relevant KB chunks with avg similarity >= {min_avg_similarity:.2f}.'
-                    ),
-                    'grounding_contract_failed': True,
-                    'grounding_contract': {
-                        'mode': grounding_mode,
-                        'required_hits': min_hits_required,
-                        'required_avg_similarity': min_avg_similarity,
-                        'actual_hits': len(kb_hits),
-                        'actual_avg_similarity': round(kb_avg_similarity, 3),
-                    },
-                }), 422
-
         # ── Strict grounding gate ─────────────────────────────────────────────
         if strict_grounding and kb_mode != 'no_kb' and grounding_level == _GROUNDING_NONE:
             gap_data = _analyze_kb_coverage_gaps(
@@ -6979,7 +6587,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                     'Strict Grounding is ON: your knowledge base has no relevant content for this topic. '
                     'Upload documents about this topic or turn off Strict Grounding to generate insight-only posts.'
                 ),
-                'grounding_mode': grounding_mode,
                 'grounding': {
                     'level': grounding_level,
                     'label': 'Blocked — No KB Match',
@@ -7059,7 +6666,6 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             structure_rule_text=structure_rule_text,
             format_rule_text=format_rule_text,
             style_clone_compliance_rule=style_clone_compliance_rule,
-            classification_mode=classification_mode,
         )
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
@@ -7272,11 +6878,11 @@ Post:
             evaluation = _eval_future.result()
 
         quality_threshold = clamp_int(req_data.get('quality_threshold', 75), 60, 95, 75)
-        retry_cap_rate = 1.0
+        retry_cap_rate = 0.35
         try:
-            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '1.0')))
+            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '0.35')))
         except Exception:
-            retry_cap_rate = 1.0
+            retry_cap_rate = 0.35
         retry_cap_rate = max(0.0, min(1.0, retry_cap_rate))
 
         retry_attempted = False
@@ -7284,33 +6890,13 @@ Post:
         selected_draft = 'draft_1'
         second_evaluation = None
 
-        heuristics = _post_contract_heuristics(body, theme, goal_key)
-        needs_topic_anchor_retry = any(
-            'Opening line is not clearly anchored to the requested topic' in str(issue)
-            for issue in (heuristics.get('issues') or [])
-        )
-        needs_topic_focus_retry = any(
-            'Body does not stay focused on the requested topic' in str(issue)
-            for issue in (heuristics.get('issues') or [])
-        )
-        needs_length_retry = (
-            word_count_mode == 'custom_range'
-            and (words_count(body) < min_words or words_count(body) > max_words)
-        )
-
-        if (evaluation.get('score', 0) < quality_threshold or needs_topic_anchor_retry or needs_topic_focus_retry or needs_length_retry) and retry_allowed and _has_budget(20):
+        if evaluation.get('score', 0) < quality_threshold and retry_allowed and _has_budget(20):
             retry_attempted = True
-            feedback_issues = list(evaluation.get('issues') or [
+            feedback_issues = evaluation.get('issues') or [
                 'Improve hook specificity and topic anchoring',
                 'Increase clarity and concrete detail',
                 'Strengthen CTA quality'
-            ])
-            if needs_topic_anchor_retry:
-                feedback_issues.append('Opening line must be directly anchored to the requested topic')
-            if needs_topic_focus_retry:
-                feedback_issues.append('Body must stay focused on the requested topic and avoid generic tangents')
-            if needs_length_retry:
-                feedback_issues.append(f'Keep output strictly between {min_words} and {max_words} words')
+            ]
             retry_prompt = _PromptBuilder.build_retry_prompt(
                 prompt, evaluation.get('score', 0), feedback_issues
             )
@@ -7361,147 +6947,6 @@ Post:
                     if _verify_kb_ctx:
                         logger.info('Grounding rewrite applied successfully')
 
-        if word_count_mode == 'custom_range' and words_count(body) < min_words and _has_budget(12):
-            expand_prompt = f"""Rewrite and expand the LinkedIn post below.
-Hard rules:
-- Keep the same topic, role perspective, and goal.
-- Keep it natural and concrete.
-- Keep total length strictly between {min_words} and {max_words} words.
-- Output post body only (no hashtags).
-
-Post:
-{body}
-"""
-            try:
-                expanded = ai.generate(expand_prompt, max_tokens=900, task='rewrite')
-                _track_usage(expanded)
-                expanded_text = (expanded.get('text') or '').strip()
-                if expanded_text:
-                    body = enforce_linkedin_quality(
-                        remove_hashtags_from_body(_strip_llm_preamble(expanded_text)),
-                        user_industry,
-                        user_role,
-                        theme,
-                        target_audience_hint,
-                        emoji_level,
-                    )
-            except Exception as expand_error:
-                logger.warning('Length expansion rewrite failed: %s', expand_error)
-
-        if word_count_mode == 'custom_range':
-            body = enforce_word_ceiling(body, max_words)
-
-        # ── Final hard guard (production safety net) ───────────────────────
-        def _quality_violations(candidate_body: str) -> list:
-            violations = []
-            wc = words_count(candidate_body)
-            heur = _post_contract_heuristics(candidate_body, theme, goal_key)
-            body_norm = re.sub(r'\s+', ' ', str(candidate_body or '').strip().lower())
-            theme_norm = re.sub(r'\s+', ' ', _normalize_topic_text(theme).strip().lower())
-
-            if wc < 35:
-                violations.append(f'Output too short ({wc} words)')
-
-            # Guard against degenerate outputs like repeating the topic only.
-            if theme_norm:
-                if body_norm == theme_norm or body_norm.startswith(theme_norm):
-                    violations.append('Output appears to echo the topic input instead of a full post')
-
-            if word_count_mode == 'custom_range' and (wc < min_words or wc > max_words):
-                violations.append(f'Length out of range ({wc} words, expected {min_words}-{max_words})')
-
-            if any('Opening line is not clearly anchored to the requested topic' in str(issue) for issue in (heur.get('issues') or [])):
-                violations.append('Opening line is not anchored to topic')
-            if any('Body does not stay focused on the requested topic' in str(issue) for issue in (heur.get('issues') or [])):
-                violations.append('Body is not focused on the requested topic')
-
-            if goal_key in {'spark_comments', 'grow_network'} and not str(candidate_body or '').strip().endswith('?'):
-                violations.append('Goal-aligned CTA question missing at the end')
-
-            if grounding_mode == 'strict' and kb_context:
-                numeric_eval = _compute_numeric_accuracy(candidate_body, kb_context)
-                if numeric_eval.get('checked') and numeric_eval.get('post_numeric_count', 0) > 0 and numeric_eval.get('score', 100) < 60:
-                    violations.append(f"Numeric accuracy below threshold ({numeric_eval.get('score', 0)}%)")
-
-            return violations
-
-        final_violations = _quality_violations(body)
-        if final_violations and _has_budget(10):
-            strict_fix_prompt = f"""Rewrite this LinkedIn post and satisfy ALL hard rules:
-1) Keep topic strictly about: {theme}
-2) Keep perspective: {user_role} in {user_industry}
-3) Keep tone: {post_tone}
-4) Keep goal: {business_goal}
-5) End with one natural, open question
-6) Keep body length strictly between {min_words} and {max_words} words
-7) Output body only (no hashtags, no labels)
-
-Post:
-{body}
-"""
-            try:
-                strict_fix = ai.generate(strict_fix_prompt, max_tokens=900, task='rewrite')
-                _track_usage(strict_fix)
-                strict_fix_text = (strict_fix.get('text') or '').strip()
-                if strict_fix_text:
-                    body = enforce_linkedin_quality(
-                        remove_hashtags_from_body(_strip_llm_preamble(strict_fix_text)),
-                        user_industry,
-                        user_role,
-                        theme,
-                        target_audience_hint,
-                        emoji_level,
-                    )
-                    if word_count_mode == 'custom_range':
-                        body = enforce_word_ceiling(body, max_words)
-                    final_violations = _quality_violations(body)
-            except Exception as strict_fix_error:
-                logger.warning('Final hard-guard rewrite failed: %s', strict_fix_error)
-
-        if final_violations:
-            recoverable_violations = {
-                'Output too short',
-                'Output appears to echo the topic input instead of a full post',
-            }
-            has_recoverable = any(
-                any(v.startswith(prefix) for prefix in recoverable_violations)
-                for v in final_violations
-            )
-
-            if has_recoverable and kb_context:
-                logger.info('Applying KB-grounded fallback post rescue due to recoverable quality violations: %s', '; '.join(final_violations))
-                body = _build_kb_grounded_fallback_post(theme, kb_context, goal_key)
-                body = enforce_linkedin_quality(
-                    body,
-                    user_industry,
-                    user_role,
-                    theme,
-                    target_audience_hint,
-                    emoji_level,
-                )
-                if word_count_mode == 'custom_range':
-                    body = enforce_word_ceiling(body, max_words)
-                final_violations = _quality_violations(body)
-
-        if final_violations:
-            logger.warning('Generation blocked by hard quality guard: %s', '; '.join(final_violations))
-            return jsonify({
-                'success': False,
-                'message': 'Quality guard blocked a weak draft. Please regenerate once.',
-                'quality_guard_blocked': True,
-                'quality_issues': final_violations,
-                'settings_applied': {
-                    'industry': user_industry,
-                    'role': user_role,
-                    'tone': post_tone,
-                    'goal_key': goal_key,
-                    'word_count_mode': word_count_mode,
-                    'min_words': min_words,
-                    'max_words': max_words,
-                    'output_words': words_count(body),
-                }
-            }), 422
-
         candidate_tags = derive_hashtag_candidates(theme, user_industry, user_role, topics)
         merged_tags = normalize_hashtags(generated_tags + candidate_tags)
         final_hashtags = merged_tags[:hashtag_count] if hashtag_count > 0 else []
@@ -7524,30 +6969,6 @@ Post:
 
         # ── Source traceability (author-side) ─────────────────────────────────
         source_traceability = _build_source_traceability(kb_hits, body)
-
-        # ── Scope compliance and citations ─────────────────────────────────────
-        allowed_scope_ids = set(str(fid) for fid in (kb_selected_file_ids or []))
-        scope_hits_total = 0
-        scope_hits_in_scope = 0
-        for hit in kb_hits:
-            fid = str(hit.get('file_id') or '')
-            if not fid:
-                continue
-            scope_hits_total += 1
-            if not allowed_scope_ids or fid in allowed_scope_ids:
-                scope_hits_in_scope += 1
-        scope_compliance_pct = int(round((scope_hits_in_scope / max(1, scope_hits_total)) * 100)) if scope_hits_total else 100
-        citations = [
-            {
-                'file': src.get('file', ''),
-                'snippet': src.get('chunk_preview', ''),
-                'similarity': src.get('similarity', 0),
-                'file_id': src.get('file_id', ''),
-            }
-            for src in source_traceability[:4]
-        ]
-
-        numeric_accuracy = _compute_numeric_accuracy(body, kb_context)
 
         # ── KB gap analysis ───────────────────────────────────────────────────
         gap_analysis = _analyze_kb_coverage_gaps(
@@ -7610,9 +7031,6 @@ Post:
                 },
                 'sentence_scores': sentence_grounding,
                 'source_traceability': source_traceability,
-                'citations': citations,
-                'scope_compliance_pct': scope_compliance_pct,
-                'numeric_accuracy': numeric_accuracy,
             },
             'gap_analysis': gap_analysis,
             'settings_applied': {
@@ -7637,14 +7055,10 @@ Post:
                 'tone': post_tone,
                 'style_clone_mode': style_clone_mode,
                 'strict_grounding': strict_grounding,
-                'grounding_mode': grounding_mode,
-                'classification_mode': classification_mode,
                 'kb_avg_similarity': round(kb_avg_similarity, 3),
                 'kb_low_confidence': kb_low_confidence,
                 'grounding_level': grounding_level,
                 'grounding_rewrite_applied': grounding_rewrite_applied,
-                'scope_compliance_pct': scope_compliance_pct,
-                'numeric_accuracy_score': numeric_accuracy.get('score', 100),
                 'quality_score': evaluation.get('score', 0),
                 'quality_threshold': quality_threshold,
                 'quality_retry_allowed': retry_allowed,
@@ -8659,116 +8073,6 @@ def list_knowledge_base_files():
         return _safe_api_error('Failed to list knowledge base files', e)
 
 
-@app.route('/api/view-knowledge-base-file', methods=['GET'])
-@require_auth
-def view_knowledge_base_file():
-    try:
-        filename = str(request.args.get('filename') or '').strip()
-        mode = str(request.args.get('mode') or 'inline').strip().lower()
-        if not filename:
-            return jsonify({'success': False, 'message': 'Filename required'}), 400
-        if '/' in filename or '\\' in filename or '..' in filename:
-            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
-
-        user_id = ensure_kb_user_id()
-        if not user_id:
-            return jsonify({'success': False, 'message': 'Authentication required'}), 401
-
-        _rag, record, local_path = _resolve_user_kb_record_and_path(user_id, filename.lower())
-        if not record or not local_path:
-            return jsonify({'success': False, 'message': 'File not found'}), 404
-        if not _is_safe_kb_local_path(local_path) or not os.path.isfile(local_path):
-            return jsonify({'success': False, 'message': 'File is unavailable locally'}), 404
-
-        ext = Path(local_path).suffix.lower()
-        mimetype_map = {
-            '.pdf': 'application/pdf',
-            '.txt': 'text/plain; charset=utf-8',
-            '.md': 'text/markdown; charset=utf-8',
-            '.csv': 'text/csv; charset=utf-8',
-            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        }
-        mimetype = mimetype_map.get(ext, 'application/octet-stream')
-        as_attachment = mode == 'download'
-
-        return send_file(
-            local_path,
-            mimetype=mimetype,
-            as_attachment=as_attachment,
-            download_name=record.get('filename') or filename,
-            conditional=True,
-            etag=False,
-            max_age=0,
-            last_modified=None
-        )
-    except Exception as e:
-        logger.exception('Failed to open KB file')
-        return _safe_api_error('Failed to open file', e)
-
-
-@app.route('/api/preview-knowledge-base-file-content', methods=['GET'])
-@require_auth
-def preview_knowledge_base_file_content():
-    try:
-        from pdf_processor import load_document
-
-        filename = str(request.args.get('filename') or '').strip()
-        if not filename:
-            return jsonify({'success': False, 'message': 'Filename required'}), 400
-        if '/' in filename or '\\' in filename or '..' in filename:
-            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
-
-        user_id = ensure_kb_user_id()
-        if not user_id:
-            return jsonify({'success': False, 'message': 'Authentication required'}), 401
-
-        _rag, record, local_path = _resolve_user_kb_record_and_path(user_id, filename.lower())
-        if not record or not local_path:
-            return jsonify({'success': False, 'message': 'File not found'}), 404
-        if not _is_safe_kb_local_path(local_path) or not os.path.isfile(local_path):
-            return jsonify({'success': False, 'message': 'File is unavailable locally'}), 404
-
-        ext = Path(local_path).suffix.lower()
-        if ext not in {'.docx', '.pptx', '.xlsx'}:
-            return jsonify({'success': False, 'message': 'Extracted preview is only for DOCX/PPTX/XLSX'}), 400
-
-        extracted_text = ''
-        if ext == '.xlsx':
-            extracted_text = _extract_text_from_xlsx(local_path)
-        else:
-            _source, extracted_text = load_document(local_path)
-
-        extracted_text = (extracted_text or '').strip()
-        if not extracted_text:
-            fallback = 'No extractable text found. Download original to review formatting and embedded objects.'
-            return jsonify({
-                'success': True,
-                'filename': record.get('filename') or filename,
-                'file_type': ext.replace('.', '').upper(),
-                'content': fallback,
-                'truncated': False,
-                'download_only': True
-            })
-
-        max_chars = 24000
-        truncated = len(extracted_text) > max_chars
-        preview_text = extracted_text[:max_chars]
-
-        return jsonify({
-            'success': True,
-            'filename': record.get('filename') or filename,
-            'file_type': ext.replace('.', '').upper(),
-            'content': preview_text,
-            'truncated': truncated,
-            'download_only': False
-        })
-    except Exception as e:
-        logger.exception('Failed to preview extracted KB content')
-        return _safe_api_error('Failed to preview extracted content', e)
-
-
 @app.route('/api/kb-file-options', methods=['GET'])
 @require_auth
 def kb_file_options():
@@ -8787,52 +8091,16 @@ def kb_file_options():
             filename = row.get('filename')
             if not file_id or not filename:
                 continue
-            inferred_meta = _infer_kb_file_metadata(filename)
             options.append({
                 'id': file_id,
                 'name': filename,
-                'indexed': (row.get('upload_status') == 'indexed'),
-                'metadata': inferred_meta,
+                'indexed': (row.get('upload_status') == 'indexed')
             })
 
         return jsonify({'success': True, 'files': options, 'count': len(options)})
     except Exception as e:
         logger.exception('Failed to list KB file options')
         return _safe_api_error('An unexpected error occurred', e)
-
-
-@app.route('/api/generation-feedback', methods=['POST'])
-@require_auth
-def generation_feedback():
-    """Capture post quality feedback from the dashboard for continuous tuning."""
-    try:
-        payload = request.get_json(silent=True) or {}
-        rating = str(payload.get('rating') or '').strip().lower()
-        if rating not in {'up', 'down'}:
-            return jsonify({'success': False, 'message': 'rating must be "up" or "down"'}), 400
-
-        reason = str(payload.get('reason') or '').strip()[:160]
-        notes = str(payload.get('notes') or '').strip()[:1000]
-        context = payload.get('generation_context') if isinstance(payload.get('generation_context'), dict) else {}
-
-        from database.db_helper import get_db
-        db = get_db()
-        db.log(
-            'info',
-            'generation_feedback',
-            user_id=get_current_user_id(),
-            metadata={
-                'rating': rating,
-                'reason': reason,
-                'notes': notes,
-                'context': context,
-                'created_at': datetime.utcnow().isoformat(),
-            },
-        )
-        return jsonify({'success': True, 'message': 'Feedback saved'})
-    except Exception as e:
-        logger.exception('Failed to save generation feedback')
-        return _safe_api_error('Failed to save feedback', e)
 
 
 @app.route('/api/kb-workspaces', methods=['GET'])
