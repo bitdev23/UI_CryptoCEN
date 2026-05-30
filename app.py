@@ -6589,14 +6589,14 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                             theme or topic_hint, user_industry, user_role, goal_key
                         )
 
-                        # Phase 1: hybrid search (vector + keyword) per query
-                        # threshold=0.30: low enough to retrieve semantically related chunks even when
-                        # topic phrasing differs from the stored KB text (e.g. "NovaPay checkout"
-                        # vs "payment failure reduction"). Reranking + quality filter clean up noise.
+                        # Phase 1: hybrid search (vector + keyword) per query.
+                        # k=10 per query (was 6) gives the reranker more candidates
+                        # so case-study chunks that rank 7th-10th on raw score still
+                        # enter the pool before the outcome-boost is applied.
                         all_hybrid_hits = {}
                         for rq in retrieval_queries:
                             hits = rag.hybrid_search(
-                                rq, k=6,
+                                rq, k=10,
                                 match_threshold=0.30,
                                 file_ids=file_id_arg,
                                 vector_weight=0.75,
@@ -6607,8 +6607,89 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                 existing = all_hybrid_hits.get(cid)
                                 if existing is None or float(hit.get('similarity', 0)) > float(existing.get('similarity', 0)):
                                     all_hybrid_hits[cid] = hit
+
+                        # Phase 1b: supplementary keyword-only sweep on the raw topic.
+                        # keyword_search has NO vector-similarity threshold — it uses SQL ILIKE
+                        # so it finds every chunk that contains topic keywords regardless of
+                        # embedding quality. Chunks that contain "checkout", "failure", "NovaPay"
+                        # but scored < 0.30 on vector similarity are recovered here.
+                        # This is the primary fix for SwiftCart / ₹230 crore dropping out.
+                        try:
+                            _kw_sweep = rag.keyword_search(
+                                theme or topic_hint, k=25, file_ids=file_id_arg
+                            )
+                            _added_by_sweep = 0
+                            for hit in _kw_sweep:
+                                cid = hit.get('id') or hit.get('document', '')[:80]
+                                if cid not in all_hybrid_hits:
+                                    all_hybrid_hits[cid] = hit
+                                    _added_by_sweep += 1
+                            if _added_by_sweep:
+                                logger.info(
+                                    'Keyword sweep added %d previously-missed chunks to pool',
+                                    _added_by_sweep,
+                                )
+                        except Exception as _kw_err:
+                            logger.debug('Keyword sweep failed (non-critical): %s', _kw_err)
+
                         kb_hits = sorted(all_hybrid_hits.values(),
                                          key=lambda h: float(h.get('similarity', 0)), reverse=True)
+
+                        # Phase 1c: adjacent-chunk expansion.
+                        # For the top-3 retrieved chunks, also fetch the immediately
+                        # preceding and following chunks (chunk_number ± 1, ± 2) from
+                        # the same file. ONE DB query per unique file keeps latency low.
+                        # This ensures that if "Section 6.2 header" is chunk 47, the
+                        # data in chunks 48-49 (₹230 crore / Smart SDK / SwiftCart)
+                        # also enter the pool even when they score low on their own.
+                        try:
+                            _adj_by_file: dict = {}
+                            for _anchor in kb_hits[:3]:
+                                _a_meta = _anchor.get('metadata') or {}
+                                _a_cn   = _a_meta.get('chunk_number')
+                                _a_fid  = _anchor.get('file_id')
+                                if _a_cn and _a_fid:
+                                    if _a_fid not in _adj_by_file:
+                                        _adj_by_file[_a_fid] = set()
+                                    for _off in (-2, -1, +1, +2):
+                                        _n = int(_a_cn) + _off
+                                        if _n >= 1:
+                                            _adj_by_file[_a_fid].add(_n)
+
+                            _adj_seen = set(all_hybrid_hits.keys())
+                            for _a_fid, _target_nums in _adj_by_file.items():
+                                _file_chunks = (
+                                    rag.db.client.table('kb_embeddings')
+                                    .select('id, file_id, chunk_text, metadata')
+                                    .eq('user_id', user_id)
+                                    .eq('file_id', _a_fid)
+                                    .limit(300)
+                                    .execute()
+                                )
+                                for _row in (_file_chunks.data or []):
+                                    _rm = _row.get('metadata') or {}
+                                    _rcn = _rm.get('chunk_number')
+                                    if _rcn and int(_rcn) in _target_nums:
+                                        _cid = str(_row.get('id') or (_row.get('chunk_text') or '')[:80])
+                                        if _cid not in _adj_seen:
+                                            _adj_seen.add(_cid)
+                                            all_hybrid_hits[_cid] = {
+                                                'document': _row.get('chunk_text', ''),
+                                                'metadata': _rm,
+                                                'similarity': 0.45,  # Adjacent context — treat as moderate
+                                                'file_id': _a_fid,
+                                                'id': _row.get('id'),
+                                                '_source': 'adjacent',
+                                            }
+                                            logger.info(
+                                                'Adjacent chunk added: file=%s chunk_number=%d',
+                                                _a_fid, int(_rcn),
+                                            )
+                            # Re-sort with adjacent chunks included
+                            kb_hits = sorted(all_hybrid_hits.values(),
+                                             key=lambda h: float(h.get('similarity', 0)), reverse=True)
+                        except Exception as _adj_err:
+                            logger.debug('Adjacent chunk expansion failed (non-critical): %s', _adj_err)
                         
                         # LOG: Show KB retrieval details for debugging
                         logger.info('KB retrieval: searched %d queries, found %d hybrid hits before filtering',
