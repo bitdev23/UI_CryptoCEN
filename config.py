@@ -5,11 +5,16 @@ from typing import List, Dict
 # The web app uses per-user industry/role/tone settings from the dashboard.
 
 POST_FORMATS: List[str] = [
-    "educational",
-    "question",
-    "story",
-    "list",
-    "myth-busting",
+    # Each entry is an execution template, not just a label.
+    # The LLM receives this verbatim in the prompt as FORMAT STYLE.
+    "breakdown — Bold premise in the first sentence. Exactly 3 numbered points (1. / 2. / 3.), each a single concrete line with a specific detail. Close with one implication or challenge question.",
+    "contrarian — First sentence states the conventional view clearly. Second sentence challenges it with a specific reason. Body explains what actually works. Close with the corrected mental model.",
+    "story — Open with a specific scene, moment, or turning point (real or illustrative). Let the narrative carry the lesson naturally — do not state the moral in the middle. Single-sentence payoff at the end.",
+    "insight-list — 4 to 6 standalone insights, each on its own line starting with a dash or bullet. No preamble, no filler. Each insight must be a complete thought. Close with one tight sentence that ties them together.",
+    "myth-busting — Name one widely-held belief about the topic (use 'The myth: ...'). Debunk it with one specific mechanism or data point. State the corrected frame explicitly. Close with the real implication.",
+    "before-after — Describe a recognisable mistake or starting-state in 1-2 sentences. Then the turning point or better approach in 2-3 sentences. Close with the transferable lesson. Make the contrast vivid and concrete.",
+    "question-first — Open with an uncomfortable or thought-provoking question about the topic. Answer it directly in 2 short paragraphs. End with a follow-up question that invites debate or reflection.",
+    "data-angle — Lead with a specific metric, ratio, or measurable observation from the domain. Explain what it reveals in plain language. Draw one sharp, unexpected conclusion. Keep it under 200 words total.",
 ]
 
 BRAND_VOICE: Dict[str, str] = {

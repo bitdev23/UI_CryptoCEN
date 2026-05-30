@@ -6576,26 +6576,18 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         len(sims), kb_avg_similarity, min(sims) if sims else 0, max(sims) if sims else 0)
 
         # ── Strict grounding gate ─────────────────────────────────────────────
+        # When strict mode is ON but no KB match is found, fall through to Insight
+        # Mode instead of blocking.  The response flags the downgrade so the UI can
+        # inform the user why the post was generated without KB grounding.
+        _strict_grounding_downgraded = False
         if strict_grounding and kb_mode != 'no_kb' and grounding_level == _GROUNDING_NONE:
-            gap_data = _analyze_kb_coverage_gaps(
-                theme or topic_hint, user_industry, user_role, kb_hits, grounding_level
+            _strict_grounding_downgraded = True
+            kb_no_match = True
+            kb_state = 'no_match'
+            logger.info(
+                'Strict grounding downgraded to Insight Mode — no KB match for topic "%s"',
+                theme or topic_hint,
             )
-            return jsonify({
-                'success': False,
-                'strict_grounding_blocked': True,
-                'message': (
-                    'Strict Grounding is ON: your knowledge base has no relevant content for this topic. '
-                    'Upload documents about this topic or turn off Strict Grounding to generate insight-only posts.'
-                ),
-                'grounding': {
-                    'level': grounding_level,
-                    'label': 'Blocked — No KB Match',
-                    'description': 'Strict grounding prevented generation because no KB content matched.',
-                    'kb_hits_count': 0,
-                    'avg_similarity': 0,
-                },
-                'gap_analysis': gap_data,
-            }), 422
 
         # ── Dynamic instruction pack supplement from KB ───────────────────────
         dynamic_kb_supplement = ''
@@ -6878,9 +6870,9 @@ Post:
             evaluation = _eval_future.result()
 
         quality_threshold = clamp_int(req_data.get('quality_threshold', 75), 60, 95, 75)
-        retry_cap_rate = 0.35
+        retry_cap_rate = 0.80
         try:
-            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '0.35')))
+            retry_cap_rate = float(req_data.get('retry_cap_rate', os.getenv('GENERATION_RETRY_CAP_RATE', '0.80')))
         except Exception:
             retry_cap_rate = 0.35
         retry_cap_rate = max(0.0, min(1.0, retry_cap_rate))
@@ -7000,6 +6992,7 @@ Post:
 
         return jsonify({
             'success': True,
+            'strict_grounding_downgraded': _strict_grounding_downgraded,
             'content': content,
             'text': content,
             'post': content,

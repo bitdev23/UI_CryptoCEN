@@ -24446,8 +24446,22 @@
         const noMatchWarning = kbWarnMsg
             ? `<div class="insight-kb-nomatch"><i class="fas fa-triangle-exclamation"></i><div>${kbWarnMsg}</div></div>`
             : '';
+        const strictDowngradedNote = ctx.strict_grounding_downgraded
+            ? `<div class="insight-kb-nomatch" style="border-color:#d97706;background:#fffbeb;">
+                <i class="fas fa-lightbulb" style="color:#d97706;"></i>
+                <div>
+                    <strong>Strict Grounding — Insight Mode fallback</strong><br>
+                    <span style="font-size:0.82rem;color:var(--text-secondary);">
+                        Your KB had no relevant content for <em>&ldquo;${escapeHtml(ctx.theme || 'this topic')}&rdquo;</em>,
+                        so the post was generated from AI general knowledge and industry best practices.
+                        To get KB-grounded output, upload documents covering this topic in the Knowledge Base tab.
+                    </span>
+                </div>
+              </div>`
+            : '';
 
         panel.innerHTML = `
+            ${strictDowngradedNote}
             ${noMatchWarning}
             <div class="insight-title" style="animation:insightsFadeIn 0.3s ease both;"><i class="fas fa-circle-info"></i> Why this post was generated this way</div>
             <div class="insight-chips">
@@ -27035,6 +27049,7 @@
                     grounding: data.grounding || null,
                     gap_analysis: data.gap_analysis || null,
                     strict_grounding: strict_grounding,
+                    strict_grounding_downgraded: data.strict_grounding_downgraded === true,
                 };
                 renderAppliedSettingsSummary(settingsApplied);
                 renderGenerationInsights(lastGeneratedContext);
@@ -27053,7 +27068,11 @@
                 updateQuickQualityMeter(content);
                 refreshCvStepperState();
                 renderCreatorStyleSuggestion();
-                showToast('success', 'Post generated!', 'fas fa-check');
+                if (data.strict_grounding_downgraded) {
+                    showToast('info', 'Generated in Insight Mode — no KB match found for this topic. See Post Insights for details.', 'fas fa-lightbulb');
+                } else {
+                    showToast('success', 'Post generated!', 'fas fa-check');
+                }
                 refreshBillingStatus(false);
                 return;
             }

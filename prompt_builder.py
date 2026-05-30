@@ -25,6 +25,9 @@ TONE_VOICES = {
     'contrarian':     "Challenge conventional wisdom with evidence-backed arguments. Lead with what most people get wrong. Make the reader rethink their assumptions.",
     'storytelling':   "Open with a vivid personal scene or moment. Let the story carry the lesson naturally. Don't moralize — let the reader draw their own conclusion.",
     'educational':    "Deliver focused, specific insights. Each point standalone and immediately usable. Teach, don't preach.",
+    'crypto_native':  "On-chain evidence over narrative. Skeptical of hype, respectful of mechanism. Cite protocols, metrics, and observable on-chain patterns. "
+                      "Sound like someone who has actually run the numbers — not a marketer. Plain sentences, technical precision without jargon overload. "
+                      "Distrust vaporware framing; honour concrete deployed code.",
 }
 
 TONE_TEMPLATES = {
@@ -64,16 +67,74 @@ TONE_TEMPLATES = {
         "- Sentence rhythm: concise, scannable, high-signal lines.\n"
         "- Lexicon: instructional verbs and actionable phrasing."
     ),
+    'crypto_native': (
+        "- Hook pattern: on-chain observation or protocol-specific claim backed by a number or mechanism.\n"
+        "- Body movement: observable pattern -> why the mechanism produces it -> what it signals.\n"
+        "- Sentence rhythm: terse and precise; use white space to let data breathe.\n"
+        "- Lexicon: protocol names, TVL/gas/active-address metrics, on-chain verbs (deployed, executed, settled). "
+        "Never use 'disruptive', 'paradigm shift', or WAGMI-style hype."
+    ),
 }
 
 GOAL_STRUCTURES = {
-    'spark_comments':   "End the post with a genuinely open question that invites the reader to share their unique view.",
-    'drive_visibility': "Open with a bold, unexpected hook in the first 5-7 words that stops the scroll.",
-    'build_authority':  "Lead with a plain-spoken insight others haven't stated clearly. Follow with tight supporting logic or evidence.",
-    'generate_leads':   "Name a specific pain point the target audience faces. Close with a clear, low-pressure next step.",
-    'educate_audience': "Deliver 2-3 focused insights. Keep each one standalone and immediately usable.",
-    'brand_awareness':  "Communicate one clear value or belief. Make it memorable in a single sentence.",
-    'grow_network':     "Write from personal experience. Include a moment of genuine reflection or honest admission.",
+    'spark_comments': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "Hot take on [topic]: [specific controversial but defensible position]. Disagree?"\n'
+        '  • "[Uncomfortable question about the topic most people avoid asking.]"\n'
+        '  • "[Specific observation from your domain]. Does this match what you\'re seeing?"\n'
+        "Structure: Bold hook → 2 short paragraphs of substance → end with a genuinely open question "
+        "that invites different viewpoints. Question must NOT be yes/no."
+    ),
+    'drive_visibility': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "Most [people/teams/protocols] get [topic] wrong. Here\'s the part nobody explains."\n'
+        '  • "[Number] [time period] in [industry]. The [topic] insight that changed how I think about [X]:"\n'
+        '  • "Everyone\'s talking about [surface angle on topic]. Nobody\'s asking the right question."\n'
+        "Structure: Hook must land in first 5-7 words and stop the scroll. Body delivers on the hook's "
+        "promise with specifics. Close with one sharp implication or reflection sentence."
+    ),
+    'build_authority': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "The reason [widely-held belief about topic] doesn\'t hold up: [one specific reason]."\n'
+        '  • "[Counterintuitive claim about topic] — and here\'s the evidence."\n'
+        '  • "Stop measuring [obvious thing related to topic]. [Specific alternative] is what moves [real outcome]."\n'
+        "Structure: Lead with a plain-spoken insight others haven't stated clearly. "
+        "Follow with tight supporting logic or one concrete mechanism. No vague generalities."
+    ),
+    'generate_leads': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "Here\'s the [topic] problem most [specific role/team] face but rarely say out loud:"\n'
+        '  • "The hidden cost of [common thing in the domain]: [specific pain point]."\n'
+        '  • "[Relatable scenario related to topic]. If this describes your situation, read on."\n'
+        "Structure: Name a specific, recognisable pain the target audience faces. "
+        "Body shows you understand the problem deeply. Close with a clear, low-pressure next step — "
+        "not a pitch, a pointer."
+    ),
+    'educate_audience': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "[Topic], actually explained: [one reframing sentence that cuts through jargon]."\n'
+        '  • "[Topic] is misunderstood. Here\'s what you need to know:"\n'
+        '  • "Everything that actually matters about [topic] — in [N] points:"\n'
+        "Structure: Deliver 2-3 focused insights. Each must be standalone and immediately usable. "
+        "Prefer numbered or dashed lines. Avoid vague takeaways — every point must be actionable or surprising."
+    ),
+    'brand_awareness': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "[Strong belief statement about what you stand for in your domain]."\n'
+        '  • "We built [thing] for one reason: [honest, specific statement of why]."\n'
+        '  • "[Specific principle or value you hold]. That\'s the bar we hold ourselves to."\n'
+        "Structure: Communicate one clear value or belief tied to the topic. "
+        "Make it memorable in a single sentence. Body earns the belief with a concrete example or story. "
+        "Do not close with a hard sell."
+    ),
+    'grow_network': (
+        "Hook formulas — pick the best fit for the topic:\n"
+        '  • "Two years ago I thought [X about topic]. I was completely wrong."\n'
+        '  • "The moment [topic insight] clicked for me:"\n'
+        '  • "An honest admission about [topic] that took me too long to figure out:"\n'
+        "Structure: Write from genuine personal experience. Include a specific moment of reflection "
+        "or an honest admission. The lesson should feel earned, not tacked on."
+    ),
 }
 
 
