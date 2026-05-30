@@ -5295,6 +5295,34 @@ def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list
     return normalize_hashtags(candidates)
 
 
+def _generate_hashtags_via_llm(ai_provider, post_body: str, industry: str, topic: str, needed: int) -> list:
+    """Ask the LLM for hashtags when the main generation didn't produce enough.
+
+    Uses a tiny, focused prompt so it adds minimal latency (<300 ms).
+    Returns an empty list on any failure — callers must handle gracefully.
+    """
+    try:
+        prompt = (
+            f"Generate exactly {needed} professional LinkedIn hashtags for the post below.\n"
+            f"Industry: {industry}\n"
+            f"Topic: {topic}\n\n"
+            f"Post (first 400 chars): {post_body[:400]}\n\n"
+            "Rules:\n"
+            f"- Use real hashtag communities that {industry} practitioners actually follow on LinkedIn\n"
+            "- Mix 1-2 broad-reach tags (e.g. #FinTech) with 1-2 specific topic tags (e.g. #CheckoutOptimization)\n"
+            "- Do NOT use topic-summarising compound slugs like #HowCompanyReducedX\n"
+            "- Return ONLY the hashtags on one line, separated by spaces, with # prefix\n\n"
+            "Hashtags:"
+        )
+        response = ai_provider.generate(prompt, max_tokens=80, task='hashtags')
+        raw = (response.get('text') or '').strip()
+        tags = normalize_hashtags(HASHTAG_RE.findall(raw))
+        return tags[:needed + 2]
+    except Exception as e:
+        logger.debug('LLM hashtag generation failed (non-critical): %s', e)
+        return []
+
+
 def remove_hashtags_from_body(text: str) -> str:
     body = re.sub(r'(^|\s)#[A-Za-z][A-Za-z0-9_]{1,49}', ' ', text or '')
     body = body.replace('\r\n', '\n').replace('\r', '\n')
@@ -6966,7 +6994,18 @@ Post:
                     if _verify_kb_ctx:
                         logger.info('Grounding rewrite applied successfully')
 
-        candidate_tags = derive_hashtag_candidates(theme, user_industry, user_role, topics)
+        # ── Hashtag assembly ─────────────────────────────────────────────────
+        # generated_tags: extracted from the LLM's post output (topic+industry aware, dynamic)
+        # If the LLM didn't produce enough, ask it for dedicated hashtags before
+        # falling back to the static industry bank.
+        candidate_tags: list = []
+        if hashtag_count > 0 and len(generated_tags) < hashtag_count and _has_budget(3):
+            candidate_tags = _generate_hashtags_via_llm(
+                ai, body, user_industry, theme or topic_hint, hashtag_count + 2
+            )
+        if not candidate_tags:
+            # Last resort: static industry bank (always works, no latency)
+            candidate_tags = derive_hashtag_candidates(theme, user_industry, user_role, topics)
         merged_tags = normalize_hashtags(generated_tags + candidate_tags)
         final_hashtags = merged_tags[:hashtag_count] if hashtag_count > 0 else []
 
