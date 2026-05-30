@@ -312,6 +312,11 @@ OPTIONAL SUBTOPICS TO WEAVE IN:
     • Any percentage, ratio, or basis-point figure NOT found verbatim in the KB excerpts or VERIFIED COMPANY DATA above must be omitted.
     • "our [X] improved" / "we rebuilt our [X]" / "our [X] crept higher" — only use with a specific before/after figure from the KB.
     • When the post body runs short on KB evidence, shorten the post or signal INSUFFICIENT_KB_DATA — do NOT pad with generic FinTech assertions.
+20. METRIC ATTRIBUTION — a number extracted from the KB must stay bound to the subject it describes in the source. You may NEVER move a metric from one company, program, or case study to another:
+    • If SwiftCart saw checkout conversion improve from 71% to 86% — that fact belongs to SwiftCart's story. Writing "our training program improved conversion from 71% to 86%" is a fabrication, even though both numbers appear in the KB.
+    • If a revenue figure (e.g. ₹230 crore) appears in a client case study — it belongs to that client. You cannot write "our program generated ₹230 crore" unless the KB explicitly states the program generated it.
+    • Cross-context binding test: before writing "X happened because of Y", confirm in the retrieved chunk that the chunk itself links X to Y. If the causal link is absent from the chunk, omit it — do not infer it.
+    • If the specific topic being written about has no outcome data in the KB, write the insight without that metric or signal INSUFFICIENT_KB_DATA. DO NOT borrow a metric from an adjacent section and reattribute it.
 {style_clone_compliance_rule}
 
 FORMAT STYLE: {fmt}
@@ -370,7 +375,17 @@ Post:
     def build_verification_prompt(post_text: str, kb_context: str) -> str:
         return f"""You are a fact-checking assistant. Compare the LinkedIn post below against the knowledge base excerpts.
 
-TASK: Identify any sentence in the post that makes a SPECIFIC factual claim (statistic, percentage, company name, product name, research study, named person, specific date) that is NOT supported by the excerpts below.
+TASK: Identify sentences in the post that have either of these two problems:
+
+PROBLEM TYPE 1 — UNSUPPORTED CLAIM:
+A sentence makes a specific factual claim (statistic, percentage, company name, product name, named person, specific date) that does NOT appear in the excerpts at all.
+
+PROBLEM TYPE 2 — MISATTRIBUTED METRIC (more dangerous):
+A sentence uses a real number from the KB but attaches it to the WRONG subject. The number exists in the KB but belongs to a different company, program, or case study.
+Example: KB says "SwiftCart saw checkout conversion improve from 71% to 86%".
+Post says: "Our women's training program improved checkout conversion from 71% to 86%."
+The numbers are real but the attribution is fabricated — this MUST be flagged.
+Check: for every metric in the post, verify that the KB chunk that contains that metric also describes the same subject the post attributes it to.
 
 KNOWLEDGE BASE EXCERPTS:
 {kb_context[:3000]}
@@ -381,7 +396,9 @@ POST TO VERIFY:
 Return ONLY strict JSON (no markdown fences):
 {{"has_issues": true/false, "ungrounded_claims": ["sentence 1", "sentence 2"], "rewrite_instructions": "brief guidance on how to fix"}}
 
-If all claims are grounded or the post only contains opinions/observations, return:
+For MISATTRIBUTED metrics, the rewrite_instructions must say: "Remove the metric — it belongs to [correct subject in KB], not [subject in post]. Do not reassign it."
+
+If all claims are grounded and correctly attributed, return:
 {{"has_issues": false, "ungrounded_claims": [], "rewrite_instructions": ""}}"""
 
     # ------------------------------------------------------------------
@@ -409,11 +426,16 @@ PROBLEM: The following sentences make specific factual claims that are NOT suppo
 
 RULES FOR REWRITE:
 1. Keep the overall post structure, tone, and length the same.
-2. For each problematic sentence, convert it from a hard factual claim to an insight/opinion:
-   - Replace invented statistics with qualitative observations ("many teams find…", "a growing number of…")
-   - Replace invented company/product names with general references ("leading platforms", "several tools in the space")
-   - Replace invented research citations with experiential framing ("in my experience", "what I've seen work")
-3. Keep all sentences that ARE grounded — do not change what works.
+2. For each problematic sentence, apply the correct fix based on the problem type:
+   a) UNSUPPORTED CLAIM — convert to insight/opinion framing:
+      - Replace invented statistics with qualitative observations ("many teams find…", "a growing number of…")
+      - Replace invented company/product names with general references ("leading platforms", "several tools in the space")
+      - Replace invented research citations with experiential framing ("in my experience", "what I've seen work")
+   b) MISATTRIBUTED METRIC — REMOVE the metric entirely. Do NOT just soften it.
+      - A real number attributed to the wrong subject is more misleading than a vague claim.
+      - Rewrite the sentence as an insight without that statistic. Example: "Checkout conversion improved from 71% to 86% as a direct result" → "Trained merchants consistently outperform untrained ones in checkout completion."
+      - Never move the number to a different sentence still attached to the wrong subject.
+3. Keep all sentences that ARE grounded and correctly attributed — do not change what works.
 4. Stay in {user_industry} domain, {user_role} perspective.
 5. Do NOT add hashtags or preamble. Output ONLY the rewritten post body.
 
