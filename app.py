@@ -5710,35 +5710,15 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
         if entity:
             queries.append(f"{entity} case study results")
 
-    # Foundation queries — always added regardless of topic type.
-    # These target the company overview / KPI sections so that company-specific
-    # facts (eNPS, attrition, CAC, NovaSakhi headcount) always enter the
-    # retrieval pool even when the user's topic is a broad industry trend.
+    # Foundation queries — always run, domain-agnostic.
+    # Two broad queries that reliably surface the company overview and key-metrics
+    # sections of ANY uploaded document, regardless of industry or domain.
+    # Granular entity / section-level expansion happens dynamically in Phase 1d
+    # of the retrieval loop, AFTER seeing what is actually in the KB hits.
     _fe = _extract_entity_from_topic(topic) or ''
     _ctx = _fe or industry or 'company'
     queries.append(f'{_ctx} performance metrics results statistics achievements')
-    queries.append(f'{_ctx} team employees growth culture engagement')
-
-    # Domain-specific queries — fired when the topic signals a data category
-    # that has dedicated KB sections generic queries won't reliably hit.
-    _tl = topic.lower()
-    if any(kw in _tl for kw in ('employ', 'hiring', 'attrition', 'enps', 'workforce',
-                                  'people', 'culture', 'scaling', 'onboard', 'team',
-                                  '780', '1,240', '460')):
-        queries.append(f'eNPS attrition employee diversity inclusion women engineering {industry}')
-        queries.append(f'team growth compliance training onboarding RegTech {_fe or industry}')
-    if any(kw in _tl for kw in ('ltv', 'cac', 'customer acquisition', 'saas', 'billing',
-                                  'gross margin', '142', '52.9', 'enterprise sales', 'acv')):
-        queries.append(f'CAC customer acquisition cost LTV enterprise revenue {_fe or industry}')
-    if any(kw in _tl for kw in ('women', 'underbank', 'financial inclusion', 'entrepreneur',
-                                  'tier-3', 'rural', '48,000', '48000', 'underserved', 'novasakhi')):
-        queries.append(f'women entrepreneurs digital payments training merchants states program NovaSakhi')
-        queries.append(f'financial inclusion underbanked KYC onboarding merchant growth')
-    if any(kw in _tl for kw in ('embedded', 'checkout', 'payment', 'bnpl', 'credit',
-                                  'lending', 'upi', 'transaction')):
-        queries.append(f'checkout conversion rate embedded lending SDK payment merchants results')
-    if any(kw in _tl for kw in ('acqui', 'kredi', 'micro', 'micro-lend', 'underwriting')):
-        queries.append(f'Kredi Micro acquisition underwriting cash-flow repayment model results')
+    queries.append(f'{_ctx} key highlights overview summary data')
 
     # Deduplicate while preserving order
     seen = set()
@@ -6718,6 +6698,104 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
 
                         kb_hits = sorted(all_hybrid_hits.values(),
                                          key=lambda h: float(h.get('similarity', 0)), reverse=True)
+
+                        # Phase 1d: Adaptive query expansion from initial KB hits.
+                        #
+                        # The previous hardcoded domain patterns ('if ltv in topic'
+                        # -> add LTV query) were brittle: they break the moment the
+                        # industry changes or a new PDF is uploaded.
+                        #
+                        # This phase replaces that entirely. It reads what is ACTUALLY
+                        # in the top retrieval hits and generates follow-up queries
+                        # from the KB content itself, making it fully domain-agnostic:
+                        #
+                        #  1. Named entities (CamelCase compounds + multi-word Title
+                        #     Case) found in top chunks but absent from the topic
+                        #     → e.g. topic="UPI volumes" but KB hit mentions "NovaSakhi"
+                        #       → adds query "NovaSakhi results data metrics"
+                        #
+                        #  2. Section headers (lines matching "6.2 Case Study C",
+                        #     "Chapter 4 Operations") found as the first line of a chunk
+                        #     → add the header text as a direct search query so the
+                        #       adjacent data chunk is retrieved
+                        #
+                        # This works for FinTech PDFs today, SaaS benchmarks tomorrow,
+                        # healthcare reports the day after — zero code changes needed.
+                        try:
+                            import re as _re_aq
+                            # CamelCase compound (NovaPay, SwiftCart) OR
+                            # two-to-three consecutive Title Case words (Kredi Micro, Smart Checkout)
+                            _ENT_PAT = _re_aq.compile(
+                                r'\b([A-Z][a-z]{2,}(?:[A-Z][a-z]+)+|'
+                                r'[A-Z][a-z]{3,}(?:\s+[A-Z][a-z]{3,}){1,2})\b'
+                            )
+                            _SEC_PAT = _re_aq.compile(
+                                r'^(?:\d+\.)+\d*\s+[A-Z]|'
+                                r'^(?:Section|Chapter|Appendix|Part)\s+\d',
+                                _re_aq.IGNORECASE,
+                            )
+                            _GENERIC_WORDS = {
+                                'This', 'That', 'They', 'With', 'From', 'Into',
+                                'Have', 'Been', 'Their', 'What', 'When', 'Where',
+                                'Which', 'More', 'Than', 'And', 'For', 'Not',
+                                'Are', 'Was', 'Our', 'Its', 'Has', 'But', 'Can',
+                                'All', 'One', 'Two', 'Any', 'May', 'How', 'Such',
+                                'Over', 'Under', 'After', 'Before', 'During',
+                                'The', 'Key', 'New', 'Top', 'High', 'Low', 'First',
+                            }
+                            _topic_tokens = set((theme or topic_hint or '').lower().split())
+                            _aq_list: list = []
+                            _aq_seen: set = set()
+                            for _h in kb_hits[:6]:
+                                _txt = _h.get('document') or ''
+                                # 1. Named entities not already in the topic
+                                for _ent in _ENT_PAT.findall(_txt):
+                                    _ent_key = _ent.lower().replace(' ', '')
+                                    if (
+                                        _ent not in _GENERIC_WORDS
+                                        and _ent_key not in _topic_tokens
+                                        and _ent not in _aq_seen
+                                        and len(_ent) >= 5
+                                    ):
+                                        _aq_seen.add(_ent)
+                                        _aq_list.append(
+                                            f'{_ent} results data metrics performance'
+                                        )
+                                # 2. Section header as direct query
+                                _first_line = _txt.split('\n')[0].strip()[:120]
+                                if _SEC_PAT.match(_first_line) and _first_line not in _aq_seen:
+                                    _aq_seen.add(_first_line)
+                                    _aq_list.append(_first_line)
+
+                            _aq_run = _aq_list[:5]  # cap at 5 extra queries
+                            for _aq in _aq_run:
+                                try:
+                                    _aq_hits = rag.hybrid_search(
+                                        _aq, k=10, match_threshold=0.30,
+                                        file_ids=file_id_arg,
+                                        vector_weight=0.75, keyword_weight=0.25,
+                                    )
+                                    for _ah in _aq_hits:
+                                        _cid = _ah.get('id') or _ah.get('document', '')[:80]
+                                        if _cid not in all_hybrid_hits:
+                                            all_hybrid_hits[_cid] = _ah
+                                except Exception:
+                                    pass
+
+                            if _aq_run:
+                                logger.info(
+                                    'Adaptive expansion: %d dynamic queries from KB entities '
+                                    '(domain-agnostic): %s',
+                                    len(_aq_run),
+                                    list(_aq_seen)[:6],
+                                )
+                                kb_hits = sorted(
+                                    all_hybrid_hits.values(),
+                                    key=lambda h: float(h.get('similarity', 0)),
+                                    reverse=True,
+                                )
+                        except Exception as _aq_err:
+                            logger.debug('Adaptive query expansion failed (non-critical): %s', _aq_err)
 
                         # Phase 1c: adjacent-chunk expansion.
                         # For the top-3 retrieved chunks, also fetch the immediately
