@@ -1517,7 +1517,7 @@ MAX_PDF_SIZE = 50 * 1024 * 1024     # 50 MB per file
 MAX_TOTAL_FILE_SIZE = 500 * 1024 * 1024  # 500 MB total
 MAX_TRAINING_TIME = 300             # 5 minutes timeout
 KB_CHUNK_SIZE = 1800
-KB_CHUNK_OVERLAP = 200
+KB_CHUNK_OVERLAP = 400  # 400-char overlap keeps section headers in adjacent data chunks
 KB_MAX_CHUNKS_PER_FILE = 250
 DEFAULT_TEST_USER_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -5623,15 +5623,37 @@ def _find_forbidden_terms(text: str, forbidden_terms: list) -> list:
 
 # ── Production Grounding System ───────────────────────────────────────────────
 
+_OUTCOME_KEYWORDS = {'reduced', 'increased', 'improved', 'grew', 'decreased', 'boosted',
+                     'cut', 'raised', 'lifted', 'dropped', 'achieved', 'drove', 'saved',
+                     'doubled', 'tripled', 'halved', 'case study', 'success story',
+                     'results', 'outcome', 'impact', 'roi', 'revenue', 'conversion'}
+
+
+def _extract_entity_from_topic(topic: str) -> str:
+    """Extract first TitleCase token (likely a company/product name) from topic string."""
+    import re as _re
+    # Match a run of TitleCase words (e.g. "NovaPay", "SwiftCart", "Smart Checkout SDK")
+    m = _re.search(r'(?<![a-z])([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+){0,3})', topic)
+    if m:
+        candidate = m.group(1).strip()
+        # Exclude very common words that aren't entities
+        if candidate.lower() not in {'how', 'what', 'why', 'when', 'who', 'the', 'this', 'that'}:
+            return candidate
+    return ''
+
+
 def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: str) -> list:
-    """Generate 4-6 diverse search queries from user inputs to improve KB recall.
+    """Generate 6-9 diverse search queries from user inputs to improve KB recall.
 
     Instead of searching with just the topic string, we create semantically
     varied queries so that relevant KB chunks are found even when the user's
     topic wording doesn't exactly match the stored text.
-    
-    IMPROVED: Added more query variations to catch content that uses different terminology.
+
+    Special handling for outcome-oriented topics (contain percentages, result
+    keywords, or company names) — adds case-study query variants so section
+    headers like "Case Study C: SwiftCart" are retrieved alongside data chunks.
     """
+    import re as _re
     queries = []
     topic = (topic or '').strip()
     industry = (industry or '').strip()
@@ -5663,8 +5685,30 @@ def _expand_retrieval_queries(topic: str, industry: str, role: str, goal_key: st
     # Q6 — broader industry + role + goal combo (catch-all)
     goal_label = _GOAL_KEY_TO_LABEL.get(goal_key, goal_key or '')
     broad_parts = [p for p in [industry, role, goal_label, topic] if p]
-    if broad_parts and ' '.join(broad_parts) not in [q for q in queries]:
+    if broad_parts and ' '.join(broad_parts) not in queries:
         queries.append(' '.join(broad_parts))
+
+    # Q7/Q8 — Outcome-oriented topics: add case-study query variants.
+    # PDFs often organise results under section headers like
+    # "Case Study C: SwiftCart" rather than embedding the topic sentence.
+    # These extra queries improve recall for those chunks.
+    topic_lower = topic.lower()
+    has_outcome = (
+        bool(_re.search(r'\d+[%x]|\d+\.\d+\s*%|\d+\s*to\s*\d+', topic))  # has numbers/percentages
+        or any(kw in topic_lower for kw in _OUTCOME_KEYWORDS)
+    )
+    if has_outcome and topic:
+        # Q7 — generic case study + industry
+        if industry:
+            queries.append(f"case study success story {industry}")
+        else:
+            queries.append('case study success story results')
+
+        # Q8 — entity-focused: first proper-noun entity name from the topic
+        # "NovaPay reduced..." → "NovaPay case study" catches section headers
+        entity = _extract_entity_from_topic(topic)
+        if entity:
+            queries.append(f"{entity} case study results")
 
     # Deduplicate while preserving order
     seen = set()
@@ -6546,7 +6590,10 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                        [f'{s:.4f}' for s in sims])
 
                         # Phase 2: chunk quality filter
-                        kb_hits = _filter_low_quality_chunks(kb_hits, min_quality=0.35)
+                        # Lower quality floor to 0.20 so short-but-critical chunks
+                        # (section headers like "6.2 Case Study C — SwiftCart") are
+                        # not silently dropped before being passed to the model.
+                        kb_hits = _filter_low_quality_chunks(kb_hits, min_quality=0.20)
 
                         # Phase 3: keyword-overlap reranking
                         kb_hits = _rerank_with_keyword_boost(
@@ -6583,11 +6630,16 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                     logger.info('Keyword-only fallback successful: %d hits with better scores', len(kb_hits_fallback))
                                     kb_hits = kb_hits_fallback[:5]  # Use top 5 from fallback
                         
-                        # LOG: Show final KB state
+                        # LOG: Show final KB state — including first 300 chars of each chunk
+                        # so retrieval failures are diagnosable from logs alone.
                         if kb_hits:
                             final_sims = [float(h.get('similarity', 0)) for h in kb_hits[:5]]
                             logger.info('KB final state: %d chunks after filtering, final similarities: %s',
                                        len(kb_hits), [f'{s:.4f}' for s in final_sims])
+                            for _ci, _hit in enumerate(kb_hits[:5], start=1):
+                                _preview = (_hit.get('document') or '')[:300].replace('\n', ' ')
+                                logger.info('KB chunk [%d] sim=%.4f preview: %s',
+                                            _ci, float(_hit.get('similarity', 0)), _preview)
 
                         if kb_hits:
                             kb_used = True

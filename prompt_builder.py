@@ -408,11 +408,12 @@ ORIGINAL POST:
 {kb_context}
 
 GROUNDING RULES (STRICT — GROUNDED MODE):
-- Every factual claim, statistic, company name, product name, or specific example MUST come from the excerpts above.
-- If you want to make a point that is NOT covered in the excerpts, phrase it as a general observation or opinion — never as a fact.
-- Use phrases like "based on [topic from excerpt]" to root your points in real evidence.
+- Every factual claim, statistic, company name, product name, or specific example MUST come verbatim from the excerpts above.
+- If a point is NOT directly stated in the excerpts, DO NOT include it as a factual claim. Do not invent a plausible-sounding version of it either.
+- When an excerpt describes a specific mechanism, product, or solution (e.g. "Smart Checkout SDK", "AI-driven payment routing"), use ONLY that mechanism — do NOT add additional root causes, technical reasons, or implementation details that are absent from the excerpt.
+- If the excerpts do not explain WHY something happened, do not invent a reason. Omit it or state the outcome only.
 - If an excerpt is off-domain (not about {user_industry}), IGNORE it completely.
-- NEVER invent statistics, percentages, research studies, company names, or quotes."""
+- NEVER invent statistics, percentages, research studies, company names, product names, or quotes."""
 
         elif grounding_level == GROUNDING_PARTIAL:
             return f"""KNOWLEDGE BASE EXCERPTS (partial match — use with care):
