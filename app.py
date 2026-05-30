@@ -1517,7 +1517,7 @@ MAX_PDF_SIZE = 50 * 1024 * 1024     # 50 MB per file
 MAX_TOTAL_FILE_SIZE = 500 * 1024 * 1024  # 500 MB total
 MAX_TRAINING_TIME = 300             # 5 minutes timeout
 KB_CHUNK_SIZE = 1800
-KB_CHUNK_OVERLAP = 400  # 400-char overlap keeps section headers in adjacent data chunks
+KB_CHUNK_OVERLAP = 800  # 800-char / ~200-token overlap — re-upload docs to apply
 KB_MAX_CHUNKS_PER_FILE = 250
 DEFAULT_TEST_USER_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -6748,24 +6748,46 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                     logger.info('Keyword-only fallback successful: %d hits with better scores', len(kb_hits_fallback))
                                     kb_hits = kb_hits_fallback[:5]  # Use top 5 from fallback
                         
-                        # LOG: Show final KB state — including first 300 chars of each chunk
-                        # so retrieval failures are diagnosable from logs alone.
+                        # ── RETRIEVAL AUDIT LOG ───────────────────────────────────────────────
+                        # Printed after every generation so retrieval failures are diagnosable
+                        # from server logs without a debugger. Look for:
+                        #   *** CASE STUDY DATA PRESENT *** — chunk contains the target specifics
+                        #   WARNING: case-study terms NOT found — SwiftCart/₹230 still missing
                         if kb_hits:
-                            final_sims = [float(h.get('similarity', 0)) for h in kb_hits[:5]]
-                            logger.info('KB final state: %d chunks after filtering, final similarities: %s',
-                                       len(kb_hits), [f'{s:.4f}' for s in final_sims])
-                            for _ci, _hit in enumerate(kb_hits[:5], start=1):
-                                _preview = (_hit.get('document') or '')[:300].replace('\n', ' ')
-                                logger.info('KB chunk [%d] sim=%.4f preview: %s',
-                                            _ci, float(_hit.get('similarity', 0)), _preview)
+                            _AUDIT_TERMS = ('swiftcart', '\u20b9230', '71%', 'smart checkout', '86%', 'crore')
+                            logger.info(
+                                'RETRIEVAL AUDIT — %d chunks after reranking | topic: %s',
+                                len(kb_hits), (theme or topic_hint or '')[:80],
+                            )
+                            for _ci, _hit in enumerate(kb_hits[:10], start=1):
+                                _chunk_id  = str(_hit.get('id') or '?')[:36]
+                                _sim       = float(_hit.get('similarity', 0))
+                                _src       = str(_hit.get('_source') or 'hybrid')
+                                _txt       = (_hit.get('document') or '')
+                                _preview   = _txt[:100].replace('\n', ' ')
+                                _hit_terms = [t for t in _AUDIT_TERMS if t in _txt.lower()]
+                                _flag      = '  *** CASE STUDY DATA PRESENT ***' if _hit_terms else ''
+                                logger.info(
+                                    '  [%02d] id=%-36s sim=%.4f src=%-8s | %s%s',
+                                    _ci, _chunk_id, _sim, _src, _preview, _flag,
+                                )
+                            _pool_text = ' '.join((_h.get('document') or '').lower() for _h in kb_hits[:10])
+                            _missing   = [t for t in _AUDIT_TERMS if t not in _pool_text]
+                            if _missing:
+                                logger.warning(
+                                    'RETRIEVAL AUDIT — case-study terms NOT in top-10 pool: %s '
+                                    '(re-upload the PDF or increase KB_CHUNK_OVERLAP)',
+                                    _missing,
+                                )
+                            else:
+                                logger.info('RETRIEVAL AUDIT — all case-study anchor terms found in pool')
 
                         if kb_hits:
                             kb_used = True
                             kb_state = 'ok'
                             snippets = []
-                            # IMPROVED: Include up to 5 KB hits (was 3) with more context (1200 chars instead of 900)
-                            # This ensures richer context for complex topics like crypto/AMM mechanics
-                            for idx, hit in enumerate(kb_hits[:5], start=1):
+                            # Top-6 chunks, up to 1200 chars each → ~7200 chars max context
+                            for idx, hit in enumerate(kb_hits[:6], start=1):
                                 src = os.path.basename((hit.get('metadata') or {}).get('source', 'knowledge_base'))
                                 kb_sources.append(src)
                                 doc_text = (hit.get('document') or '').strip()
@@ -6773,6 +6795,14 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                                 if doc_text:
                                     snippets.append(f"[{idx}] Source: {src} (relevance: {sim:.2f})\n{doc_text[:1200]}")
                             kb_context = "\n\n".join(snippets)
+                            # LOG: exact text entering the LLM prompt
+                            logger.info(
+                                'PROMPT CONTEXT — %d chunks sent to LLM, total chars=%d',
+                                len(snippets), sum(len(s) for s in snippets),
+                            )
+                            for _si, _snip in enumerate(snippets, start=1):
+                                logger.info('  CHUNK[%d] first 120 chars: %s',
+                                            _si, _snip[:120].replace('\n', ' '))
                         else:
                             kb_state = 'no_match'
                             kb_no_match = True
@@ -6974,7 +7004,7 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
         def _generate_once(generation_prompt: str) -> str:
             start_time = time.time()
             try:
-                result = ai.generate(generation_prompt, max_tokens=800, task='generate')
+                result = ai.generate(generation_prompt, max_tokens=800, task='generate', temperature=0.3)
                 _track_usage(result)
             except Exception as e:
                 logger.error(f"AI generation failed after {time.time() - start_time:.2f}s: {e}")
@@ -7082,7 +7112,7 @@ Preserve meaning, tone, and practical value.
 Do not include hashtags in the body.
 \nPost:\n{body_local}\n"""
                     try:
-                        rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite')
+                        rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite', temperature=0.3)
                         rewritten_text = (rewrite.get('text') or '').strip()
                         if rewritten_text:
                             body_local = enforce_linkedin_quality(
@@ -7109,7 +7139,7 @@ Post:
 {body_local}
 """
                 try:
-                    rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite')
+                    rewrite = ai.generate(rewrite_prompt, max_tokens=800, task='rewrite', temperature=0.3)
                     rewritten_text = (rewrite.get('text') or '').strip()
                     if rewritten_text:
                         body_local = enforce_linkedin_quality(
