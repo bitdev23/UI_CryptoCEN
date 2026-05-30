@@ -267,24 +267,24 @@ OPTIONAL SUBTOPICS TO WEAVE IN:
 STRICT RULES — every rule applies without exception:
 
 1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
-2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, research studies, product names, or quotes.
+2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, client names, product names, research studies, or quotes. If a specific number, name, or metric exists in the KB excerpts below, use the exact value verbatim — never substitute it with a vague equivalent like "millions" or "significant improvement".
 3. VOICE: {voice_rule_text}
 4. STRUCTURE: {structure_rule_text}
 5. LENGTH: {word_rule}
 6. EMOJI: {emoji_rule}
 7. FORMAT: {format_rule_text}
-8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body.
+8. HASHTAGS: Do NOT put hashtags in the post body. Place exactly {hashtag_count} hashtags at the very end, after the body. Use established professional hashtags that real {user_industry} practitioners actually follow (e.g. #FinTech #Payments #ProductManagement). Do NOT generate topic-summarising compound slugs like #HowCompanyReducedX or #CompanyNameTopic.
 9. BANNED PHRASES — never write any of these: {BANNED_PHRASES}
 10. HUMAN VOICE: Write like a real person would talk or write — not like an AI assistant, not like a press release, not like a corporate newsletter.
 11. NO PLACEHOLDERS: Never write [Company Name], [Exchange], or any bracketed placeholder.
 12. TOPIC ANCHOR + HOOK: The very first sentence MUST be directly about "{theme}" AND must be under 120 characters. Short, punchy, curiosity-driven. Do not open with a generic industry question or a hook about your role/team. The post is about the topic, not about you.
 13. NO PROMPT ECHO: Never copy or paraphrase any instruction label from this prompt into the post. Do not use the reader description (WHO WILL READ THIS) as post copy.
 14. OUTPUT CONTRACT: Structure must be: (a) Hook line, (b) 2-3 short body paragraphs, (c) final CTA/question line aligned to goal. Keep each paragraph 1-2 sentences.
-15. QUALITY CONTRACT: Include at least one concrete detail (specific scenario, metric range, or named mechanism). Avoid vague generic claims.
+15. QUALITY CONTRACT: Include at least one concrete detail. If the KB excerpts contain specific metrics, client names, percentages, or revenue figures, those MUST be used — they take priority over vague summaries. Never replace "₹230 crore" with "millions" or "71%→86%" with "significant improvement".
 16. GROUNDING MODE: {
-    'GROUNDED — all factual claims must trace to KB excerpts above. If a point is not in the excerpts, phrase it as opinion.' if grounding_level == GROUNDING_FULL else
-    'PARTIAL — some KB excerpts available. Supported points can be specific; unsupported points must use insight-only framing (no invented facts).' if grounding_level == GROUNDING_PARTIAL else
-    'INSIGHT-ONLY — no KB evidence available. Every statement must be defensible as opinion, observation, or widely-accepted wisdom. Zero invented facts.'
+    'STRICT KB GROUNDING — every factual claim, number, percentage, company name, and client name MUST come directly from the KB excerpts above. Copy specific values exactly as they appear (e.g. Rs.230 crore, SwiftCart, 71%->86%). Do NOT add plausible-sounding details that are absent from the excerpts (e.g. "legacy gateway timeouts", "inconsistent error messaging"). If a detail is not in the KB, either omit it or mark it explicitly as your own analysis.' if grounding_level == GROUNDING_FULL else
+    'PARTIAL GROUNDING — KB excerpts available for some points. Use exact KB values where present; for unsupported points, use insight-only framing (no invented facts, no made-up specifics).' if grounding_level == GROUNDING_PARTIAL else
+    'INSIGHT-ONLY — no KB evidence available. Every statement must be defensible as opinion, observation, or widely-accepted wisdom. Zero invented facts, zero invented metrics.'
 }
 {style_clone_compliance_rule}
 

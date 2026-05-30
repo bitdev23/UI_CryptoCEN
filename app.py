@@ -5231,43 +5231,67 @@ def normalize_hashtags(tags: list) -> list:
     return normalized
 
 
+# Curated professional hashtag banks — real hashtags practitioners follow, not topic slugs.
+_INDUSTRY_HASHTAG_BANK: dict = {
+    'fintech':           ['FinTech', 'Payments', 'DigitalBanking', 'BankingTech', 'OpenBanking', 'PaymentInnovation', 'FinancialServices'],
+    'finance':           ['Finance', 'FinancialServices', 'BankingTech', 'WealthManagement', 'FinTech'],
+    'crypto':            ['Crypto', 'Web3', 'DeFi', 'Blockchain', 'CryptoFinance', 'OnChain'],
+    'web3':              ['Web3', 'Blockchain', 'SmartContracts', 'DAOs', 'DecentralizedFinance', 'Web3Dev'],
+    'saas':              ['SaaS', 'B2BSaaS', 'ProductLedGrowth', 'SaaSGrowth', 'TechStartup', 'ProductManagement'],
+    'healthcare':        ['HealthTech', 'DigitalHealth', 'MedTech', 'HealthcareIT', 'PatientExperience', 'HealthcareInnovation'],
+    'ecommerce':         ['Ecommerce', 'RetailTech', 'D2C', 'ConversionOptimization', 'CustomerExperience', 'EcommerceStrategy'],
+    'genai':             ['GenerativeAI', 'AITools', 'LLM', 'AIStrategy', 'MachineLearning', 'ArtificialIntelligence'],
+    'virtual_assistant': ['ConversationalAI', 'Automation', 'CustomerExperience', 'AIAssistant', 'ChatbotDevelopment'],
+    'supply_chain':      ['SupplyChain', 'Logistics', 'SupplyChainTech', 'Operations', 'ProcureTech', 'SupplyChainManagement'],
+    'tech':              ['Technology', 'SoftwareEngineering', 'TechLeadership', 'DevOps', 'Engineering'],
+    'marketing':         ['DigitalMarketing', 'ContentMarketing', 'GrowthMarketing', 'B2BMarketing', 'MarTech'],
+    'hr':                ['HRTech', 'PeopleOps', 'TalentManagement', 'FutureOfWork', 'HumanResources'],
+    'legal':             ['LegalTech', 'Compliance', 'RegTech', 'LegalInnovation', 'CorporateLaw'],
+}
+
+
 def derive_hashtag_candidates(theme: str, industry: str, role: str, topics: list) -> list:
-    """Generate meaningful compound hashtags from theme/industry/role/topics."""
+    """Return professional industry hashtags as candidates.
+
+    Uses a curated per-industry bank so hashtags are real practitioners' tags
+    (e.g. #FinTech #Payments) rather than topic-summarising slugs
+    (e.g. #HowNovaPayReducedCheckoutFailure).
+    """
     candidates = []
 
-    # Build compound hashtags from multi-word phrases (e.g. 'CEX vs DEX' → 'CEXvsDEX')
-    for raw in [theme, industry, role, *topics]:
-        if not raw:
+    # Priority 1 — curated industry bank (real, followable hashtags)
+    industry_key = re.sub(r'[^a-z0-9_]', '_', (industry or '').lower().strip())
+    bank_tags: list = _INDUSTRY_HASHTAG_BANK.get(industry_key, [])
+    if not bank_tags:
+        # Partial match fallback (e.g. "Fintech & Payments" → 'fintech')
+        for key in _INDUSTRY_HASHTAG_BANK:
+            if key in industry_key or industry_key.startswith(key[:4]):
+                bank_tags = _INDUSTRY_HASHTAG_BANK[key]
+                break
+    candidates.extend(bank_tags[:5])
+
+    # Priority 2 — clean industry label as a standalone tag
+    if industry and len(industry) < 30:
+        clean = re.sub(r'[^A-Za-z0-9]', '', industry)
+        if len(clean) >= 3:
+            candidates.append(clean)
+
+    # Priority 3 — role as a standalone tag (CTO, Founder, ProductManager, etc.)
+    if role and len(role) < 25:
+        clean_role = re.sub(r'[^A-Za-z0-9]', '', role)
+        if len(clean_role) >= 2:
+            candidates.append(clean_role)
+
+    # Priority 4 — single meaningful words from topics (not from theme — that produces slugs)
+    for t in (topics or []):
+        if not t:
             continue
-        raw_str = str(raw).strip()
-        # Split on comma/semicolon to get sub-phrases
-        sub_phrases = re.split(r'[,;—–]+', raw_str)
-        for phrase in sub_phrases:
-            phrase = phrase.strip()
-            if not phrase:
-                continue
-            # Remove noise words for hashtag construction
-            noise = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'what', 'how', 'why',
-                     'when', 'where', 'and', 'or', 'but', 'in', 'on', 'of', 'for', 'to',
-                     'with', 'from', 'by', 'at', 'its', 'it', 'this', 'that', 'vs', 'versus'}
-            words = re.findall(r'[A-Za-z0-9]+', phrase)
-            significant = [w for w in words if w.lower() not in noise and len(w) >= 2]
-            if len(significant) >= 2:
-                # CamelCase compound: 'custodial model' → 'CustodialModel'
-                compound = ''.join(w.capitalize() if w.islower() else w for w in significant[:4])
-                candidates.append(compound)
-            elif significant:
-                candidates.append(significant[0])
+        words = re.findall(r'[A-Za-z]{4,}', str(t))
+        for w in words[:2]:
+            candidates.append(w.capitalize())
 
-    # Add industry/role as standalone hashtags if they are clean single concepts
-    for label in [industry, role]:
-        if label and len(label) < 30:
-            clean = re.sub(r'[^A-Za-z0-9]', '', label)
-            if len(clean) >= 3:
-                candidates.append(clean)
-
-    # Standard LinkedIn hashtags as low-priority fallback
-    candidates.extend(['LinkedIn', 'ProfessionalGrowth'])
+    # Fallback
+    candidates.extend(['Innovation', 'Leadership'])
     return normalize_hashtags(candidates)
 
 
