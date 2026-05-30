@@ -5701,12 +5701,14 @@ def _classify_grounding_level(kb_hits: list, kb_used: bool, kb_mode: str) -> str
         else:
             return _GROUNDING_NONE
     else:
-        # NORMAL THRESHOLDS for good vector systems
-        high_conf_count = sum(1 for s in similarities if s >= 0.70)
+        # NORMAL THRESHOLDS — calibrated for match_threshold=0.30 retrieval.
+        # High-confidence bar is 0.60 (not 0.70) because with broader retrieval
+        # scores cluster lower; 0.60 still signals a strong semantic match.
+        high_conf_count = sum(1 for s in similarities if s >= 0.60)
 
-        if high_conf_count >= 2 and avg_sim >= 0.70:
+        if high_conf_count >= 2 and avg_sim >= 0.55:
             return _GROUNDING_FULL
-        elif len(similarities) >= 1 and avg_sim >= 0.55:
+        elif len(similarities) >= 1 and avg_sim >= 0.40:
             return _GROUNDING_PARTIAL
         else:
             return _GROUNDING_NONE
@@ -6463,13 +6465,14 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         )
 
                         # Phase 1: hybrid search (vector + keyword) per query
-                        # IMPROVED: Lowered threshold from 0.68 to 0.50 to capture more relevant KB content
-                        # Higher k=6 ensures we have enough candidates for filtering later
+                        # threshold=0.30: low enough to retrieve semantically related chunks even when
+                        # topic phrasing differs from the stored KB text (e.g. "NovaPay checkout"
+                        # vs "payment failure reduction"). Reranking + quality filter clean up noise.
                         all_hybrid_hits = {}
                         for rq in retrieval_queries:
                             hits = rag.hybrid_search(
                                 rq, k=6,
-                                match_threshold=0.50,
+                                match_threshold=0.30,
                                 file_ids=file_id_arg,
                                 vector_weight=0.75,
                                 keyword_weight=0.25,
