@@ -5943,12 +5943,23 @@ def _filter_low_quality_chunks(kb_hits: list, min_quality: float = 0.35) -> list
 
 # ── Cross-encoder proxy: keyword-overlap reranking ────────────────────────────
 
+_CASE_STUDY_MARKERS = {
+    'case study', 'case studies', 'success story', 'success stories',
+    'customer story', 'client story', 'results', 'outcome', 'impact',
+    'section 6', 'section 7', 'section 8',  # common results sections in reports
+}
+
+
 def _rerank_with_keyword_boost(kb_hits: list, query_text: str,
                                  vector_weight: float = 0.75,
-                                 keyword_weight: float = 0.25) -> list:
+                                 keyword_weight: float = 0.25,
+                                 outcome_boost: bool = False) -> list:
     """Lightweight cross-encoder proxy using keyword-overlap scoring.
 
     Reranks chunks by: vector_weight * original_similarity + keyword_weight * keyword_density.
+    When outcome_boost=True (topic is result-oriented), chunks that contain case-study
+    or section-header markers receive an additional +0.15 boost to surface them above
+    generic content that may score similarly on vector similarity alone.
     No external model needed — uses token overlap as a cheap relevance signal.
     """
     if not kb_hits or not query_text:
@@ -5965,6 +5976,15 @@ def _rerank_with_keyword_boost(kb_hits: list, query_text: str,
         kw_density = kw_hits / len(query_keywords) if query_keywords else 0.0
         original_sim = float(hit.get('similarity', 0))
         boosted = vector_weight * original_sim + keyword_weight * kw_density
+
+        # Case-study boost: when the topic is outcome-oriented, prioritise chunks
+        # that contain section headings or case study markers — these often hold
+        # the specific client names, numbers, and mechanisms the model needs.
+        if outcome_boost:
+            if any(marker in doc_lower for marker in _CASE_STUDY_MARKERS):
+                boosted += 0.15
+                hit['_case_study_boosted'] = True
+
         hit['_rerank_score'] = round(boosted, 4)
         hit['similarity'] = round(boosted, 4)
 
@@ -6488,9 +6508,18 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
 
         if word_count_mode == 'ai_random':
             random_target = random.randint(110, 230)
-            word_rule = f"Choose an optimal LinkedIn length naturally, around {random_target} words."
+            word_rule = (
+                f"Write approximately {random_target} words. "
+                f"Do not exceed {random_target + 30} words. "
+                f"If trimming is needed, cut elaboration — never cut specific data points or client names."
+            )
         else:
-            word_rule = f"Keep the post between {min_words} and {max_words} words."
+            word_rule = (
+                f"Write between {min_words} and {max_words} words. "
+                f"Count strictly. Do not exceed {max_words} words under any circumstances. "
+                f"If the content requires trimming, cut examples or elaboration — "
+                f"never cut specific numbers, client names, or data points from the source document."
+            )
 
         kb_used = False
         kb_no_match = False
@@ -6595,10 +6624,18 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
                         # not silently dropped before being passed to the model.
                         kb_hits = _filter_low_quality_chunks(kb_hits, min_quality=0.20)
 
-                        # Phase 3: keyword-overlap reranking
+                        # Phase 3: keyword-overlap reranking.
+                        # outcome_boost=True when the topic mentions results/improvements
+                        # so that case-study and section-header chunks are ranked higher.
+                        _topic_for_outcome = (theme or topic_hint or '').lower()
+                        _outcome_boost_needed = (
+                            bool(__import__('re').search(r'\d+[%x]|\d+\.\d+\s*%|\d+\s*to\s*\d+', _topic_for_outcome))
+                            or any(kw in _topic_for_outcome for kw in _OUTCOME_KEYWORDS)
+                        )
                         kb_hits = _rerank_with_keyword_boost(
                             kb_hits, theme or topic_hint,
-                            vector_weight=0.75, keyword_weight=0.25
+                            vector_weight=0.75, keyword_weight=0.25,
+                            outcome_boost=_outcome_boost_needed
                         )
                         
                         # DIAGNOSTIC: Check if vector similarity is suspiciously low
@@ -6741,6 +6778,63 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
         # ── Build KB section (grounding-level-aware) ─────────────────────────────
         kb_section = _build_grounding_prompt_rules(grounding_level, user_industry, kb_context)
 
+        # ── Role-based narrative ownership rule (Bug 3) ────────────────────────
+        _role_lower = (user_role or '').lower()
+        _founder_roles = {'ceo', 'founder', 'co-founder', 'cofounder', 'owner',
+                          'md', 'managing director', 'president', 'director'}
+        _expert_roles  = {'thought leader', 'industry expert', 'analyst',
+                          'consultant', 'advisor', 'strategist'}
+        if any(r in _role_lower for r in _founder_roles):
+            role_narrative_rule = (
+                f'NARRATIVE OWNERSHIP — you are writing as the {user_role} of the company '
+                f'whose document has been uploaded. '
+                f'Use "we built", "our team", "we reduced", "our result was". '
+                f'Speak from direct experience and ownership of the outcome — '
+                f'never use "I\'ve seen", "most teams", or "in my experience observing others". '
+                f'This post is about what THIS company did, not general industry advice.'
+            )
+        elif any(r in _role_lower for r in _expert_roles):
+            role_narrative_rule = (
+                f'NARRATIVE OWNERSHIP — you are writing as a {user_role} sharing industry perspective. '
+                f'Broad industry observations are acceptable, but the post MUST be anchored with at '
+                f'least one specific data point, name, or outcome from the retrieved document.'
+            )
+        else:
+            role_narrative_rule = (
+                f'NARRATIVE OWNERSHIP — write from the first-person perspective of a {user_role} '
+                f'in {user_industry}. Reference specific data from the document to ground your insights.'
+            )
+
+        # ── Post type detection (Bug 4) ────────────────────────────────────────
+        _topic_for_type = (theme or '').lower()
+        _is_founder = any(r in _role_lower for r in _founder_roles)
+        _has_outcome_topic = any(kw in _topic_for_type for kw in _OUTCOME_KEYWORDS)
+        if _is_founder and _has_outcome_topic:
+            post_type_block = (
+                'POST TYPE: COMPANY_STORY\n'
+                'This post MUST tell the specific story of what this company did and what result it achieved.\n'
+                '- Generic industry commentary is NOT acceptable — every substantive claim must come from the document.\n'
+                '- Required structure: (1) what the problem was, (2) what this company did to solve it, '
+                '(3) the measurable result — all three sourced from the KB excerpts.\n'
+                '- Use "we", "our team", "our product". This is a first-person company story.\n'
+                '- Do NOT give general industry advice or invent technical details not in the document.'
+            )
+        elif any(r in _role_lower for r in _expert_roles):
+            post_type_block = (
+                'POST TYPE: THOUGHT_LEADERSHIP\n'
+                'Industry-wide perspective is acceptable, but the post MUST include at least one '
+                'specific data point, client name, or outcome from the retrieved KB excerpts.\n'
+                '- You may reference broader industry patterns.\n'
+                '- Do not claim first-person ownership of results you did not achieve.'
+            )
+        else:
+            post_type_block = (
+                'POST TYPE: PROFESSIONAL_INSIGHT\n'
+                'Balance personal professional perspective with at least one specific reference '
+                '(number, name, or outcome) from the KB excerpts.\n'
+                '- Insight-driven but always grounded in real document evidence.'
+            )
+
         prompt = _PromptBuilder.build_generation_prompt(
             user_industry=user_industry,
             user_role=user_role,
@@ -6765,6 +6859,8 @@ REFERENCE POSTS — study the rhythm, word choice, sentence weight (DO NOT copy 
             structure_rule_text=structure_rule_text,
             format_rule_text=format_rule_text,
             style_clone_compliance_rule=style_clone_compliance_rule,
+            role_narrative_rule=role_narrative_rule,
+            post_type_block=post_type_block,
         )
 
         logger.info(f"Generating preview with prompt: {prompt[:100]}...")
@@ -6952,6 +7048,19 @@ Post:
             first_draft_raw = _generate_once(prompt)
         except Exception as first_error:
             return _safe_api_error('AI generation failed. Please try again.', first_error)
+
+        # Rule 18 signal: model indicates it has insufficient KB data for this topic
+        if first_draft_raw.strip().startswith('INSUFFICIENT_KB_DATA:'):
+            topic_label = first_draft_raw.strip()[len('INSUFFICIENT_KB_DATA:'):].strip()
+            logger.info('Model signalled insufficient KB data for topic: %s', topic_label)
+            return jsonify({
+                'success': False,
+                'error': 'insufficient_kb_data',
+                'message': (
+                    f'Not enough source data found in your knowledge base for "{topic_label or theme}". '
+                    f'Please upload a document with more detail on this topic, or try a broader topic.'
+                ),
+            }), 422
 
         body, generated_tags = _post_process_generated(first_draft_raw)
 

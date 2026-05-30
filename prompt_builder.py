@@ -226,6 +226,8 @@ class PromptBuilder:
         structure_rule_text: str,
         format_rule_text: str,
         style_clone_compliance_rule: str,
+        role_narrative_rule: str = '',
+        post_type_block: str = '',
     ) -> str:
         """Build the main LinkedIn post generation prompt."""
 
@@ -264,7 +266,11 @@ OPTIONAL SUBTOPICS TO WEAVE IN:
 
 {kb_section}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STRICT RULES — every rule applies without exception:
+{f'''{post_type_block}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''' if post_type_block else ''}{f'''{role_narrative_rule}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''' if role_narrative_rule else ''}STRICT RULES — every rule applies without exception:
 
 1. DOMAIN LOCK: Every sentence must be grounded in {user_industry}. {domain_guardrail}
 2. NO INVENTED FACTS: Do not invent statistics, percentages, company names, client names, product names, research studies, or quotes. If a specific number, name, or metric exists in the KB excerpts below, use the exact value verbatim — never substitute it with a vague equivalent like "millions" or "significant improvement".
@@ -286,6 +292,8 @@ STRICT RULES — every rule applies without exception:
     'PARTIAL GROUNDING — KB excerpts available for some points. Use exact KB values where present; for unsupported points, use insight-only framing (no invented facts, no made-up specifics).' if grounding_level == GROUNDING_PARTIAL else
     'INSIGHT-ONLY — no KB evidence available. Every statement must be defensible as opinion, observation, or widely-accepted wisdom. Zero invented facts, zero invented metrics.'
 }
+17. POST DATA REQUIREMENT: If KB excerpts are available (GROUNDED or PARTIAL mode), the post MUST reference at least 2 specific data points pulled directly from the retrieved chunks — a number, a client name, a percentage, a product name, or a specific outcome. Generic commentary with zero KB specifics is a failure of this rule.
+18. INSUFFICIENT DATA SIGNAL: If the retrieved chunks do not contain enough relevant information to write a grounded post on this specific topic, output exactly: INSUFFICIENT_KB_DATA: {theme} — do not generate a generic post as a substitute.
 {style_clone_compliance_rule}
 
 FORMAT STYLE: {fmt}

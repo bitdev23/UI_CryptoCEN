@@ -338,7 +338,6 @@ class RAGStore:
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    @staticmethod
     def _extract_keywords(text: str, max_keywords: int = 6) -> List[str]:
         """Extract meaningful keywords from text, removing stop words.
 
