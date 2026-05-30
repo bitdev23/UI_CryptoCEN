@@ -15,7 +15,17 @@ BANNED_PHRASES = (
     "think outside the box, move the needle, exciting, thrilled, delighted to share, I am proud to share, "
     "Dive into, Unlock, Revolutionize, seamlessly, robust, scalable solution, stakeholders, "
     "actionable insights, transformative, empower, journey, innovative solution, disruptive, "
-    "holistic approach, ecosystem, value-add, going forward, circle back, take this to the next level"
+    "holistic approach, ecosystem, value-add, going forward, circle back, take this to the next level, "
+    # Hallucination-anchor phrases — the model defaults to these when KB data is absent:
+    "the question worth asking, "
+    "compliance speed matters more than compliance cost, "
+    "as a product feature not a back-office cost, "
+    "as a product feature not a HR slogan, "
+    "the teams that win aren't, the businesses that win, the companies that win, "
+    "hidden cost isn't just, "
+    "around that insight, "
+    "we rebuilt our risk engine, "
+    "one basis point of failure"
 )
 
 TONE_VOICES = {
@@ -228,6 +238,7 @@ class PromptBuilder:
         style_clone_compliance_rule: str,
         role_narrative_rule: str = '',
         post_type_block: str = '',
+        company_metrics_block: str = '',
     ) -> str:
         """Build the main LinkedIn post generation prompt."""
 
@@ -266,7 +277,9 @@ OPTIONAL SUBTOPICS TO WEAVE IN:
 
 {kb_section}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{f'''{post_type_block}
+{f'''{company_metrics_block}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''' if company_metrics_block else ''}{f'''{post_type_block}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ''' if post_type_block else ''}{f'''{role_narrative_rule}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -294,6 +307,11 @@ OPTIONAL SUBTOPICS TO WEAVE IN:
 }
 17. POST DATA REQUIREMENT: If KB excerpts are available (GROUNDED or PARTIAL mode), the post MUST reference at least 2 specific data points pulled directly from the retrieved chunks — a number, a client name, a percentage, a product name, or a specific outcome. Generic commentary with zero KB specifics is a failure of this rule.
 18. INSUFFICIENT DATA SIGNAL: If the retrieved chunks do not contain enough relevant information to write a grounded post on this specific topic, output exactly: INSUFFICIENT_KB_DATA: {theme} — do not generate a generic post as a substitute.
+19. HALLUCINATION ANCHORS — these phrases mean you have exhausted real KB data and are generating fiction:
+    • "cost-to-income ratio" — ONLY use if the exact value appears in a retrieved chunk. Never invent a basis-point move.
+    • Any percentage, ratio, or basis-point figure NOT found verbatim in the KB excerpts or VERIFIED COMPANY DATA above must be omitted.
+    • "our [X] improved" / "we rebuilt our [X]" / "our [X] crept higher" — only use with a specific before/after figure from the KB.
+    • When the post body runs short on KB evidence, shorten the post or signal INSUFFICIENT_KB_DATA — do NOT pad with generic FinTech assertions.
 {style_clone_compliance_rule}
 
 FORMAT STYLE: {fmt}
